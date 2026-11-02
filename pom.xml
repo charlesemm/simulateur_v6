@@ -23,7 +23,7 @@
         <springdoc.version>2.8.13</springdoc.version>
         <datafaker.version>2.4.4</datafaker.version>
         <htmx.version>2.0.4</htmx.version>
-        <chartjs.version>4.4.7</chartjs.version>
+        <chartjs.version>4.6.1</chartjs.version>
     </properties>
 
     <dependencies>
