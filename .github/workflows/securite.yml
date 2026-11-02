@@ -1,0 +1,39 @@
+name: Securite
+
+on:
+  push:
+    branches: [main, "step/**"]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 5 * * 1"   # chaque lundi : de nouvelles CVE peuvent apparaitre sans changement de code
+
+permissions:
+  contents: read
+
+jobs:
+  secrets:
+    name: Secrets (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tout l'historique : un secret supprime plus tard reste visible dans les anciens commits
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  image:
+    name: Image conteneur (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Construire l'image
+        run: docker build -f Containerfile -t simulateur:ci .
+      - name: Scanner l'image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: simulateur:ci
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true   # seulement les failles pour lesquelles un correctif existe
+          exit-code: "1"

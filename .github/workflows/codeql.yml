@@ -1,0 +1,27 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main, "step/**"]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 5 * * 1"
+
+jobs:
+  analyse:
+    name: Analyse statique (CodeQL)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # publier les alertes dans l'onglet Security
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: java-kotlin
+          build-mode: none
+          queries: security-extended
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:java-kotlin"
