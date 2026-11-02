@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /** Creation et suivi des factures : ouverture, refus direct, lignes, transitions de statut et historique. */
 @Service
-public class FactureService {
+public class FactureService implements GestionFacture {
 
     private static final RowMapper<Facture> FACTURE = (rs, i) -> new Facture(
             rs.getObject("id", UUID.class),

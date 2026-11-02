@@ -94,3 +94,8 @@ simulator:
   reference:
     nb-assures: ${REFERENCE_NB_ASSURES:50000}
     seed: ${REFERENCE_SEED:42}
+  # Parcours d'une prestation : voies apres la consultation (somme = 1). Valeurs de depart, a fixer par les directions metier.
+  parcours:
+    proba-examens: 0.60
+    proba-hospitalisation: 0.10
+    proba-direct: 0.30
