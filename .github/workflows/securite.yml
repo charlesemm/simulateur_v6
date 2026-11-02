@@ -37,3 +37,4 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true   # seulement les failles pour lesquelles un correctif existe
           exit-code: "1"
+          trivyignores: .trivyignore   # failles acceptees temporairement, avec date d expiration

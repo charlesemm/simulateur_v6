@@ -1,0 +1,11 @@
+# Failles acceptees temporairement. Chaque ligne expire : Trivy la signale de nouveau apres la date `exp`.
+# A retirer des que Spring Framework 6.2.20 est publie sur Maven Central (alors : <spring-framework.version>6.2.20</spring-framework.version> dans le pom).
+#
+# Constat du 2026-11-02 : les deux CVE sont corrigees en 6.2.20 (base NVD, versionEndExcluding 6.2.20),
+# mais cette version n'est pas encore sur Maven Central (derniere : 6.2.19). Trivy n'affiche que le correctif 7.x.
+
+# RCE via XsltView. Le projet n'utilise pas XsltView (verifie par recherche dans src/).
+CVE-2026-47884 exp:2026-12-02
+
+# Corruption de flux SSE avec fragments de vue. Le projet n'a pas encore de SSE ; a reverifier a la brique Monitoring.
+CVE-2026-47890 exp:2026-12-02
