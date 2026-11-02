@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "step/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # Les tests d'integration utilisent Testcontainers : Docker est deja present sur le runner.
+      - name: Compiler et tester
+        run: ./mvnw -B -q clean verify
+
+      - name: Rapports de tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports
