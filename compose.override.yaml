@@ -1,0 +1,8 @@
+# Fusionne automatiquement avec compose.yaml sur le poste de developpement.
+# Expose PostgreSQL UNIQUEMENT sur 127.0.0.1 (pour DBeaver / IntelliJ Database), jamais sur le reseau.
+# Sur un serveur, ne pas utiliser ce fichier :  podman compose -f compose.yaml up -d
+
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:55432:5432"   # 55432 : 5432 et 5433 sont pris par des PostgreSQL locaux sous Windows

@@ -1,0 +1,18 @@
+# Profil "test" : valeurs factices, la base vient de Testcontainers (@ServiceConnection).
+spring:
+  datasource:
+    username: test
+    password: test
+  thymeleaf:
+    cache: false
+
+simulateur:
+  securite:
+    cle-api: test-api-key
+    mot-de-passe-admin-initial: test-admin-password
+  scenarios-dir: scenarios
+
+simulator:
+  reference:
+    nb-assures: 500
+    seed: 7

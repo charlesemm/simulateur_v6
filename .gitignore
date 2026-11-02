@@ -1,0 +1,14 @@
+# Secrets
+.env
+
+# Build
+target/
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Donnees locales
+data/

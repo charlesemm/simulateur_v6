@@ -1,0 +1,93 @@
+# Demarrage : podman compose up -d --build
+# Coeur : postgres + toxiproxy + simulator.  Profil "observability" : prometheus + grafana.
+# Regles : noms d'images complets, PostgreSQL et l'API de Toxiproxy ne sont JAMAIS exposes hors de la machine,
+# aucune socket Podman montee dans un conteneur.
+
+name: simulateur
+
+services:
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-simulateur}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data      # volume nomme (pas de dossier Windows monte : problemes de droits)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    restart: unless-stopped
+    command: ["-host=0.0.0.0", "-config=/config/toxiproxy.json"]
+    volumes:
+      - ./docker/toxiproxy.json:/config/toxiproxy.json:ro,Z
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  simulator:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: localhost/simulateur:dev
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: 2.0
+    environment:
+      DB_URL: jdbc:postgresql://toxiproxy:5432/${DB_NAME:-simulateur}?reWriteBatchedInserts=true
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      API_KEY: ${API_KEY}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      TOXIPROXY_URL: http://toxiproxy:8474
+      SCENARIOS_DIR: /app/scenarios
+    volumes:
+      - ./scenarios:/app/scenarios:Z
+    ports:
+      - "8080:8080"
+    depends_on:
+      toxiproxy:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/simulateur/actuator/health | grep -q UP || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  prometheus:
+    profiles: ["observability"]
+    image: docker.io/prom/prometheus:v3.5.0
+    restart: unless-stopped
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro,Z
+      - promdata:/prometheus
+    depends_on:
+      - simulator
+
+  grafana:
+    profiles: ["observability"]
+    image: docker.io/grafana/grafana:12.2.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin-a-changer}
+    volumes:
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro,Z
+      - grafanadata:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  pgdata:
+  promdata:
+  grafanadata:
