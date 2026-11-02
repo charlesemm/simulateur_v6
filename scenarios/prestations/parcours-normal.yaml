@@ -1,0 +1,14 @@
+# Scenario de reference : parcours de prestations a charge normale.
+# Les phases sont mesurees en temps REEL actif du run ; accelerationTemps joue sur le temps SIMULE seulement.
+nom: "Prestations - parcours normal"
+seed: 42
+accelerationTemps: 60          # 1 minute reelle = 1 heure simulee
+domaines:
+  prestations:
+    debit: 5/s                 # parcours demarres par seconde reelle
+    parcours:                  # voies apres la consultation (total = 100 %)
+      examens: 60%
+      hospitalisation: 10%
+      prescriptionDirecte: 30%
+phases:
+  - { de: 0m, a: 10m, charge: normale }

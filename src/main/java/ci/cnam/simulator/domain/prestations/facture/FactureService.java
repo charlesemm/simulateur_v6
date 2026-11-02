@@ -1,5 +1,6 @@
 package ci.cnam.simulator.domain.prestations.facture;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -76,9 +77,10 @@ public class FactureService implements GestionFacture {
     }
 
     private Facture creer(NouvelleFacture d, FactureStatut statut) {
-        UUID id = UUID.randomUUID();
         Long sequence = jdbc.queryForObject("select nextval('seq_numero_facture')", Long.class);
         String numero = "FAC-%04d-%06d".formatted(d.dateOuverture().getYear(), sequence);
+        // Identifiant derive (jamais UUID.randomUUID) : meme run et meme numero, meme identifiant.
+        UUID id = identifiant("facture", d.runId(), numero);
         jdbc.update("""
                 insert into facture (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
                                      type_bon, statut, date_ouverture)
@@ -100,7 +102,7 @@ public class FactureService implements GestionFacture {
         Integer numero = jdbc.queryForObject(
                 "select coalesce(max(numero_ligne), 0) + 1 from facture_ligne where facture_id = ?",
                 Integer.class, factureId);
-        UUID id = UUID.randomUUID();
+        UUID id = identifiant("ligne", factureId, String.valueOf(numero));
         jdbc.update("""
                 insert into facture_ligne (id, run_id, facture_id, numero_ligne, code, designation, date_soin,
                                            quantite, prix_unitaire, montant, part_cnam,
@@ -163,11 +165,17 @@ public class FactureService implements GestionFacture {
 
     private void historiser(UUID factureId, UUID runId, FactureStatut ancien, FactureStatut nouveau,
                             LocalDateTime dateSimulee) {
+        Integer rang = jdbc.queryForObject("select count(*) + 1 from facture_historique where facture_id = ?",
+                Integer.class, factureId);
         jdbc.update("""
                 insert into facture_historique (id, run_id, facture_id, ancien_statut, nouveau_statut,
                                                 horodatage_simule)
                 values (?, ?, ?, ?, ?, ?)""",
-                UUID.randomUUID(), runId, factureId, ancien == null ? null : ancien.name(), nouveau.name(),
-                Timestamp.valueOf(dateSimulee));
+                identifiant("historique", factureId, String.valueOf(rang)), runId, factureId,
+                ancien == null ? null : ancien.name(), nouveau.name(), Timestamp.valueOf(dateSimulee));
+    }
+
+    private static UUID identifiant(String nature, UUID parent, String cle) {
+        return UUID.nameUUIDFromBytes((nature + "/" + parent + "/" + cle).getBytes(StandardCharsets.UTF_8));
     }
 }

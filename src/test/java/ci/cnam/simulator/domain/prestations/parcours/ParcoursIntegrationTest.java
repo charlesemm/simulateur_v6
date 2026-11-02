@@ -1,5 +1,7 @@
 package ci.cnam.simulator.domain.prestations.parcours;
 
+import ci.cnam.simulator.SupportRun;
+import org.springframework.jdbc.core.JdbcTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ci.cnam.simulator.core.event.SimEvent;
@@ -37,11 +39,13 @@ class ParcoursIntegrationTest {
     ReferenceService reference;
     @Autowired
     FactureService factureService;
+    @Autowired
+    JdbcTemplate jdbc;
 
     @Test
     void unParcoursSurLaBaseSeTermineEtLaTraceEstAffichee() {
         SeededRandom random = new SeededRandom(42);
-        UUID run = UUID.randomUUID();
+        UUID run = SupportRun.nouveauRun(jdbc);
         ParcoursOrchestrator.Resultat resultat = null;
         // Cherche un assure aux droits valides parmi le referentiel de test (500 assures).
         for (int i = 0; i < 200 && (resultat == null || resultat.facture().statut() != FactureStatut.FINALISEE); i++) {

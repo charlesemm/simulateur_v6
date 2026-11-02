@@ -1,5 +1,6 @@
 package ci.cnam.simulator.domain.prestations.facture;
 
+import ci.cnam.simulator.SupportRun;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -40,7 +41,7 @@ class FactureIntegrationTest {
     private NouvelleFacture demande() {
         UUID assure = jdbc.queryForObject("select id from assure limit 1", UUID.class);
         UUID centre = jdbc.queryForObject("select id from centre_sante limit 1", UUID.class);
-        return new NouvelleFacture(UUID.randomUUID(), assure, assure, centre, TypeBon.AMBULATOIRE, T0);
+        return new NouvelleFacture(SupportRun.nouveauRun(jdbc), assure, assure, centre, TypeBon.AMBULATOIRE, T0);
     }
 
     private NouvelleLigne ligne(String montant, String cnam, String complementaire, String assure) {
