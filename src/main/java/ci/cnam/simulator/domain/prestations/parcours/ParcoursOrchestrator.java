@@ -51,12 +51,22 @@ public class ParcoursOrchestrator {
 
     public Resultat executer(UUID runId, Assure assure, CentreSante centre, Medecin medecin, Pharmacie pharmacie,
                              SeededRandom random) {
+        return executer(runId, assure, centre, medecin, pharmacie, random, horloge, graphe.proprietes(), sink);
+    }
+
+    /**
+     * Parcours date par {@code horlogeParcours} (ex. horloge virtuelle du moteur), avec des probabilites de voie
+     * et une destination d'evenements propres au run.
+     */
+    public Resultat executer(UUID runId, Assure assure, CentreSante centre, Medecin medecin, Pharmacie pharmacie,
+                             SeededRandom random, Clock horlogeParcours, ParcoursProperties probas,
+                             EventSink destination) {
         // La voie est tiree a l'arrivee (le type de bon en depend a l'ouverture) ; le graphe l'applique apres la consultation.
-        VoieParcours voie = graphe.tirerVoie(random);
+        VoieParcours voie = graphe.tirerVoie(random, probas);
         ParcoursContext ctx = new ParcoursContext(runId, assure, centre, medecin, pharmacie, random, voie,
-                LocalDateTime.now(horloge));
+                LocalDateTime.now(horlogeParcours));
         List<SimEvent> evenements = new ArrayList<>();
-        emettre(ctx.evenement(PrestationEventType.PATIENT_ARRIVE, Map.of()), evenements);
+        emettre(destination, ctx.evenement(PrestationEventType.PATIENT_ARRIVE, Map.of()), evenements);
 
         Optional<ParcoursEtape> courante = Optional.of(ParcoursEtape.VERIFICATION_DROITS);
         while (courante.isPresent()) {
@@ -64,14 +74,14 @@ public class ParcoursOrchestrator {
             if (resultat.facture() != null) {
                 ctx.facture(resultat.facture());
             }
-            emettre(resultat.evenement(), evenements);
+            emettre(destination, resultat.evenement(), evenements);
             courante = graphe.suivante(courante.get(), ctx);
         }
         return new Resultat(ctx.facture(), List.copyOf(evenements));
     }
 
-    private void emettre(SimEvent evenement, List<SimEvent> evenements) {
-        sink.emettre(evenement);
+    private static void emettre(EventSink destination, SimEvent evenement, List<SimEvent> evenements) {
+        destination.emettre(evenement);
         evenements.add(evenement);
     }
 }

@@ -14,13 +14,23 @@ public class ParcoursGraph {
         this.proprietes = proprietes;
     }
 
-    /** Tire la voie selon les probabilites configurees (un seul tirage du generateur). */
+    /** Probabilites par defaut (configuration de l application). */
+    public ParcoursProperties proprietes() {
+        return proprietes;
+    }
+
+    /** Tire la voie selon les probabilites par defaut (un seul tirage du generateur). */
     public VoieParcours tirerVoie(SeededRandom random) {
+        return tirerVoie(random, proprietes);
+    }
+
+    /** Tire la voie selon des probabilites donnees (ex. celles d un scenario). */
+    public VoieParcours tirerVoie(SeededRandom random, ParcoursProperties probas) {
         double tirage = random.nextDouble();
-        if (tirage < proprietes.probaExamens()) {
+        if (tirage < probas.probaExamens()) {
             return VoieParcours.EXAMENS;
         }
-        if (tirage < proprietes.probaExamens() + proprietes.probaHospitalisation()) {
+        if (tirage < probas.probaExamens() + probas.probaHospitalisation()) {
             return VoieParcours.HOSPITALISATION;
         }
         return VoieParcours.DIRECT;
