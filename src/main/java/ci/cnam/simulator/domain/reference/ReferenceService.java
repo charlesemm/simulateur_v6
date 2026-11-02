@@ -1,6 +1,12 @@
 package ci.cnam.simulator.domain.reference;
 
 import ci.cnam.simulator.core.random.SeededRandom;
+import ci.cnam.simulator.domain.reference.catalog.Acte;
+import ci.cnam.simulator.domain.reference.catalog.Acte.CategorieActe;
+import ci.cnam.simulator.domain.reference.catalog.Catalogue;
+import ci.cnam.simulator.domain.reference.catalog.Examen;
+import ci.cnam.simulator.domain.reference.catalog.Examen.TypeExamen;
+import ci.cnam.simulator.domain.reference.catalog.Medicament;
 import ci.cnam.simulator.domain.reference.model.Assure;
 import ci.cnam.simulator.domain.reference.model.CentreSante;
 import ci.cnam.simulator.domain.reference.model.Genre;
@@ -20,10 +26,12 @@ import org.springframework.stereotype.Service;
  * Le referentiel est lu une fois en memoire (quelques dizaines de milliers de lignes) au premier tirage.
  */
 @Service
-public class ReferenceService {
+public class ReferenceService implements Catalogue {
 
     private record Instantane(List<Assure> assures, List<CentreSante> centres, List<Medecin> medecins,
-                              Map<UUID, List<Medecin>> medecinsParCentre, List<Pharmacie> pharmacies) {
+                              Map<UUID, List<Medecin>> medecinsParCentre, List<Pharmacie> pharmacies,
+                              Map<CategorieActe, List<Acte>> actes, Map<TypeExamen, List<Examen>> examens,
+                              List<Medicament> medicaments) {
     }
 
     private final JdbcTemplate jdbc;
@@ -56,6 +64,21 @@ public class ReferenceService {
 
     public Pharmacie pharmacieAleatoire(SeededRandom random) {
         return random.choisir(donnees().pharmacies());
+    }
+
+    @Override
+    public Acte acteAleatoire(CategorieActe categorie, SeededRandom random) {
+        return random.choisir(donnees().actes().get(categorie));
+    }
+
+    @Override
+    public Examen examenAleatoire(TypeExamen type, SeededRandom random) {
+        return random.choisir(donnees().examens().get(type));
+    }
+
+    @Override
+    public Medicament medicamentAleatoire(SeededRandom random) {
+        return random.choisir(donnees().medicaments());
     }
 
     /** Oublie la copie en memoire (apres un nouveau remplissage de la base). */
@@ -103,6 +126,22 @@ public class ReferenceService {
         }
         Map<UUID, List<Medecin>> parCentre = new HashMap<>();
         medecins.forEach(m -> parCentre.computeIfAbsent(m.centreSanteId(), k -> new java.util.ArrayList<>()).add(m));
-        return new Instantane(assures, centres, medecins, parCentre, pharmacies);
+        Map<CategorieActe, List<Acte>> actes = new java.util.EnumMap<>(CategorieActe.class);
+        jdbc.query("select id, code, libelle, categorie, tarif from acte order by code",
+                (rs, i) -> new Acte(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("libelle"),
+                        CategorieActe.valueOf(rs.getString("categorie")), rs.getBigDecimal("tarif")))
+                .forEach(a -> actes.computeIfAbsent(a.categorie(), k -> new java.util.ArrayList<>()).add(a));
+        Map<TypeExamen, List<Examen>> examens = new java.util.EnumMap<>(TypeExamen.class);
+        jdbc.query("select id, code, libelle, type, tarif from examen order by code",
+                (rs, i) -> new Examen(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("libelle"),
+                        TypeExamen.valueOf(rs.getString("type")), rs.getBigDecimal("tarif")))
+                .forEach(e -> examens.computeIfAbsent(e.type(), k -> new java.util.ArrayList<>()).add(e));
+        List<Medicament> medicaments = jdbc.query("select id, code, libelle, tarif from medicament order by code",
+                (rs, i) -> new Medicament(rs.getObject("id", UUID.class), rs.getString("code"),
+                        rs.getString("libelle"), rs.getBigDecimal("tarif")));
+        if (actes.isEmpty() || examens.isEmpty() || medicaments.isEmpty()) {
+            throw new IllegalStateException("Catalogues vides : le remplissage au demarrage n'a pas eu lieu");
+        }
+        return new Instantane(assures, centres, medecins, parCentre, pharmacies, actes, examens, medicaments);
     }
 }
