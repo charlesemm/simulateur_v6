@@ -26,7 +26,7 @@
         <jackson-bom.version>2.21.7</jackson-bom.version>
         <tomcat.version>10.1.61</tomcat.version>
         <postgresql.version>42.7.14</postgresql.version>
-        <htmx.version>2.0.4</htmx.version>
+        <htmx.version>4.0.0</htmx.version>
         <chartjs.version>4.4.7</chartjs.version>
     </properties>
 
