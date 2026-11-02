@@ -4,17 +4,26 @@ import ci.cnam.simulator.domain.prestations.events.PrestationEventType;
 import ci.cnam.simulator.domain.prestations.facture.GestionFacture;
 import ci.cnam.simulator.domain.prestations.parcours.ParcoursContext;
 import ci.cnam.simulator.domain.prestations.parcours.ParcoursEtape;
+import ci.cnam.simulator.domain.prestations.tarification.TarificationService;
+import ci.cnam.simulator.domain.prestations.tarification.TypePrestation;
+import ci.cnam.simulator.domain.reference.catalog.Catalogue;
+import ci.cnam.simulator.domain.reference.catalog.Examen;
+import ci.cnam.simulator.domain.reference.catalog.Examen.TypeExamen;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
-/** Examens de biologie et d'imagerie : deux lignes (montants fictifs). La facture reste EN_COURS. */
+/** Examens de biologie et d'imagerie : deux lignes aux tarifs du catalogue. La facture reste EN_COURS. */
 @Component
 public class ExamensEtape implements Etape {
 
     private final GestionFacture factures;
+    private final Catalogue catalogue;
+    private final TarificationService tarification;
 
-    public ExamensEtape(GestionFacture factures) {
+    public ExamensEtape(GestionFacture factures, Catalogue catalogue, TarificationService tarification) {
         this.factures = factures;
+        this.catalogue = catalogue;
+        this.tarification = tarification;
     }
 
     @Override
@@ -25,10 +34,11 @@ public class ExamensEtape implements Etape {
     @Override
     public ResultatEtape executer(ParcoursContext ctx) {
         ctx.avancer(30, 120);
-        factures.ajouterLigne(ctx.facture().id(), LigneFictive.de("BIO", "Bilan biologique", ctx.temps(), 1,
-                "12000.00", "8400.00", "1200.00", "2400.00"));
-        factures.ajouterLigne(ctx.facture().id(), LigneFictive.de("IMG", "Imagerie", ctx.temps(), 1,
-                "20000.00", "14000.00", "2000.00", "4000.00"));
+        for (TypeExamen type : TypeExamen.values()) {
+            Examen examen = catalogue.examenAleatoire(type, ctx.random());
+            factures.ajouterLigne(ctx.facture().id(), tarification.ligne(examen.code(), examen.libelle(),
+                    ctx.temps(), 1, examen.tarif(), TypePrestation.EXAMEN));
+        }
         return new ResultatEtape(ctx.facture(),
                 ctx.evenement(PrestationEventType.EXAMEN_REALISE, Map.of("nombreExamens", 2)));
     }
