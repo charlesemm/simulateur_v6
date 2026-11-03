@@ -6,12 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import ci.cnam.simulator.core.engine.EtatRun;
 import ci.cnam.simulator.core.engine.RunInfo;
 import ci.cnam.simulator.core.engine.RunManager;
-import ci.cnam.simulator.core.event.SimEvent;
 import ci.cnam.simulator.core.scenario.Scenario;
 import ci.cnam.simulator.core.scenario.ScenarioLoader;
 import ci.cnam.simulator.persistence.repository.RunRepository;
-import ci.cnam.simulator.sink.EventSink;
-import ci.cnam.simulator.sink.InMemoryEventSink;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -56,8 +53,6 @@ class PrestationsRunIntegrationTest {
     @Autowired
     RunRepository runs;
     @Autowired
-    EventSink eventSink;
-    @Autowired
     JdbcTemplate jdbc;
 
     @Test
@@ -78,13 +73,18 @@ class PrestationsRunIntegrationTest {
         assertThat(manager.info(run.id()).etat()).isEqualTo(EtatRun.ARRETE);
         assertThat(enPause.parcoursGeneres()).isBetween(5L, 20L);
 
-        List<SimEvent> evenements = ((InMemoryEventSink) eventSink).evenements().stream().filter(e -> e.runId().equals(run.id())).toList();
+        // arreter() a vide le sink : tout ce qui a ete emis est en base.
+        List<Map<String, Object>> evenements = jdbc.queryForList(
+                "select type, timestamp_simule from evenement where run_id = ? order by timestamp_simule", run.id());
         assertThat(evenements).hasSize((int) manager.info(run.id()).evenementsEmis());
-        long arrivees = evenements.stream().filter(e -> e.type().equals("PATIENT_ARRIVE")).count();
+        long arrivees = evenements.stream().filter(e -> e.get("type").equals("PATIENT_ARRIVE")).count();
         assertThat(arrivees).isEqualTo(manager.info(run.id()).parcoursGeneres());
-        assertThat(evenements.stream().map(SimEvent::type)).contains("FACTURE_OUVERTE", "FACTURE_FINALISEE");
+        assertThat(evenements.stream().map(e -> (String) e.get("type"))).contains("FACTURE_OUVERTE", "FACTURE_FINALISEE");
         // Les dates simulees avancent a x100 depuis le debut du scenario.
-        assertThat(evenements.get(0).timestampSimule()).isAfterOrEqualTo(LocalDateTime.of(2026, 3, 10, 8, 0));
+        assertThat(((java.sql.Timestamp) evenements.get(0).get("timestamp_simule")).toLocalDateTime())
+                .isAfterOrEqualTo(LocalDateTime.of(2026, 3, 10, 8, 0));
+        assertThat(jdbc.queryForObject("select compteur from checkpoint_evenement where run_id = ?", Long.class,
+                run.id())).isEqualTo(evenements.size());
 
         Integer factures = jdbc.queryForObject("select count(*) from facture where run_id = ?", Integer.class, run.id());
         assertThat(factures).isPositive();
@@ -99,6 +99,8 @@ class PrestationsRunIntegrationTest {
                 String.class)).isEqualTo(YAML);
 
         jdbc.update("delete from simulation_run where id = ?", run.id());
+        assertThat(jdbc.queryForObject("select count(*) from evenement where run_id = ?", Integer.class, run.id()))
+                .isZero();
         assertThat(jdbc.queryForObject("select count(*) from facture where run_id = ?", Integer.class, run.id()))
                 .isZero();
     }

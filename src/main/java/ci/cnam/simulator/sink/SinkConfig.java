@@ -1,19 +1,21 @@
 package ci.cnam.simulator.sink;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import ci.cnam.simulator.SimulateurProperties;
+import ci.cnam.simulator.monitoring.MetricsService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
 
-/**
- * Destination par defaut des evenements, en attendant l'ecriture en base par lots (brique 7).
- * Attention : la liste en memoire grossit sans limite ; ne pas lancer de longue simulation avec ce sink.
- */
+/** Destination des evenements : ecriture en base par lots (InMemoryEventSink reste reserve aux tests). */
 @Configuration
 public class SinkConfig {
 
-    @Bean
-    @ConditionalOnMissingBean(EventSink.class)
-    EventSink eventSink() {
-        return new InMemoryEventSink();
+    @Bean(initMethod = "demarrer", destroyMethod = "close")
+    DatabaseSink eventSink(JdbcTemplate jdbc, PlatformTransactionManager tx, ObjectMapper json, Clock horloge,
+                           MetricsService metriques, SimulateurProperties proprietes) {
+        return new DatabaseSink(jdbc, tx, json, horloge, metriques, proprietes.ecriture());
     }
 }

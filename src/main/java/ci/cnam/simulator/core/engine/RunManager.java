@@ -113,6 +113,8 @@ public class RunManager {
         }
         // Hors du verrou : le fil du moteur peut en avoir besoin pour signaler un echec.
         run.moteur.arreter();
+        // ARRETE doit vouloir dire : tout ce qui a ete emis est en base.
+        destination.flush();
         return info(run);
     }
 
