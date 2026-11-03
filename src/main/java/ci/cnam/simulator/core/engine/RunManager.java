@@ -7,6 +7,7 @@ import jakarta.annotation.PreDestroy;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -69,6 +70,12 @@ public class RunManager {
         return info(run);
     }
 
+    /** Cree puis demarre aussitot : c'est ce que fait "lancer une simulation". */
+    public RunInfo lancer(Scenario scenario) {
+        RunInfo cree = creer(scenario);
+        return demarrer(cree.id());
+    }
+
     public RunInfo demarrer(UUID id) {
         Run run = trouver(id);
         synchronized (this) {
@@ -118,8 +125,21 @@ public class RunManager {
         return info(run);
     }
 
+    /** Le run demande : compteurs vivants s'il est encore en memoire, sinon ce qu'en garde la base. */
     public RunInfo info(UUID id) {
-        return info(trouver(id));
+        Run run = runs.get(id);
+        if (run != null) {
+            return info(run);
+        }
+        return store.trouver(id).orElseThrow(() -> new IllegalArgumentException("Run inconnu : " + id));
+    }
+
+    /** Tous les runs connus, du plus recent au plus ancien ; les runs en memoire portent leurs compteurs vivants. */
+    public List<RunInfo> lister() {
+        Map<UUID, RunInfo> parId = new LinkedHashMap<>();
+        store.lister().forEach(persiste -> parId.put(persiste.id(), persiste));
+        runs.values().forEach(run -> parId.put(run.id, info(run)));
+        return List.copyOf(parId.values());
     }
 
     /** Le run en cours ou en pause, s'il y en a un. */
