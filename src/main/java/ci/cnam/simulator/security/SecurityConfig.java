@@ -52,6 +52,12 @@ public class SecurityConfig {
     SecurityFilterChain apiFilterChain(HttpSecurity http, ApiKeyFilter apiKeyFilter) throws Exception {
         http
                 .securityMatcher("/api/**")
+                // CSRF desactive VOLONTAIREMENT sur cette chaine, et sur elle seule :
+                // elle est STATELESS (aucune session, aucun cookie, ni formulaire ni Basic) et
+                // s'authentifie par le seul en-tete X-API-Key, qu'un navigateur n'ajoute jamais de
+                // lui-meme a une requete declenchee par un site tiers. Il n'y a donc pas
+                // d'authentification ambiante a detourner. CSRF reste actif sur l'interface web.
+                // codeql[java/spring-disabled-csrf-protection]
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .httpBasic(basic -> basic.disable())
