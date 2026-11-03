@@ -88,6 +88,9 @@ simulateur:
   ecriture:
     taille-lot: 500
     file-attente-max: 10000            # au-dela : contre-pression, jamais de perte silencieuse
+    delai-max-ms: 200                  # attente maximale avant d'ecrire un lot incomplet
+    tentatives: 3                      # essais par lot avant echec du run
+    flush-timeout-ms: 30000
 
 # Referentiel synthetique (rempli au demarrage seulement si la table assure est vide)
 simulator:

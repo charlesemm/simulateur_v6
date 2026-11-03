@@ -2,6 +2,7 @@ package ci.cnam.simulator.domain.prestations.tarification;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import ci.cnam.simulator.SupportRun;
 import ci.cnam.simulator.core.random.SeededRandom;
 import ci.cnam.simulator.domain.prestations.facture.Facture;
 import ci.cnam.simulator.domain.prestations.facture.FactureLigne;
@@ -76,7 +77,7 @@ class TarificationIntegrationTest {
     @Test
     void lesFacturesDUnParcoursSontTarifeesEtLesTotauxSontLaSommeDesLignes() {
         SeededRandom random = new SeededRandom(11);
-        UUID run = UUID.randomUUID();
+        UUID run = SupportRun.nouveauRun(jdbc);
         int facturesVerifiees = 0;
         for (int i = 0; i < 60 && facturesVerifiees < 10; i++) {
             CentreSante centre = reference.centreAleatoire(random);
