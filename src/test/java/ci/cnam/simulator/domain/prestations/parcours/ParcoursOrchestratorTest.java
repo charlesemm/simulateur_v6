@@ -78,7 +78,7 @@ class ParcoursOrchestratorTest {
         assertThat(resultat.evenements()).allSatisfy(e -> {
             assertThat(e.domaine()).isEqualTo("prestations");
             assertThat(e.runId()).isEqualTo(RUN);
-            assertThat(e.anomalie()).isNull();
+            assertThat(e.anomalies()).isEmpty();
         });
         for (int i = 1; i < resultat.evenements().size(); i++) {
             assertThat(resultat.evenements().get(i).timestampSimule())

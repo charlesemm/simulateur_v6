@@ -11,6 +11,7 @@ import ci.cnam.simulator.domain.reference.model.Medecin;
 import ci.cnam.simulator.domain.reference.model.Pharmacie;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -122,7 +123,15 @@ public class ParcoursContext {
         payload.put("factureId", facture == null ? null : facture.id());
         payload.put("assureId", assure.id());
         payload.put("centreSanteId", centre.id());
+        // Identite du patient, telle que l'agent la saisit : c'est ce que l'injecteur d'anomalies peut corrompre.
+        payload.put("numeroAssure", assure.numeroAssure());
+        payload.put("nom", assure.nom());
+        payload.put("prenoms", assure.prenoms());
+        if (type == PrestationEventType.PATIENT_ARRIVE) {
+            payload.put("dateNaissance", assure.dateNaissance().toString());
+            payload.put("genre", assure.genre().name());
+        }
         payload.putAll(details);
-        return new SimEvent(random.nextUuid(), runId, DOMAINE, type.name(), temps, payload, null);
+        return new SimEvent(random.nextUuid(), runId, DOMAINE, type.name(), temps, payload, List.of());
     }
 }

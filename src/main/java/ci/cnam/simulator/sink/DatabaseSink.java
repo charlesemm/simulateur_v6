@@ -1,6 +1,7 @@
 package ci.cnam.simulator.sink;
 
 import ci.cnam.simulator.SimulateurProperties;
+import ci.cnam.simulator.core.event.AnomalieTracee;
 import ci.cnam.simulator.core.event.SimEvent;
 import ci.cnam.simulator.monitoring.MetricsService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -56,6 +57,12 @@ public class DatabaseSink implements EventSink, AutoCloseable {
                                    payload, statut)
             values (?, ?, ?, ?, ?, ?, ?, ?::jsonb, 'ECRIT')
             on conflict (event_id) do nothing""";
+
+    private static final String INSERT_ANOMALIE = """
+            insert into anomaly_injected (run_id, event_id, facture_id, type, champ, valeur_origine,
+                                          valeur_corrompue, doublon_de)
+            values (?, ?, ?, ?, ?, ?, ?, ?)
+            on conflict do nothing""";
 
     private static final String CHECKPOINT = """
             insert into checkpoint_evenement (run_id, dernier_event_id, compteur, date_maj)
@@ -229,6 +236,22 @@ public class DatabaseSink implements EventSink, AutoCloseable {
                     return lot.size();
                 }
             });
+
+            // Verite terrain dans la MEME transaction que les evenements : pas d'anomalie sans son evenement.
+            List<Object[]> anomalies = new ArrayList<>();
+            for (SimEvent e : lot) {
+                for (AnomalieTracee a : e.anomalies()) {
+                    anomalies.add(new Object[] {e.runId(), e.eventId(), factureId(e), a.type(), a.champ(),
+                            a.valeurOrigine(), a.valeurCorrompue(), a.doublonDe()});
+                }
+            }
+            if (!anomalies.isEmpty()) {
+                jdbc.batchUpdate(INSERT_ANOMALIE, anomalies, anomalies.size(), (ps, ligne) -> {
+                    for (int i = 0; i < ligne.length; i++) {
+                        ps.setObject(i + 1, ligne[i]);
+                    }
+                });
+            }
 
             for (Map.Entry<UUID, Set<UUID>> run : parRun.entrySet()) {
                 long nouveaux = run.getValue().size() - dejaEcrits.getOrDefault(run.getKey(), 0L);

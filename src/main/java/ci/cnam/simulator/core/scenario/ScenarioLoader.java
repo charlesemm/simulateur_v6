@@ -28,7 +28,7 @@ import org.springframework.stereotype.Component;
 /**
  * Lit et valide un scenario YAML. Toutes les erreurs sont collectees puis levees ensemble
  * ({@link ScenarioInvalideException}), chacune avec le chemin du champ fautif.
- * Les champs des briques a venir (anomalies, chaos) sont acceptes mais ignores, avec un avertissement.
+ * Les champs des briques a venir (chaos) sont acceptes mais ignores, avec un avertissement.
  */
 @Component
 public class ScenarioLoader {
@@ -172,13 +172,13 @@ public class ScenarioLoader {
             erreurs.add(chemin + " : objet attendu (debit, parcours)");
             return null;
         }
-        avertirReserves(n, "anomalies", chemin);
         champsInconnus(n, Set.of("debit", "parcours", "anomalies"), chemin + ".", erreurs);
 
         int avant = erreurs.size();
         double debit = lireDebit(chemin + ".debit", n.get("debit"), erreurs);
         Map<String, Double> parcours = lireParcours(chemin + ".parcours", n.get("parcours"), erreurs);
-        return erreurs.size() > avant ? null : new ConfigDomaine(debit, parcours);
+        Map<String, Double> anomalies = lireAnomalies(chemin + ".anomalies", n.get("anomalies"), erreurs);
+        return erreurs.size() > avant ? null : new ConfigDomaine(debit, parcours, anomalies);
     }
 
     private static double lireDebit(String chemin, JsonNode n, List<String> erreurs) {
@@ -234,6 +234,32 @@ public class ScenarioLoader {
         }
         if (valide && !resultat.isEmpty() && Math.abs(somme - 100.0) > 0.01) {
             erreurs.add(chemin + " : les taux doivent totaliser 100 % (total lu : " + formater(somme) + " %)");
+        }
+        return resultat;
+    }
+
+    /** Taux d'anomalies par nom : chacun de 0 a 100 %. Les noms sont verifies par le domaine, pas ici. */
+    private static Map<String, Double> lireAnomalies(String chemin, JsonNode n, List<String> erreurs) {
+        Map<String, Double> resultat = new LinkedHashMap<>();
+        if (absent(n)) {
+            return resultat;
+        }
+        if (!n.isObject()) {
+            erreurs.add(chemin + " : objet attendu (ex. champVide: 3%)");
+            return resultat;
+        }
+        for (Iterator<Map.Entry<String, JsonNode>> it = n.fields(); it.hasNext();) {
+            Map.Entry<String, JsonNode> entree = it.next();
+            String cheminCle = chemin + "." + entree.getKey();
+            Double taux = lirePourcentage(entree.getValue());
+            if (taux == null) {
+                erreurs.add(cheminCle + " : pourcentage attendu, par exemple 3% (valeur lue : "
+                        + entree.getValue().asText() + ")");
+            } else if (taux < 0 || taux > 100) {
+                erreurs.add(cheminCle + " : taux hors de 0 a 100 (valeur lue : " + entree.getValue().asText() + ")");
+            } else {
+                resultat.put(entree.getKey(), taux);
+            }
         }
         return resultat;
     }
@@ -343,12 +369,6 @@ public class ScenarioLoader {
             if (!connus.contains(champ)) {
                 erreurs.add(prefixe + champ + " : champ inconnu (champs permis : " + new java.util.TreeSet<>(connus) + ")");
             }
-        }
-    }
-
-    private static void avertirReserves(JsonNode n, String champ, String chemin) {
-        if (n.has(champ)) {
-            LOG.warn("{}.{} : ignore (brique anomalies non livree)", chemin, champ);
         }
     }
 
