@@ -1,0 +1,18 @@
+# Scenario avec verite terrain : 3 % des evenements sont corrompus (au plus une anomalie par evenement).
+# Taux par type (champVide, fauteOrthographe, espacesParasites, casseIncoherente, caracteresSpeciaux,
+# formatDateInvalide, formatNumeriqueInvalide, formatIdentifiantInvalide, valeurNegative, valeurHorsListe,
+# doublonExact) ou "global", reparti a parts egales entre les onze types. Sans section : flux propre.
+nom: "Prestations - anomalies 3 %"
+seed: 42
+accelerationTemps: 60
+domaines:
+  prestations:
+    debit: 5/s
+    parcours:
+      examens: 60%
+      hospitalisation: 10%
+      prescriptionDirecte: 30%
+    anomalies:
+      global: 3%
+phases:
+  - { de: 0m, a: 10m, charge: normale }

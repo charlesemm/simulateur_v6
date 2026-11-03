@@ -1,5 +1,8 @@
 package ci.cnam.simulator.domain.prestations;
 
+import ci.cnam.simulator.anomaly.AnomalyInjector;
+import ci.cnam.simulator.anomaly.InjectionSink;
+import ci.cnam.simulator.anomaly.config.AnomalyProfile;
 import ci.cnam.simulator.core.engine.ContexteGeneration;
 import ci.cnam.simulator.core.random.SeededRandom;
 import ci.cnam.simulator.core.scenario.ConfigDomaine;
@@ -10,6 +13,7 @@ import ci.cnam.simulator.domain.prestations.parcours.ParcoursProperties;
 import ci.cnam.simulator.domain.reference.ReferenceService;
 import ci.cnam.simulator.domain.reference.model.Assure;
 import ci.cnam.simulator.domain.reference.model.CentreSante;
+import ci.cnam.simulator.sink.EventSink;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.stereotype.Component;
@@ -29,12 +33,14 @@ public class PrestationsGenerator implements FlowGenerator {
     private final ParcoursOrchestrator orchestrateur;
     private final ReferenceService reference;
     private final ParcoursProperties parDefaut;
+    private final AnomalyInjector injecteur;
 
     public PrestationsGenerator(ParcoursOrchestrator orchestrateur, ReferenceService reference,
-                                ParcoursProperties parDefaut) {
+                                ParcoursProperties parDefaut, AnomalyInjector injecteur) {
         this.orchestrateur = orchestrateur;
         this.reference = reference;
         this.parDefaut = parDefaut;
+        this.injecteur = injecteur;
     }
 
     @Override
@@ -44,6 +50,7 @@ public class PrestationsGenerator implements FlowGenerator {
 
     @Override
     public void valider(ConfigDomaine config) {
+        AnomalyProfile.depuis(config.anomalies());   // leve IllegalArgumentException si un taux est invalide
         Map<String, Double> p = config.parcours();
         if (p.isEmpty()) {
             return;
@@ -60,7 +67,14 @@ public class PrestationsGenerator implements FlowGenerator {
         Assure assure = reference.assureAleatoire(random);
         CentreSante centre = reference.centreAleatoire(random);
         orchestrateur.executer(ctx.runId(), assure, centre, reference.medecinAleatoire(centre, random),
-                reference.pharmacieAleatoire(random), random, ctx.horloge(), probabilites(ctx.config()), ctx.sink());
+                reference.pharmacieAleatoire(random), random, ctx.horloge(), probabilites(ctx.config()),
+                destination(ctx));
+    }
+
+    /** Le parcours reste propre : seule la sortie est enveloppee par l'injecteur, et seulement si un taux est > 0. */
+    private EventSink destination(ContexteGeneration ctx) {
+        AnomalyProfile profil = AnomalyProfile.depuis(ctx.config().anomalies());
+        return profil.actif() ? new InjectionSink(ctx.sink(), injecteur, profil) : ctx.sink();
     }
 
     private ParcoursProperties probabilites(ConfigDomaine config) {

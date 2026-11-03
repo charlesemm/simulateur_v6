@@ -1,6 +1,7 @@
 package ci.cnam.simulator.core.event;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -11,7 +12,7 @@ import java.util.UUID;
  * @param type             nom du type d'evenement propre au domaine (ex. "FACTURE_OUVERTE")
  * @param timestampSimule  date fictive du soin (temps simule, pas le temps reel d'ecriture)
  * @param payload          donnees de l'evenement (cles stables, valeurs simples)
- * @param anomalie         reserve pour la brique Anomalies ; toujours null tant que rien n'est injecte
+ * @param anomalies        anomalies injectees dans cet evenement (verite terrain) ; vide pour un evenement propre
  */
 public record SimEvent(
         UUID eventId,
@@ -20,5 +21,9 @@ public record SimEvent(
         String type,
         LocalDateTime timestampSimule,
         Map<String, Object> payload,
-        String anomalie) {
+        List<AnomalieTracee> anomalies) {
+
+    public SimEvent {
+        anomalies = anomalies == null ? List.of() : List.copyOf(anomalies);
+    }
 }

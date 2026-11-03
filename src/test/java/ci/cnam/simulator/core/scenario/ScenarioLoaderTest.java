@@ -137,7 +137,35 @@ class ScenarioLoaderTest {
     }
 
     @Test
-    void ignoreAvecAvertissementAnomaliesEtPhaseDeChaos() {
+    void litLesTauxDAnomaliesParDomaine() {
+        Scenario s = loader.lire("""
+                nom: a
+                seed: 1
+                domaines:
+                  prestations:
+                    debit: 5/s
+                    anomalies: { champVide: 3%, fauteOrthographe: 2.5 }
+                  autre:
+                    debit: 1/s
+                """);
+
+        assertThat(s.domaines().get("prestations").anomalies())
+                .containsEntry("champVide", 3.0).containsEntry("fauteOrthographe", 2.5).hasSize(2);
+        assertThat(s.domaines().get("autre").anomalies()).isEmpty();
+    }
+
+    @Test
+    void refuseUnTauxDAnomaliesIllisibleOuHorsBornes() {
+        refuse("nom: a\nseed: 1\ndomaines: {p: {debit: 3, anomalies: {champVide: beaucoup}}}",
+                "domaines.p.anomalies.champVide", "pourcentage attendu");
+        refuse("nom: a\nseed: 1\ndomaines: {p: {debit: 3, anomalies: {champVide: 120%}}}",
+                "domaines.p.anomalies.champVide", "0 a 100");
+        refuse("nom: a\nseed: 1\ndomaines: {p: {debit: 3, anomalies: [1, 2]}}",
+                "domaines.p.anomalies", "objet attendu");
+    }
+
+    @Test
+    void ignoreAvecAvertissementLaPhaseDeChaos() {
         Scenario s = loader.lire("""
                 nom: a
                 seed: 1
