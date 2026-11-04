@@ -17,6 +17,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -48,9 +49,19 @@ public class RunManager {
     private final EventSink destination;
     private final RunStore store;
     private final Clock horlogeReelle;
+    private final ExecutionAtomique atomique;
+    private final MultiplicateurCharge charge;
     private final Map<UUID, Run> runs = new ConcurrentHashMap<>();
 
     public RunManager(List<FlowGenerator> generateurs, EventSink destination, RunStore store, Clock horlogeReelle) {
+        this(generateurs, destination, store, horlogeReelle, ExecutionAtomique.DIRECTE, MultiplicateurCharge.AUCUN);
+    }
+
+    @Autowired
+    public RunManager(List<FlowGenerator> generateurs, EventSink destination, RunStore store, Clock horlogeReelle,
+                      ExecutionAtomique atomique, MultiplicateurCharge charge) {
+        this.atomique = atomique;
+        this.charge = charge;
         this.generateurs = generateurs.stream().collect(Collectors.toMap(FlowGenerator::domaine, Function.identity()));
         this.destination = destination;
         this.store = store;
@@ -63,7 +74,7 @@ public class RunManager {
         VirtualClock horloge = new VirtualClock(scenario.debutSimule().toInstant(ZoneOffset.UTC),
                 scenario.accelerationTemps());
         SimulationEngine moteur = new SimulationEngine(id, scenario, generateurs, destination, horloge,
-                t -> echec(id, t));
+                t -> echec(id, t), atomique, charge);
         store.creer(id, scenario);
         Run run = new Run(id, scenario, moteur);
         runs.put(id, run);

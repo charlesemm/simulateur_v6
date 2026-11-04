@@ -4,6 +4,7 @@ import ci.cnam.simulator.SimulateurProperties;
 import ci.cnam.simulator.core.event.AnomalieTracee;
 import ci.cnam.simulator.core.event.SimEvent;
 import ci.cnam.simulator.monitoring.MetricsService;
+import ci.cnam.simulator.persistence.IndisponibiliteBase;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Array;
@@ -85,16 +86,27 @@ public class DatabaseSink implements EventSink, AutoCloseable {
     private final long delaiMaxMs;
     private final int tentatives;
     private final long flushTimeoutMs;
-    private final BlockingQueue<SimEvent> file;
+    private final long indisponibiliteMaxMs;
+    private final BlockingQueue<Object> file;   // SimEvent ou EcritureAnnexe, dans l ordre d emission
+    private final Map<Class<?>, EcrivainAnnexe<?>> ecrivains = new HashMap<>();
     private final AtomicLong enAttente = new AtomicLong();   // emis mais pas encore valides en base
     private final Object signal = new Object();
 
     private volatile Throwable echec;
     private volatile boolean arret;
+    private volatile boolean enPanne;   // un lot attend le retour de la base
     private Thread fil;
 
     public DatabaseSink(JdbcTemplate jdbc, PlatformTransactionManager tx, ObjectMapper json, Clock horloge,
                         MetricsService metriques, SimulateurProperties.Ecriture reglages) {
+        this(jdbc, tx, json, horloge, metriques, reglages, List.of());
+    }
+
+    /** @param annexes les ecrivains des ecritures annexes (ex. factures) validees avec chaque lot */
+    public DatabaseSink(JdbcTemplate jdbc, PlatformTransactionManager tx, ObjectMapper json, Clock horloge,
+                        MetricsService metriques, SimulateurProperties.Ecriture reglages,
+                        List<? extends EcrivainAnnexe<?>> annexes) {
+        annexes.forEach(e -> this.ecrivains.put(e.type(), e));
         if (reglages.tailleLot() < 1 || reglages.fileAttenteMax() < 1 || reglages.tentatives() < 1) {
             throw new IllegalArgumentException("simulateur.ecriture : taille-lot, file-attente-max et tentatives "
                     + "doivent etre >= 1");
@@ -108,6 +120,7 @@ public class DatabaseSink implements EventSink, AutoCloseable {
         this.delaiMaxMs = reglages.delaiMaxMs();
         this.tentatives = reglages.tentatives();
         this.flushTimeoutMs = reglages.flushTimeoutMs();
+        this.indisponibiliteMaxMs = reglages.indisponibiliteMaxMs();
         this.file = new ArrayBlockingQueue<>(reglages.fileAttenteMax());
         metriques.surveillerFile(file::size);
     }
@@ -124,11 +137,24 @@ public class DatabaseSink implements EventSink, AutoCloseable {
 
     @Override
     public void emettre(SimEvent evenement) {
+        deposer(evenement);
+    }
+
+    /** Une ecriture annexe prend sa place dans la file, comme un evenement : meme contre-pression, meme lot. */
+    @Override
+    public void joindre(EcritureAnnexe annexe) {
+        if (!ecrivains.containsKey(annexe.getClass())) {
+            throw new IllegalArgumentException("Aucun ecrivain pour " + annexe.getClass().getName());
+        }
+        deposer(annexe);
+    }
+
+    private void deposer(Object element) {
         verifierSain();
         enAttente.incrementAndGet();
         try {
             // Bloque tant que la file est pleine : c'est la contre-pression.
-            while (!file.offer(evenement, ATTENTE_OFFRE_MS, TimeUnit.MILLISECONDS)) {
+            while (!file.offer(element, ATTENTE_OFFRE_MS, TimeUnit.MILLISECONDS)) {
                 verifierSain();
             }
         } catch (InterruptedException e) {
@@ -180,7 +206,10 @@ public class DatabaseSink implements EventSink, AutoCloseable {
     @Override
     public void close() {
         try {
-            if (echec == null && fil != null) {
+            if (enPanne) {
+                // Base injoignable depuis un moment : attendre ici ne ferait que retarder l'extinction.
+                LOG.error("Arret du sink pendant une panne de la base : {} evenements non ecrits", enAttente.get());
+            } else if (echec == null && fil != null) {
                 flush();
             }
         } catch (RuntimeException e) {
@@ -204,11 +233,23 @@ public class DatabaseSink implements EventSink, AutoCloseable {
      * Public pour pouvoir tester l'atomicite sans passer par la file.
      */
     public void ecrireLot(List<SimEvent> lot) {
-        if (lot.isEmpty()) {
+        ecrireLot(lot, List.of());
+    }
+
+    /**
+     * Idem, avec les ecritures annexes du lot (factures...) : elles sont ecrites AVANT les evenements, dans la meme
+     * transaction. Un lot peut ne contenir que des annexes (leurs evenements suivent dans le lot suivant).
+     */
+    public void ecrireLot(List<SimEvent> lot, List<EcritureAnnexe> annexes) {
+        if (lot.isEmpty() && annexes.isEmpty()) {
             return;
         }
         OffsetDateTime reel = OffsetDateTime.now(horloge);
         transaction.executeWithoutResult(status -> {
+            ecrireAnnexes(annexes);
+            if (lot.isEmpty()) {
+                return;
+            }
             Map<UUID, Set<UUID>> parRun = new LinkedHashMap<>();
             Map<UUID, UUID> dernierParRun = new HashMap<>();
             for (SimEvent e : lot) {
@@ -262,6 +303,22 @@ public class DatabaseSink implements EventSink, AutoCloseable {
         });
     }
 
+    private void ecrireAnnexes(List<EcritureAnnexe> annexes) {
+        if (annexes.isEmpty()) {
+            return;
+        }
+        Map<Class<?>, List<EcritureAnnexe>> parType = new LinkedHashMap<>();
+        for (EcritureAnnexe a : annexes) {
+            parType.computeIfAbsent(a.getClass(), c -> new ArrayList<>()).add(a);
+        }
+        parType.forEach((type, liste) -> ecrireGroupe(ecrivains.get(type), liste));
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T extends EcritureAnnexe> void ecrireGroupe(EcrivainAnnexe<T> ecrivain, List<EcritureAnnexe> liste) {
+        ecrivain.ecrire(jdbc, liste.stream().map(a -> (T) a).toList());
+    }
+
     private Map<UUID, Long> dejaEcritsParRun(List<SimEvent> lot) {
         UUID[] ids = lot.stream().map(SimEvent::eventId).distinct().toArray(UUID[]::new);
         Map<UUID, Long> resultat = new HashMap<>();
@@ -298,11 +355,11 @@ public class DatabaseSink implements EventSink, AutoCloseable {
     }
 
     private void boucle() {
-        List<SimEvent> lot = new ArrayList<>(tailleLot);
+        List<Object> lot = new ArrayList<>(tailleLot);
         while (!arret) {
             lot.clear();
             try {
-                SimEvent premier = file.poll(100, TimeUnit.MILLISECONDS);
+                Object premier = file.poll(100, TimeUnit.MILLISECONDS);
                 if (premier == null) {
                     continue;
                 }
@@ -314,7 +371,7 @@ public class DatabaseSink implements EventSink, AutoCloseable {
                     if (reste <= 0) {
                         break;
                     }
-                    SimEvent suivant = file.poll(reste, TimeUnit.NANOSECONDS);
+                    Object suivant = file.poll(reste, TimeUnit.NANOSECONDS);
                     if (suivant == null) {
                         break;
                     }
@@ -332,33 +389,80 @@ public class DatabaseSink implements EventSink, AutoCloseable {
         }
     }
 
-    /** @return false si le sink est passe en echec definitif */
-    private boolean ecrireAvecReprises(List<SimEvent> lot) {
+    /**
+     * Ecrit un lot, avec reprises. Deux regimes :
+     * <ul>
+     *   <li>vraie erreur (contrainte, SQL) : {@code tentatives} essais puis echec ;</li>
+     *   <li>base INDISPONIBLE (liaison coupee) : on patiente jusqu'a {@code indisponibiliteMaxMs}. Le lot reste
+     *       en memoire, la file se remplit, le generateur ralentit (contre-pression) : rien n'est perdu.</li>
+     * </ul>
+     *
+     * @return false si le sink est passe en echec definitif
+     */
+    private boolean ecrireAvecReprises(List<Object> elements) {
+        List<SimEvent> lot = new ArrayList<>(elements.size());
+        List<EcritureAnnexe> annexes = new ArrayList<>();
+        for (Object element : elements) {
+            if (element instanceof SimEvent evenement) {
+                lot.add(evenement);
+            } else {
+                annexes.add((EcritureAnnexe) element);
+            }
+        }
         Throwable derniere = null;
-        for (int essai = 1; essai <= tentatives; essai++) {
+        int essaisOrdinaires = 0;
+        int pannes = 0;
+        long limitePanne = 0;
+        while (!arret) {
             long debut = System.nanoTime();
             try {
-                ecrireLot(lot);
+                ecrireLot(lot, annexes);
                 metriques.lotEcrit(lot.size(), Duration.ofNanos(System.nanoTime() - debut));
-                enAttente.addAndGet(-lot.size());
+                enAttente.addAndGet(-elements.size());
                 synchronized (signal) {
                     signal.notifyAll();
+                }
+                enPanne = false;
+                if (pannes > 0) {
+                    LOG.info("Base de nouveau disponible : lot de {} evenements ecrit apres {} essais en panne",
+                            lot.size(), pannes);
                 }
                 return true;
             } catch (RuntimeException e) {
                 derniere = e;
                 metriques.lotEnEchec();
-                LOG.warn("Ecriture du lot ({} evenements) en echec, essai {}/{}", lot.size(), essai, tentatives, e);
+                boolean panne = IndisponibiliteBase.estCausee(e);
+                if (panne) {
+                    enPanne = true;
+                    if (pannes++ == 0) {
+                        limitePanne = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(indisponibiliteMaxMs);
+                        LOG.warn("Base indisponible ({}), le lot de {} evenements est conserve et retente",
+                                e.getClass().getSimpleName(), lot.size());
+                    }
+                    if (System.nanoTime() > limitePanne) {
+                        break;
+                    }
+                } else {
+                    LOG.warn("Ecriture du lot ({} evenements) en echec, essai {}/{}", lot.size(),
+                            essaisOrdinaires + 1, tentatives, e);
+                    if (++essaisOrdinaires >= tentatives) {
+                        break;
+                    }
+                }
                 try {
-                    Thread.sleep(Math.min(1_000L, 50L << essai));
+                    Thread.sleep(panne ? Math.min(1_000L, 100L * pannes) : Math.min(1_000L, 50L << essaisOrdinaires));
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     break;
                 }
             }
         }
+        if (derniere == null) {
+            return false;   // arret demande avant toute tentative
+        }
+        enPanne = false;
         echec = derniere;
-        LOG.error("Ecriture abandonnee : {} evenements du lot perdus, le run doit s'arreter", lot.size());
+        LOG.error("Ecriture abandonnee : {} elements du lot perdus, le run doit s'arreter", elements.size());
         synchronized (signal) {
             signal.notifyAll();
         }

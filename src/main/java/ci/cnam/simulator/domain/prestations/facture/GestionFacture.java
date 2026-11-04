@@ -1,6 +1,8 @@
 package ci.cnam.simulator.domain.prestations.facture;
 
+import ci.cnam.simulator.sink.EcritureAnnexe;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -16,4 +18,12 @@ public interface GestionFacture {
     FactureLigne ajouterLigne(UUID factureId, NouvelleLigne ligne);
 
     Facture changerStatut(UUID factureId, FactureStatut nouveau, LocalDateTime dateSimulee);
+
+    /**
+     * Termine le suivi d'une facture (reussi ou non) et rend, s'il y a lieu, ce qu'il reste a ecrire en base. Une
+     * implementation qui ecrit tout de suite (FactureService) ou qui n'ecrit rien (tests) rend {@code Optional.empty()}.
+     */
+    default Optional<EcritureAnnexe> clore(UUID factureId) {
+        return Optional.empty();
+    }
 }

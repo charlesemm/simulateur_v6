@@ -5,6 +5,7 @@ import ci.cnam.simulator.core.random.SeededRandom;
 import ci.cnam.simulator.core.scenario.ConfigDomaine;
 import ci.cnam.simulator.core.scenario.Scenario;
 import ci.cnam.simulator.domain.FlowGenerator;
+import ci.cnam.simulator.sink.EcritureAnnexe;
 import ci.cnam.simulator.sink.EventSink;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -16,6 +17,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Pilote un run : un fil d'execution qui declenche les parcours a l'instant prevu par la {@link Cadence}
@@ -28,6 +31,8 @@ import java.util.function.Consumer;
  * (la file bornee de la brique 7 ralentira proprement).
  */
 public final class SimulationEngine {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SimulationEngine.class);
 
     private static final long PAUSE_NANOS = TimeUnit.MILLISECONDS.toNanos(5);
     private static final long ATTENTE_MAX_NANOS = TimeUnit.MILLISECONDS.toNanos(2);
@@ -58,21 +63,31 @@ public final class SimulationEngine {
     private final VirtualClock horloge;
     private final EventSink destination;
     private final Consumer<Throwable> surEchec;
+    private final ExecutionAtomique atomique;
+    private final MultiplicateurCharge charge;
     private final List<Domaine> domaines = new ArrayList<>();
     // Equitable : pause() et arreter() passent apres le parcours en cours, meme si le moteur est en retard.
     private final ReentrantLock verrou = new ReentrantLock(true);
     private final AtomicLong parcoursGeneres = new AtomicLong();
     private final AtomicLong evenementsEmis = new AtomicLong();
+    private final AtomicLong parcoursRejoues = new AtomicLong();
     private final EventSink compteur = new EventSink() {
         @Override
         public void emettre(SimEvent evenement) {
             destination.emettre(evenement);
             evenementsEmis.incrementAndGet();
         }
+
+        @Override
+        public void joindre(EcritureAnnexe annexe) {
+            destination.joindre(annexe);
+        }
     };
 
     private volatile boolean arret;
     private boolean enPause;   // protege par verrou
+    private double dernierActif;    // protege par verrou : temps actif lu au pas precedent (secondes)
+    private double tempsCharge;     // protege par verrou : temps actif pondere par le multiplicateur de charge
     private Thread fil;
 
     /**
@@ -81,7 +96,20 @@ public final class SimulationEngine {
      */
     public SimulationEngine(UUID runId, Scenario scenario, Map<String, FlowGenerator> generateurs,
                             EventSink destination, VirtualClock horloge, Consumer<Throwable> surEchec) {
+        this(runId, scenario, generateurs, destination, horloge, surEchec, ExecutionAtomique.DIRECTE,
+                MultiplicateurCharge.AUCUN);
+    }
+
+    /**
+     * @param atomique execute chaque parcours en tout ou rien et le rejoue si la destination est indisponible
+     * @param charge   multiplicateur de debit (chaos : surcharge)
+     */
+    public SimulationEngine(UUID runId, Scenario scenario, Map<String, FlowGenerator> generateurs,
+                            EventSink destination, VirtualClock horloge, Consumer<Throwable> surEchec,
+                            ExecutionAtomique atomique, MultiplicateurCharge charge) {
         this.runId = runId;
+        this.atomique = atomique;
+        this.charge = charge;
         this.horloge = horloge;
         this.destination = destination;
         this.surEchec = surEchec;
@@ -111,6 +139,11 @@ public final class SimulationEngine {
 
     public long evenementsEmis() {
         return evenementsEmis.get();
+    }
+
+    /** Tentatives de parcours annulees puis rejouees parce que la destination etait indisponible. */
+    public long parcoursRejoues() {
+        return parcoursRejoues.get();
     }
 
     public synchronized void demarrer() {
@@ -192,8 +225,12 @@ public final class SimulationEngine {
 
     /** Genere le parcours le plus en retard s'il est du ; sinon renvoie la duree a attendre (nanos). */
     private long unPas() {
-        Duration actif = horloge.tempsActif();
-        double maintenant = actif.toNanos() / 1e9;
+        double actif = horloge.tempsActif().toNanos() / 1e9;
+        double facteur = Math.max(1e-6, charge.facteur());
+        // Le temps "de charge" avance facteur fois plus vite que le temps actif : x20 = 20 fois plus de parcours dus.
+        tempsCharge += Math.max(0, actif - dernierActif) * facteur;
+        dernierActif = actif;
+        double maintenant = tempsCharge;
         Domaine choisi = null;
         double instantChoisi = Double.POSITIVE_INFINITY;
         for (Domaine d : domaines) {
@@ -204,16 +241,69 @@ public final class SimulationEngine {
             }
         }
         if (instantChoisi > maintenant) {
-            long ecart = (long) ((instantChoisi - maintenant) * 1e9);
+            long ecart = (long) ((instantChoisi - maintenant) / facteur * 1e9);
             return Math.max(1, Math.min(ecart, ATTENTE_MAX_NANOS));
         }
         // Date simulee = celle du moment PREVU (pas du moment de calcul) : reproductible.
         Duration prevu = Duration.ofNanos((long) (instantChoisi * 1e9));
-        ContexteGeneration ctx = new ContexteGeneration(runId, choisi.random, horloge.figeeA(prevu), choisi.config,
-                compteur);
-        choisi.generateur.generer(ctx);
-        choisi.generes++;
-        parcoursGeneres.incrementAndGet();
+        if (genererParcours(choisi, prevu)) {
+            choisi.generes++;
+            parcoursGeneres.incrementAndGet();
+        }
         return 0;
+    }
+
+    /**
+     * Un parcours = une unite tout ou rien : ses ecritures sont validees ensemble et ses evenements ne sont emis
+     * qu'apres. Si la destination est indisponible, le parcours est annule puis rejoue A L'IDENTIQUE (meme graine) :
+     * aucune facture a moitie ecrite, aucun evenement orphelin. Une erreur qui n'est pas une indisponibilite, ou une
+     * indisponibilite plus longue que la patience, fait echouer le run comme avant.
+     *
+     * @return faux si le parcours a ete abandonne parce que le run s'arrete
+     */
+    private boolean genererParcours(Domaine d, Duration prevu) {
+        long graine = d.random.nextLong();   // un tirage par parcours : le rejeu reproduit exactement le meme parcours
+        long limite = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(atomique.patienceMs());
+        long pause = TimeUnit.MILLISECONDS.toNanos(100);
+        boolean rejoue = false;
+        while (true) {
+            TamponEvenements tampon = new TamponEvenements();
+            ContexteGeneration ctx = new ContexteGeneration(runId, new SeededRandom(graine), horloge.figeeA(prevu),
+                    d.config, tampon);
+            try {
+                atomique.executer(() -> d.generateur.generer(ctx));
+            } catch (RuntimeException e) {
+                if (!atomique.estIndisponibilite(e) || System.nanoTime() > limite) {
+                    throw e;
+                }
+                if (!rejoue) {
+                    LOG.warn("Run {} : destination indisponible, le parcours est annule et sera rejoue ({})", runId,
+                            e.getClass().getSimpleName());
+                    rejoue = true;
+                }
+                parcoursRejoues.incrementAndGet();
+                if (!attendre(pause)) {
+                    return false;
+                }
+                pause = Math.min(pause * 2, TimeUnit.SECONDS.toNanos(1));
+                continue;
+            }
+            tampon.viderVers(compteur);
+            if (rejoue) {
+                LOG.info("Run {} : destination revenue, parcours rejoue et valide", runId);
+            }
+            return true;
+        }
+    }
+
+    /** Attend en laissant passer pause() et arreter() ; faux si le run s'est arrete pendant l'attente. */
+    private boolean attendre(long nanos) {
+        verrou.unlock();   // le verrou est equitable : un pause() en attente passe devant
+        try {
+            LockSupport.parkNanos(nanos);
+        } finally {
+            verrou.lock();
+        }
+        return !arret;
     }
 }
