@@ -2,6 +2,7 @@ package ci.cnam.simulator.anomaly;
 
 import ci.cnam.simulator.anomaly.config.AnomalyProfile;
 import ci.cnam.simulator.core.event.SimEvent;
+import ci.cnam.simulator.sink.EcritureAnnexe;
 import ci.cnam.simulator.sink.EventSink;
 
 /**
@@ -23,6 +24,11 @@ public final class InjectionSink implements EventSink {
     @Override
     public void emettre(SimEvent evenement) {
         injecteur.injecter(evenement, profil).forEach(destination::emettre);
+    }
+
+    @Override
+    public void joindre(EcritureAnnexe annexe) {
+        destination.joindre(annexe);
     }
 
     @Override

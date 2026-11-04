@@ -61,40 +61,57 @@ Après chaque scénario, les tests vérifient (`verifierAucunePerteAucunDoublonA
 
 - aucun événement perdu : tout ce que le run a émis est en base ;
 - aucun doublon (clé d'événement unique, écriture `ON CONFLICT DO NOTHING`, lot + checkpoint dans une transaction) ;
-- aucune facture à moitié écrite : un parcours est écrit de façon atomique et rejoué en entier si la liaison tombe ;
+- aucune facture à moitié écrite : un parcours ne touche pas la base, ses factures sont tenues en mémoire puis écrites
+  (facture, lignes, historique) **dans la transaction du lot d'événements** ; jamais d'événement en base avant sa facture ;
 - le run reste `EN_COURS` : une panne de liaison est attendue jusqu'à `simulateur.ecriture.indisponibilite-max-ms`
   (défaut 120 s) avant de déclarer l'échec du run. Une vraie erreur SQL échoue après `tentatives` essais.
 
+### Chemin d'écriture (depuis la brique 10b)
+
+```
+parcours (mémoire) -> tampon du parcours -> file bornée -> lot -> UNE transaction :
+                                                                  factures, lignes, historique,
+                                                                  événements, anomalies, checkpoint
+```
+
+Avant la 10b, chaque parcours faisait une dizaine de requêtes une par une (hors lot), et la file ne se remplissait
+jamais : le générateur était le goulot, pas la file. Désormais le générateur n'interroge la base que pour réserver un
+bloc de 1000 numéros de facture, et c'est la file bornée qui exerce la contre-pression.
+
 ## 5. Résultats mesurés
 
-Environnement : Testcontainers sur Podman/Windows, PostgreSQL 16 + Toxiproxy, file bornée de **200** événements dans les
-tests (10 000 par défaut), lots de 500. Les valeurs sont celles affichées par les tests (`CHAOS-MESURE`) ; elles dépendent
-de la machine et servent de repère, pas de garantie.
+Environnement : Testcontainers sur Podman/Windows (machine Podman de 2 Gio), PostgreSQL 16 + Toxiproxy, file bornée de
+**200** éléments dans les tests (10 000 par défaut), lots de 500. Les valeurs sont celles affichées par les tests
+(`CHAOS-MESURE`) ; elles dépendent de la machine et servent de repère, pas de garantie.
 
-| Scénario | Mesure |
-|---|---|
-| Coupure 30 s | Débit avant 112 evt/s ; trou d'écriture 33,7 s ; file jamais au-delà de sa capacité ; **reprise en 1,4 s** après rétablissement ; débit après 119 evt/s ; 0 perte, 0 doublon |
-| Reset des connexions (`RESET_PEER`, 6 s) | Run toujours `EN_COURS`, écriture reprise, 0 perte, 0 doublon |
-| Latence 500 ms | Débit 114 evt/s -> **0,5 evt/s** ; retour à 104 evt/s après rétablissement ; aucune erreur fatale |
-| Surcharge x20 | Débit demandé 100 parcours/s, obtenu **15,8** (normal : 5) ; service vivant ; base répond |
-| Messages tronqués | Comptés ; la trace d'audit l'indique |
-| Écriture seule (brique 7, sans chaos) | ~3 300 à 3 500 evt/s |
+| Scénario | Avant la 10b | Après la 10b |
+|---|---|---|
+| Coupure 30 s | trou d'écriture 33,7 s ; file à 0/200 (le générateur était bloqué avant) ; reprise en 1,4 s | trou d'écriture 33,7 s ; **file à 200/200** (contre-pression réelle) ; reprise en **1,0 s** ; débit de rattrapage 1 171 evt/s ; 0 perte, 0 doublon, 0 facture à moitié écrite |
+| Reset des connexions (`RESET_PEER`, 6 s) | 0 perte, 0 doublon | 0 perte, 0 doublon |
+| Latence 500 ms | 114 -> **0,5 evt/s** | 134 -> **5,6 evt/s** (x11), retour à 137 evt/s après rétablissement ; aucune erreur fatale |
+| Surcharge x20 | 100 demandés, **15,8 obtenus** (base 5/s) | base 50/s : 1 000 demandés, **155 obtenus** ; file à 200/200 ; service vivant |
+| Messages tronqués | comptés, trace d'audit | inchangé |
+
+La surcharge x20 d'une base de 5 parcours/s (100/s) passe désormais entièrement (file à 39/200) : le scénario de test a
+donc été monté à 50 parcours/s pour retrouver le point de saturation.
 
 ### Point de rupture
 
-- **Débit de parcours** : sur cet environnement, le système plafonne à environ **16 parcours/s**
-  (demandé 100, obtenu 15,8). Au-delà, le générateur est ralenti par la contre-pression ; il ne perd rien et ne plante pas.
-- **Latence** : à 500 ms par réponse, le débit s'effondre (0,5 evt/s) parce que chaque parcours fait de nombreux
-  allers-retours vers la base. Rien n'échoue, mais le débit utile est quasi nul. La rupture fonctionnelle (échec du run)
-  n'arrive qu'après `indisponibilite-max-ms` de liaison coupée, soit 120 s par défaut.
-- **Temps de reprise** : environ 1,4 s après le retour de la base (coupure de 30 s).
+- **Débit de parcours** : environ **150 parcours/s** (155 mesurés, contre 16 avant la 10b, soit environ x9). Au-delà, la
+  file est pleine, le générateur est ralenti par la contre-pression, rien n'est perdu et le service reste vivant.
+- **Latence** : à 500 ms par réponse, le débit tombe à environ 6 evt/s. Il reste plus faible qu'en régime normal
+  parce que chaque lot coûte plusieurs allers-retours ; mais il n'est plus quasi nul. La rupture fonctionnelle (échec du
+  run) n'arrive qu'après `indisponibilite-max-ms` de liaison coupée, soit 120 s par défaut.
+- **Temps de reprise** : environ 1,0 s après le retour de la base (coupure de 30 s).
 
 ### Réserves
 
-- Pendant la surcharge, le pic de la file mesuré est de 8/200 : c'est le **générateur** (écriture parcours par parcours)
-  qui limite le débit, avant que la file ne se remplisse. La contre-pression est bien exercée mais la file n'est pas
-  l'élément saturé. Cela confirme le reste à faire de la brique 7 (écriture des factures hors lot).
 - Mesures obtenues avec Testcontainers sur Podman/Windows : à refaire sur le serveur cible avant d'en tirer des seuils.
-- Le test `AnomaliesIntegrationTest` a échoué une fois au démarrage du conteneur (`Container startup failed`) lors d'un
-  `clean verify` complet, puis est passé seul. Cause probable : saturation de Podman Desktop quand les conteneurs
-  de test s'enchaînent. À surveiller.
+- Les numéros d'un bloc de factures réservé mais non consommé sont perdus à l'arrêt (trous dans la numérotation, jamais
+  de doublon).
+- Le moteur ne sait toujours pas **reprendre** un run interrompu en sautant les parcours déjà écrits : le sink fournit
+  `checkpoint(runId)` et les factures sont désormais dans la même transaction, la brique de reprise reste à écrire.
+- `AnomaliesIntegrationTest` échoue au démarrage de son conteneur (`Container startup failed`, `localhost:2375 failed to
+  respond`) dans la suite complète `clean verify`, et passe seul. Constaté 2 fois sur 2 en suite complète. L'API Podman
+  ne répond plus après les tests lourds ; la machine Podman n'a que 2 Gio et héberge d'autres conteneurs. Piste :
+  `podman machine set --memory 4096` (redémarre la machine).

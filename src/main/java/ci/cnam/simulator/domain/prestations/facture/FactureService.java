@@ -1,6 +1,5 @@
 package ci.cnam.simulator.domain.prestations.facture;
 
-import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -176,6 +175,6 @@ public class FactureService implements GestionFacture {
     }
 
     private static UUID identifiant(String nature, UUID parent, String cle) {
-        return UUID.nameUUIDFromBytes((nature + "/" + parent + "/" + cle).getBytes(StandardCharsets.UTF_8));
+        return IdentifiantsFacture.de(nature, parent, cle);
     }
 }

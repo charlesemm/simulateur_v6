@@ -4,6 +4,7 @@ import ci.cnam.simulator.SimulateurProperties;
 import ci.cnam.simulator.monitoring.MetricsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -15,7 +16,9 @@ public class SinkConfig {
 
     @Bean(initMethod = "demarrer", destroyMethod = "close")
     DatabaseSink eventSink(JdbcTemplate jdbc, PlatformTransactionManager tx, ObjectMapper json, Clock horloge,
-                           MetricsService metriques, SimulateurProperties proprietes) {
-        return new DatabaseSink(jdbc, tx, json, horloge, metriques, proprietes.ecriture());
+                           MetricsService metriques, SimulateurProperties proprietes,
+                           ObjectProvider<EcrivainAnnexe<?>> annexes) {
+        return new DatabaseSink(jdbc, tx, json, horloge, metriques, proprietes.ecriture(),
+                annexes.orderedStream().toList());
     }
 }

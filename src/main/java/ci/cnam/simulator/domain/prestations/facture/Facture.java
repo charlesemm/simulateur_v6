@@ -21,6 +21,13 @@ public record Facture(
         BigDecimal partAssuranceComplementaire,
         BigDecimal partAssure) {
 
+    /** Ajoute une ligne aux totaux (simples sommes des lignes). */
+    public Facture avecLigne(BigDecimal montant, BigDecimal cnam, BigDecimal complementaire, BigDecimal assure) {
+        return new Facture(id, runId, numeroFacture, assureId, beneficiaireId, centreSanteId, typeBon, statut,
+                dateOuverture, dateFinalisation, montantTotal.add(montant), partCnam.add(cnam),
+                partAssuranceComplementaire.add(complementaire), partAssure.add(assure));
+    }
+
     public Facture avecStatut(FactureStatut nouveau, LocalDateTime dateSimulee) {
         statut.verifierTransitionVers(nouveau);
         LocalDateTime finalisation = nouveau == FactureStatut.FINALISEE ? dateSimulee : dateFinalisation;

@@ -279,7 +279,7 @@ class ChaosIntegrationTest {
 
     @Test
     void surchargeX20LaFileSeRemplitLeGenerateurRalentitEtLeServiceResteVivant() throws Exception {
-        int debit = 5;
+        int debit = 50;   // x20 = 1000 parcours/s demandes : au-dela de ce que la base absorbe
         UUID run = lancer(debit);
         attendreDesEvenements(run, 100);
         long parcoursAvant = runs.info(run).parcoursGeneres();

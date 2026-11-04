@@ -47,6 +47,8 @@ class TarificationIntegrationTest {
     ReferenceService reference;
     @Autowired
     FactureService factureService;
+    @Autowired
+    ci.cnam.simulator.sink.EventSink sink;
 
     @Test
     void lesSixTauxFictifsSontLusDansLaBase() {
@@ -83,6 +85,7 @@ class TarificationIntegrationTest {
             CentreSante centre = reference.centreAleatoire(random);
             var resultat = orchestrateur.executer(run, reference.assureAleatoire(random), centre,
                     reference.medecinAleatoire(centre, random), reference.pharmacieAleatoire(random), random);
+            sink.flush();   // la facture est ecrite par le sink, avec les evenements du parcours
             List<FactureLigne> lignes = factureService.lignes(resultat.facture().id());
             if (lignes.isEmpty()) {
                 continue; // acces refuse : pas de ligne

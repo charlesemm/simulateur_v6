@@ -142,11 +142,11 @@ class DatabaseSinkIntegrationTest {
                 new MetricsService(new SimpleMeterRegistry()),
                 new SimulateurProperties.Ecriture(500, 2_000, 50, 1, 5_000)) {
             @Override
-            public void ecrireLot(List<SimEvent> lot) {
+            public void ecrireLot(List<SimEvent> lot, List<EcritureAnnexe> annexes) {
                 if (lots.incrementAndGet() > 4) {
                     throw new IllegalStateException("liaison coupee");
                 }
-                super.ecrireLot(lot);
+                super.ecrireLot(lot, annexes);
             }
         };
         avantPanne.demarrer();
@@ -192,13 +192,13 @@ class DatabaseSinkIntegrationTest {
                 new MetricsService(new SimpleMeterRegistry()),
                 new SimulateurProperties.Ecriture(50, 100, 20, 1, 30_000)) {
             @Override
-            public void ecrireLot(List<SimEvent> lot) {
+            public void ecrireLot(List<SimEvent> lot, List<EcritureAnnexe> annexes) {
                 try {
                     Thread.sleep(100);   // disque lent
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                super.ecrireLot(lot);
+                super.ecrireLot(lot, annexes);
             }
         };
         lent.demarrer();
@@ -227,7 +227,7 @@ class DatabaseSinkIntegrationTest {
                 new MetricsService(new SimpleMeterRegistry()),
                 new SimulateurProperties.Ecriture(10, 100, 20, 2, 5_000)) {
             @Override
-            public void ecrireLot(List<SimEvent> lot) {
+            public void ecrireLot(List<SimEvent> lot, List<EcritureAnnexe> annexes) {
                 throw new IllegalStateException("base indisponible");
             }
         };

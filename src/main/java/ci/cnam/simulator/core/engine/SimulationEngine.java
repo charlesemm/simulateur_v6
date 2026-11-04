@@ -5,6 +5,7 @@ import ci.cnam.simulator.core.random.SeededRandom;
 import ci.cnam.simulator.core.scenario.ConfigDomaine;
 import ci.cnam.simulator.core.scenario.Scenario;
 import ci.cnam.simulator.domain.FlowGenerator;
+import ci.cnam.simulator.sink.EcritureAnnexe;
 import ci.cnam.simulator.sink.EventSink;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -75,6 +76,11 @@ public final class SimulationEngine {
         public void emettre(SimEvent evenement) {
             destination.emettre(evenement);
             evenementsEmis.incrementAndGet();
+        }
+
+        @Override
+        public void joindre(EcritureAnnexe annexe) {
+            destination.joindre(annexe);
         }
     };
 

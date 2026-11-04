@@ -40,6 +40,8 @@ class ParcoursIntegrationTest {
     @Autowired
     FactureService factureService;
     @Autowired
+    ci.cnam.simulator.sink.EventSink sink;
+    @Autowired
     JdbcTemplate jdbc;
 
     @Test
@@ -55,6 +57,7 @@ class ParcoursIntegrationTest {
                     reference.pharmacieAleatoire(random), random);
         }
 
+        sink.flush();   // la facture est ecrite par le sink, avec les evenements du parcours
         assertThat(resultat.facture().statut()).isEqualTo(FactureStatut.FINALISEE);
         assertThat(factureService.trouver(resultat.facture().id()).statut()).isEqualTo(FactureStatut.FINALISEE);
         assertThat(factureService.lignes(resultat.facture().id())).isNotEmpty();

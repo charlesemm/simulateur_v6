@@ -71,6 +71,6 @@ final class ParcoursFixtures {
                 new PrescriptionEtape(factures, CATALOGUE, TARIFICATION),
                 new PharmacieEtape(factures, CATALOGUE, TARIFICATION),
                 new FinalisationEtape(factures));
-        return new ParcoursOrchestrator(etapes, new ParcoursGraph(proprietes), sink, HORLOGE);
+        return new ParcoursOrchestrator(etapes, new ParcoursGraph(proprietes), factures, sink, HORLOGE);
     }
 }
