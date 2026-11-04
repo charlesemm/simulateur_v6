@@ -112,6 +112,6 @@ donc été monté à 50 parcours/s pour retrouver le point de saturation.
 - Le moteur ne sait toujours pas **reprendre** un run interrompu en sautant les parcours déjà écrits : le sink fournit
   `checkpoint(runId)` et les factures sont désormais dans la même transaction, la brique de reprise reste à écrire.
 - `AnomaliesIntegrationTest` échoue au démarrage de son conteneur (`Container startup failed`, `localhost:2375 failed to
-  respond`) dans la suite complète `clean verify`, et passe seul. Constaté 2 fois sur 2 en suite complète. L'API Podman
-  ne répond plus après les tests lourds ; la machine Podman n'a que 2 Gio et héberge d'autres conteneurs. Piste :
-  `podman machine set --memory 4096` (redémarre la machine).
+  respond`) dans la suite complète `clean verify`, et passe seul. Constaté 3 fois sur 3 en suite complète. L'API Podman
+  ne répond plus après les tests lourds. Ce n'est pas un manque de mémoire : la machine Podman (WSL) dispose de
+  8 Gio (`.wslconfig`), et `podman machine set --memory` n'est pas supporté pour WSL. Cause réelle à établir.
