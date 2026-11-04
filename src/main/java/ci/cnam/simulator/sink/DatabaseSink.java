@@ -4,6 +4,7 @@ import ci.cnam.simulator.SimulateurProperties;
 import ci.cnam.simulator.core.event.AnomalieTracee;
 import ci.cnam.simulator.core.event.SimEvent;
 import ci.cnam.simulator.monitoring.MetricsService;
+import ci.cnam.simulator.persistence.IndisponibiliteBase;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Array;
@@ -85,12 +86,14 @@ public class DatabaseSink implements EventSink, AutoCloseable {
     private final long delaiMaxMs;
     private final int tentatives;
     private final long flushTimeoutMs;
+    private final long indisponibiliteMaxMs;
     private final BlockingQueue<SimEvent> file;
     private final AtomicLong enAttente = new AtomicLong();   // emis mais pas encore valides en base
     private final Object signal = new Object();
 
     private volatile Throwable echec;
     private volatile boolean arret;
+    private volatile boolean enPanne;   // un lot attend le retour de la base
     private Thread fil;
 
     public DatabaseSink(JdbcTemplate jdbc, PlatformTransactionManager tx, ObjectMapper json, Clock horloge,
@@ -108,6 +111,7 @@ public class DatabaseSink implements EventSink, AutoCloseable {
         this.delaiMaxMs = reglages.delaiMaxMs();
         this.tentatives = reglages.tentatives();
         this.flushTimeoutMs = reglages.flushTimeoutMs();
+        this.indisponibiliteMaxMs = reglages.indisponibiliteMaxMs();
         this.file = new ArrayBlockingQueue<>(reglages.fileAttenteMax());
         metriques.surveillerFile(file::size);
     }
@@ -180,7 +184,10 @@ public class DatabaseSink implements EventSink, AutoCloseable {
     @Override
     public void close() {
         try {
-            if (echec == null && fil != null) {
+            if (enPanne) {
+                // Base injoignable depuis un moment : attendre ici ne ferait que retarder l'extinction.
+                LOG.error("Arret du sink pendant une panne de la base : {} evenements non ecrits", enAttente.get());
+            } else if (echec == null && fil != null) {
                 flush();
             }
         } catch (RuntimeException e) {
@@ -332,10 +339,22 @@ public class DatabaseSink implements EventSink, AutoCloseable {
         }
     }
 
-    /** @return false si le sink est passe en echec definitif */
+    /**
+     * Ecrit un lot, avec reprises. Deux regimes :
+     * <ul>
+     *   <li>vraie erreur (contrainte, SQL) : {@code tentatives} essais puis echec ;</li>
+     *   <li>base INDISPONIBLE (liaison coupee) : on patiente jusqu'a {@code indisponibiliteMaxMs}. Le lot reste
+     *       en memoire, la file se remplit, le generateur ralentit (contre-pression) : rien n'est perdu.</li>
+     * </ul>
+     *
+     * @return false si le sink est passe en echec definitif
+     */
     private boolean ecrireAvecReprises(List<SimEvent> lot) {
         Throwable derniere = null;
-        for (int essai = 1; essai <= tentatives; essai++) {
+        int essaisOrdinaires = 0;
+        int pannes = 0;
+        long limitePanne = 0;
+        while (!arret) {
             long debut = System.nanoTime();
             try {
                 ecrireLot(lot);
@@ -344,19 +363,45 @@ public class DatabaseSink implements EventSink, AutoCloseable {
                 synchronized (signal) {
                     signal.notifyAll();
                 }
+                enPanne = false;
+                if (pannes > 0) {
+                    LOG.info("Base de nouveau disponible : lot de {} evenements ecrit apres {} essais en panne",
+                            lot.size(), pannes);
+                }
                 return true;
             } catch (RuntimeException e) {
                 derniere = e;
                 metriques.lotEnEchec();
-                LOG.warn("Ecriture du lot ({} evenements) en echec, essai {}/{}", lot.size(), essai, tentatives, e);
+                boolean panne = IndisponibiliteBase.estCausee(e);
+                if (panne) {
+                    enPanne = true;
+                    if (pannes++ == 0) {
+                        limitePanne = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(indisponibiliteMaxMs);
+                        LOG.warn("Base indisponible ({}), le lot de {} evenements est conserve et retente",
+                                e.getClass().getSimpleName(), lot.size());
+                    }
+                    if (System.nanoTime() > limitePanne) {
+                        break;
+                    }
+                } else {
+                    LOG.warn("Ecriture du lot ({} evenements) en echec, essai {}/{}", lot.size(),
+                            essaisOrdinaires + 1, tentatives, e);
+                    if (++essaisOrdinaires >= tentatives) {
+                        break;
+                    }
+                }
                 try {
-                    Thread.sleep(Math.min(1_000L, 50L << essai));
+                    Thread.sleep(panne ? Math.min(1_000L, 100L * pannes) : Math.min(1_000L, 50L << essaisOrdinaires));
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     break;
                 }
             }
         }
+        if (derniere == null) {
+            return false;   // arret demande avant toute tentative
+        }
+        enPanne = false;
         echec = derniere;
         LOG.error("Ecriture abandonnee : {} evenements du lot perdus, le run doit s'arreter", lot.size());
         synchronized (signal) {

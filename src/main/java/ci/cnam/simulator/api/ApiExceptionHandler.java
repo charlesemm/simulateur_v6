@@ -1,6 +1,7 @@
 package ci.cnam.simulator.api;
 
 import ci.cnam.simulator.api.dto.ErreurResponse;
+import ci.cnam.simulator.chaos.ChaosIndisponibleException;
 import ci.cnam.simulator.core.scenario.ScenarioInconnuException;
 import ci.cnam.simulator.core.scenario.ScenarioInvalideException;
 import jakarta.validation.ConstraintViolationException;
@@ -80,6 +81,13 @@ public class ApiExceptionHandler {
                     .body(ErreurResponse.de("RUN_INCONNU", message));
         }
         return ResponseEntity.badRequest().body(ErreurResponse.de("REQUETE_INVALIDE", message));
+    }
+
+    /** Toxiproxy injoignable ou qui refuse la commande : le chaos n'a pas ete applique (ou pas retire). */
+    @ExceptionHandler(ChaosIndisponibleException.class)
+    public ResponseEntity<ErreurResponse> chaosIndisponible(ChaosIndisponibleException e) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ErreurResponse.de("CHAOS_INDISPONIBLE", e.getMessage()));
     }
 
     /** Transition d'etat refusee par le gestionnaire de runs (pause d'un run arrete, run deja actif...). */
