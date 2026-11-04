@@ -10,6 +10,9 @@ RUN mvn -q -B -DskipTests package \
     && java -Djarmode=tools -jar target/simulateur.jar extract --layers --destination target/extracted
 
 FROM docker.io/library/eclipse-temurin:21-jre-alpine
+# Correctif de securite de l'image de base : libexpat 2.9.0 -> 2.10.0 (3 failles HIGH relevees par Trivy).
+# A retirer quand l'image eclipse-temurin embarque deja libexpat >= 2.10.0.
+RUN apk upgrade --no-cache libexpat
 RUN addgroup -S -g 10001 simulateur && adduser -S -u 10001 -G simulateur simulateur
 WORKDIR /app
 COPY --from=build /build/target/extracted/dependencies/ ./
