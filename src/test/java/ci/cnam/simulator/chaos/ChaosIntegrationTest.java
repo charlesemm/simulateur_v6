@@ -53,7 +53,7 @@ class ChaosIntegrationTest {
     private static final Network RESEAU = Network.newNetwork();
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("docker.io/library/postgres:16-alpine").asCompatibleSubstituteFor("postgres"))
-            .withNetwork(RESEAU).withNetworkAliases("postgres");
+            .withNetwork(RESEAU).withNetworkAliases("postgres").withStartupAttempts(3);
     static final ToxiproxyContainer TOXIPROXY = new ToxiproxyContainer(
             DockerImageName.parse("ghcr.io/shopify/toxiproxy:2.9.0").asCompatibleSubstituteFor("shopify/toxiproxy"))
             .withNetwork(RESEAU);

@@ -42,7 +42,8 @@ class FactureLotIntegrationTest {
     @Container
     @ServiceConnection
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
-            DockerImageName.parse("docker.io/library/postgres:16-alpine").asCompatibleSubstituteFor("postgres"));
+            DockerImageName.parse("docker.io/library/postgres:16-alpine").asCompatibleSubstituteFor("postgres"))
+            .withStartupAttempts(3);
 
     private static final LocalDateTime T0 = LocalDateTime.of(2026, 3, 1, 8, 0);
 
