@@ -111,7 +111,8 @@ donc été monté à 50 parcours/s pour retrouver le point de saturation.
   de doublon).
 - Le moteur ne sait toujours pas **reprendre** un run interrompu en sautant les parcours déjà écrits : le sink fournit
   `checkpoint(runId)` et les factures sont désormais dans la même transaction, la brique de reprise reste à écrire.
-- `AnomaliesIntegrationTest` échoue au démarrage de son conteneur (`Container startup failed`, `localhost:2375 failed to
-  respond`) dans la suite complète `clean verify`, et passe seul. Constaté 3 fois sur 3 en suite complète. L'API Podman
-  ne répond plus après les tests lourds. Ce n'est pas un manque de mémoire : la machine Podman (WSL) dispose de
-  8 Gio (`.wslconfig`), et `podman machine set --memory` n'est pas supporté pour WSL. Cause réelle à établir.
+- `AnomaliesIntegrationTest` échouait au démarrage de son conteneur (`Container startup failed`, `localhost:2375 failed to
+  respond`) dans la suite complète. Cause établie (correctif hors brique) : juste après la fin de `ChaosIntegrationTest`, la
+  première requête vers l'API Podman (tube nommé `docker_engine`) est refusée, puis tout repasse. Ce n'est ni un manque
+  de mémoire (la machine WSL dispose de 8 Gio, `.wslconfig`) ni un défaut du code. Correctif : `withStartupAttempts(3)`
+  sur les conteneurs PostgreSQL des tests ; `clean verify` vert (294 tests), une reprise observée dans le journal.

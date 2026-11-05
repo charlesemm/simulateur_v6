@@ -39,7 +39,8 @@ class AnomaliesIntegrationTest {
     @Container
     @ServiceConnection
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
-            DockerImageName.parse("docker.io/library/postgres:16-alpine").asCompatibleSubstituteFor("postgres"));
+            DockerImageName.parse("docker.io/library/postgres:16-alpine").asCompatibleSubstituteFor("postgres"))
+            .withStartupAttempts(3);
 
     private static final TypeReference<Map<String, Object>> PAYLOAD = new TypeReference<>() {
     };

@@ -31,7 +31,8 @@ class ParcoursIntegrationTest {
     @Container
     @ServiceConnection
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
-            DockerImageName.parse("docker.io/library/postgres:16-alpine").asCompatibleSubstituteFor("postgres"));
+            DockerImageName.parse("docker.io/library/postgres:16-alpine").asCompatibleSubstituteFor("postgres"))
+            .withStartupAttempts(3);
 
     @Autowired
     ParcoursOrchestrator orchestrateur;
