@@ -13,7 +13,7 @@
 
     <groupId>ci.cnam</groupId>
     <artifactId>flow-simulator</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <name>Simulateur de flux CNAM</name>
     <description>Simulateur de flux de donnees synthetiques : prestations, affiliation, recouvrement</description>
 
