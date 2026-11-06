@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title>Scénarios - Simulateur CNAM</title>
+</head>
+<body>
+<main id="contenu" class="page">
+    <h1>Éditeur de scénarios</h1>
+
+    <div class="grille">
+        <form class="carte" th:hx-post="@{/scenarios/generer}" hx-target="#zone" hx-swap="outerHTML">
+            <h2>Générer le YAML</h2>
+            <label>Nom <input type="text" name="nom" value="Prestations - mon scénario" required maxlength="200"></label>
+            <label>Graine <input type="number" name="seed" value="42" step="1"></label>
+            <label>Vitesse du temps (secondes simulées par seconde réelle)
+                <input type="number" name="accelerationTemps" value="60" min="0.001" step="any"></label>
+            <label>Début du temps simulé <input type="text" name="debutSimule" placeholder="2026-03-10T08:00:00"></label>
+            <fieldset>
+                <legend>Domaine prestations</legend>
+                <label>Débit (parcours par seconde) <input type="number" name="debit" value="5" min="0" step="any"></label>
+                <label>Avec examens (%) <input type="number" name="examens" value="60" min="0" max="100" step="any"></label>
+                <label>Avec hospitalisation (%) <input type="number" name="hospitalisation" value="10" min="0" max="100" step="any"></label>
+                <label>Prescription directe (%) <input type="number" name="direct" value="30" min="0" max="100" step="any"></label>
+                <label>Taux global d'anomalies (%, 0 = flux propre)
+                    <input type="number" name="anomaliesGlobal" value="0" min="0" max="100" step="any"></label>
+            </fieldset>
+            <fieldset>
+                <legend>Phases de charge (durées : 30s, 10m, 2h ; charge : normale ou x20)</legend>
+                <div class="phase" th:each="i : ${#numbers.sequence(0, 2)}">
+                    <input type="text" name="phaseDe" th:value="${i == 0} ? '0m'" placeholder="de" aria-label="Début de phase">
+                    <input type="text" name="phaseA" th:value="${i == 0} ? '10m'" placeholder="à" aria-label="Fin de phase">
+                    <input type="text" name="phaseCharge" th:value="${i == 0} ? 'normale'" placeholder="charge" aria-label="Charge">
+                </div>
+            </fieldset>
+            <button type="submit">Générer le YAML</button>
+        </form>
+
+        <section id="zone" th:fragment="zone" aria-live="polite">
+            <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
+            <p class="info" th:if="${message}" th:text="${message}" role="status"></p>
+            <div class="info" th:if="${resume}" th:text="${resume}" role="status"></div>
+            <div class="alerte" th:if="${erreurs != null and !#lists.isEmpty(erreurs)}" role="alert">
+                <strong>Scénario invalide :</strong>
+                <ul><li th:each="e : ${erreurs}" th:text="${e}">erreur</li></ul>
+            </div>
+
+            <form class="carte">
+                <h2>YAML du scénario</h2>
+                <label>Contenu
+                    <textarea name="yaml" rows="22" spellcheck="false" th:text="${yaml}" maxlength="100000"
+                              required></textarea>
+                </label>
+                <div class="actions">
+                    <button type="button" class="secondaire" th:hx-post="@{/scenarios/valider}"
+                            hx-include="closest form" hx-target="#zone" hx-swap="outerHTML">Valider</button>
+                    <button type="button" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')"
+                            th:hx-post="@{/scenarios/enregistrer}" hx-include="closest form" hx-target="#zone"
+                            hx-swap="outerHTML">Enregistrer</button>
+                </div>
+            </form>
+
+            <form class="carte" th:hx-post="@{/scenarios/importer}" hx-encoding="multipart/form-data"
+                  hx-target="#zone" hx-swap="outerHTML">
+                <h2>Importer un fichier YAML</h2>
+                <label>Fichier (.yaml, 100 Ko au plus)
+                    <input type="file" name="fichier" accept=".yaml,.yml,text/yaml,application/x-yaml" required>
+                </label>
+                <button type="submit" class="secondaire">Importer dans l'éditeur</button>
+                <p class="discret">L'import remplit l'éditeur et le valide ; rien n'est enregistré avant « Enregistrer ».</p>
+            </form>
+        </section>
+    </div>
+
+    <section class="carte">
+        <h2>Scénarios disponibles</h2>
+        <div class="defilement">
+            <table>
+                <thead><tr><th scope="col">Nom</th><th scope="col">Source</th><th scope="col">Actions</th></tr></thead>
+                <tbody>
+                <tr th:each="s : ${scenarios}">
+                    <td th:text="${s.nom}">parcours-normal</td>
+                    <td th:text="${s.source}">FICHIER</td>
+                    <td class="actions">
+                        <button type="button" class="secondaire"
+                                th:hx-get="@{/scenarios/charger(nom=${s.nom})}" hx-target="#zone" hx-swap="outerHTML">
+                            Charger dans l'éditeur
+                        </button>
+                        <a class="bouton secondaire" th:href="@{/scenarios/export(nom=${s.nom})}">Exporter</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

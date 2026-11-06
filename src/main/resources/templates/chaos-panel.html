@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title>Chaos - Simulateur CNAM</title>
+</head>
+<body>
+<main id="contenu" class="page">
+    <h1>Crash tests</h1>
+
+    <section id="zone" th:fragment="zone" aria-live="polite">
+        <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
+        <p class="info" th:if="${message}" th:text="${message}" role="status"></p>
+
+        <p class="avert" th:unless="${actif}">
+            Aucun run actif : les actions de chaos ne peuvent être déclenchées que pendant une simulation.
+        </p>
+
+        <div class="grille" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
+            <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
+                  hx-confirm="Couper la base de données pour la durée choisie ?">
+                <h2>Couper la base</h2>
+                <input type="hidden" name="type" value="COUPURE_BASE">
+                <label>Mode
+                    <select name="mode">
+                        <option value="DESACTIVER">Coupure nette (proxy désactivé)</option>
+                        <option value="RESET_PEER">Connexions réinitialisées</option>
+                    </select>
+                </label>
+                <label>Durée (secondes, <span th:text="${dureeMax}">300</span> au plus)
+                    <input type="number" name="dureeSecondes" value="30" min="1" th:max="${dureeMax}" required>
+                </label>
+                <button type="submit" class="danger" th:disabled="${actif == null}">Couper la base</button>
+            </form>
+
+            <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
+                  hx-confirm="Ajouter de la latence sur la liaison avec la base ?">
+                <h2>Latence</h2>
+                <input type="hidden" name="type" value="LATENCE">
+                <label>Latence ajoutée (ms)
+                    <input type="number" name="latenceMs" value="500" min="1" required>
+                </label>
+                <label>Variation (ms)
+                    <input type="number" name="jitterMs" value="0" min="0">
+                </label>
+                <label>Durée (secondes)
+                    <input type="number" name="dureeSecondes" value="30" min="1" th:max="${dureeMax}" required>
+                </label>
+                <button type="submit" class="danger" th:disabled="${actif == null}">Ajouter de la latence</button>
+            </form>
+
+            <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
+                  hx-confirm="Multiplier le débit de la simulation ?">
+                <h2>Surcharge</h2>
+                <input type="hidden" name="type" value="SURCHARGE">
+                <label>Multiplicateur du débit
+                    <select name="multiplicateur">
+                        <option th:each="p : ${paliers}" th:value="${p}" th:text="'x' + ${p}">x5</option>
+                    </select>
+                </label>
+                <label>Durée (secondes)
+                    <input type="number" name="dureeSecondes" value="30" min="1" th:max="${dureeMax}" required>
+                </label>
+                <button type="submit" class="danger" th:disabled="${actif == null}">Surcharger</button>
+            </form>
+
+            <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
+                  hx-confirm="Tronquer une partie des événements avant leur écriture ?">
+                <h2>Anomalies : messages tronqués</h2>
+                <input type="hidden" name="type" value="MESSAGE_TRONQUE">
+                <label>Proportion d'événements touchés (0 à 1)
+                    <input type="number" name="proportion" value="0.1" min="0.01" max="1" step="0.01" required>
+                </label>
+                <label>Durée (secondes)
+                    <input type="number" name="dureeSecondes" value="30" min="1" th:max="${dureeMax}" required>
+                </label>
+                <button type="submit" class="danger" th:disabled="${actif == null}">Tronquer des messages</button>
+            </form>
+        </div>
+
+        <div class="actions" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
+            <button type="button" th:hx-post="@{/chaos/retablir}" hx-target="#zone" hx-swap="outerHTML"
+                    hx-confirm="Annuler toutes les actions de chaos et rétablir la liaison avec la base ?">
+                Tout rétablir
+            </button>
+        </div>
+        <p class="avert" sec:authorize="!hasAnyRole('ADMIN','OPERATEUR')">
+            Lecture seule : votre rôle ne permet pas de déclencher du chaos.
+        </p>
+
+        <div id="actions" class="carte" th:fragment="actions"
+             th:hx-get="@{/chaos/actions}" hx-trigger="every 3s" hx-swap="outerHTML">
+            <h2>Actions du run <code th:if="${cible}" th:text="${#strings.substring(cible.id.toString(), 0, 8)}">abcd1234</code></h2>
+            <p class="discret" th:if="${#lists.isEmpty(actions)}">Aucune action de chaos.</p>
+            <div class="defilement" th:unless="${#lists.isEmpty(actions)}">
+                <table>
+                    <thead>
+                    <tr>
+                        <th scope="col">Type</th><th scope="col">Paramètres</th><th scope="col">Début</th>
+                        <th scope="col">Fin prévue</th><th scope="col">Fin</th><th scope="col">Motif</th>
+                        <th scope="col">Auteur</th><th scope="col">Événements touchés</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="a : ${actions}">
+                        <td><span class="badge" th:classappend="${a.fin == null} ? 'actif'" th:text="${a.type}">LATENCE</span></td>
+                        <td th:text="${a.parametres}">{}</td>
+                        <td th:text="${#temporals.format(a.debut, 'HH:mm:ss')}">12:00:00</td>
+                        <td th:text="${#temporals.format(a.finPrevue, 'HH:mm:ss')}">12:00:30</td>
+                        <td th:text="${a.fin == null} ? 'en cours' : ${#temporals.format(a.fin, 'HH:mm:ss')}">en cours</td>
+                        <td th:text="${a.motifFin}">EXPIREE</td>
+                        <td th:text="${a.auteur}">admin</td>
+                        <td th:text="${a.evenementsTouches}">0</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+</body>
+</html>

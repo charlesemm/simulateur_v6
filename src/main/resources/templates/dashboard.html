@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title>Tableau de bord - Simulateur CNAM</title>
+</head>
+<body>
+<main id="contenu" class="page">
+    <h1>Tableau de bord</h1>
+    <p id="flux-etat" class="discret" role="status">Connexion au flux en cours…</p>
+
+    <div id="tableau" class="grille" th:data-flux="@{/flux}">
+        <section class="carte" aria-labelledby="t-simulateur">
+            <h2 id="t-simulateur">Simulateur</h2>
+            <p><span id="sim-etat" class="badge">Aucun run</span></p>
+            <dl>
+                <dt>Scénario</dt><dd id="sim-scenario">-</dd>
+                <dt>Graine</dt><dd id="sim-graine">-</dd>
+                <dt>Parcours générés</dt><dd id="sim-parcours">-</dd>
+                <dt>Événements émis</dt><dd id="sim-emis">-</dd>
+            </dl>
+            <p class="alerte" id="sim-erreur" role="alert" hidden></p>
+        </section>
+
+        <section class="carte" aria-labelledby="t-infra">
+            <h2 id="t-infra">Base et liaison</h2>
+            <dl>
+                <dt>Base PostgreSQL</dt><dd><span id="base-etat" class="badge">?</span></dd>
+                <dt>Proxy (Toxiproxy)</dt><dd><span id="proxy-etat" class="badge">?</span></dd>
+                <dt>Perturbations actives</dt><dd id="proxy-toxics">aucune</dd>
+            </dl>
+        </section>
+
+        <section class="carte" aria-labelledby="t-mesures">
+            <h2 id="t-mesures">Écriture</h2>
+            <dl>
+                <dt>Événements écrits / s</dt><dd id="m-ecrits-s">0</dd>
+                <dt>Événements écrits (total)</dt><dd id="m-ecrits">0</dd>
+                <dt>File d'attente</dt><dd id="m-file">0</dd>
+                <dt>Latence d'un lot (moyenne récente)</dt><dd id="m-latence">0 ms</dd>
+                <dt>Latence d'un lot (maximum)</dt><dd id="m-latence-max">0 ms</dd>
+                <dt>Erreurs d'écriture de lot</dt><dd id="m-erreurs">0</dd>
+            </dl>
+        </section>
+
+        <section class="carte large" aria-labelledby="t-debit">
+            <h2 id="t-debit">Débit par domaine</h2>
+            <table>
+                <thead>
+                <tr><th scope="col">Domaine</th><th scope="col">Parcours / s</th><th scope="col">Événements émis / s</th></tr>
+                </thead>
+                <tbody id="debits"><tr><td colspan="3" class="discret">Aucun run actif</td></tr></tbody>
+            </table>
+        </section>
+
+        <section class="carte large" aria-labelledby="t-g1">
+            <h2 id="t-g1">Débit d'écriture (60 dernières secondes)</h2>
+            <div class="graphique"><canvas id="graphique-debit" role="img"
+                                           aria-label="Courbe du débit d'écriture en événements par seconde"></canvas></div>
+        </section>
+
+        <section class="carte large" aria-labelledby="t-g2">
+            <h2 id="t-g2">Latence d'écriture d'un lot, en ms (60 dernières secondes)</h2>
+            <div class="graphique"><canvas id="graphique-latence" role="img"
+                                           aria-label="Courbe de la latence d'écriture d'un lot en millisecondes"></canvas></div>
+        </section>
+    </div>
+
+    <script th:src="@{/js/vendor/chart.umd.js}" defer></script>
+    <script th:src="@{/js/dashboard.js}" defer></script>
+</main>
+</body>
+</html>
