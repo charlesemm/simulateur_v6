@@ -36,6 +36,30 @@
         alerte('Le serveur ne répond pas.');
     });
 
+    // Menu : page courante signalée (visuel + lecteurs d'écran).
+    document.addEventListener('DOMContentLoaded', function () {
+        var chemin = location.pathname.replace(/\/$/, '');
+        document.querySelectorAll('.barre nav a').forEach(function (a) {
+            var cible = new URL(a.href, location.href).pathname.replace(/\/$/, '');
+            if (cible === chemin || (cible !== '' && chemin.indexOf(cible + '/') === 0)) {
+                a.setAttribute('aria-current', 'page');
+            }
+        });
+    });
+
+    // Barre de chargement pendant les requêtes htmx.
+    var enCours = 0;
+    document.addEventListener('htmx:beforeRequest', function () {
+        enCours++;
+        document.body.classList.add('chargement');
+    });
+    document.addEventListener('htmx:afterRequest', function () {
+        enCours = Math.max(0, enCours - 1);
+        if (enCours === 0) {
+            document.body.classList.remove('chargement');
+        }
+    });
+
     function alerte(texte) {
         var zone = document.getElementById('alerte-globale');
         if (!zone) {
