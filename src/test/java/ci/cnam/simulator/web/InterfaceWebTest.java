@@ -286,7 +286,7 @@ class InterfaceWebTest {
 
         mvc.perform(get("/lancement").with(user("op").roles("OPERATEUR")))
                 .andExpect(content().string(containsString("/lancement/" + RUN + "/pause")))
-                .andExpect(content().string(containsString("hx-confirm=\"Arrêter le run en cours")));
+                .andExpect(content().string(containsString("hx-confirm=\"Arrêter la simulation en cours")));
         mvc.perform(get("/lancement").with(user("obs").roles("OBSERVATEUR")))
                 .andExpect(content().string(not(containsString("/lancement/" + RUN + "/pause"))));
     }
@@ -301,7 +301,7 @@ class InterfaceWebTest {
         String admin = mvc.perform(get("/chaos").with(user("a").roles("ADMIN"))).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(admin.split("hx-confirm", -1).length - 1).isGreaterThanOrEqualTo(5);
-        assertThat(admin).contains("Couper la base", "Latence", "Surcharge", "Anomalies", "Tout rétablir");
+        assertThat(admin).contains("Couper la base", "Ralentir", "Surcharger", "Tronquer des messages", "Tout rétablir");
 
         mvc.perform(get("/chaos").with(user("obs").roles("OBSERVATEUR")))
                 .andExpect(content().string(containsString("Lecture seule")))
@@ -525,7 +525,7 @@ class InterfaceWebTest {
         mvc.perform(get("/admin/utilisateurs").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("marie")))
-                .andExpect(content().string(containsString("mot de passe à changer")));
+                .andExpect(content().string(containsString("Mot de passe à changer")));
 
         when(comptes.creer("admin", "paul", "un-mot-de-passe-long", Role.OPERATEUR))
                 .thenReturn(new AppUser("paul", "h", Role.OPERATEUR));

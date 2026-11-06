@@ -1,107 +1,166 @@
 <!DOCTYPE html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::main})}">
 <head>
-    <title>Rapport qualité - Simulateur CNAM</title>
+    <title>Qualité — Echo</title>
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-shield"/></svg>Rapport qualité</h1>
-    <p class="discret" th:if="${#lists.isEmpty(runs)}">Aucun run pour l'instant.</p>
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-shield"/></svg>Qualité</h1>
+        <span class="badge charge" th:if="${rapport != null and rapport.reference}">Simulation de référence</span>
+    </div>
+    <p class="sous-titre">Echo sait exactement quelles anomalies il a semées. Cet écran compare ce qu'il a semé
+        avec ce que l'outil de qualité a trouvé : ce qui est vu, ce qui est raté, ce qui est signalé à tort.</p>
 
-    <form th:unless="${#lists.isEmpty(runs)}" method="get" th:action="@{/qualite}" class="carte">
-        <label>Run
+    <section class="carte" th:if="${#lists.isEmpty(runs)}">
+        <div class="vide">
+            <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>
+            <b>Aucune simulation à analyser</b>
+            <p>Lancez une simulation avec un taux d'anomalies non nul, puis envoyez le rapport de l'outil
+                de qualité pour voir la comparaison ici.</p>
+            <a class="bouton" th:href="@{/lancement}">
+                <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Lancer une simulation</a>
+        </div>
+    </section>
+
+    <form th:unless="${#lists.isEmpty(runs)}" method="get" th:action="@{/qualite}" class="carte filtres">
+        <label>Simulation
             <select name="run">
                 <option th:each="r : ${runs}" th:value="${r.id}" th:selected="${r.id == run}"
-                        th:text="${#strings.substring(r.id.toString(), 0, 8)} + ' - ' + ${r.scenario}">run</option>
+                        th:text="${#strings.substring(r.id.toString(), 0, 8)} + ' — ' + ${r.scenario}">run</option>
             </select>
         </label>
         <label>Comparer avec
             <select name="comparer">
-                <option value="">(aucun)</option>
+                <option value="">aucune</option>
                 <option th:each="r : ${runs}" th:value="${r.id}" th:selected="${r.id == comparer}"
-                        th:text="${#strings.substring(r.id.toString(), 0, 8)} + ' - ' + ${r.scenario}">run</option>
+                        th:text="${#strings.substring(r.id.toString(), 0, 8)} + ' — ' + ${r.scenario}">run</option>
             </select>
         </label>
         <label>Version de l'outil
             <input type="text" name="version" th:value="${version}" maxlength="80" placeholder="toutes">
         </label>
-        <button type="submit">Afficher</button>
-        <a class="bouton secondaire" th:if="${run != null}"
-           th:href="@{/qualite/export.csv(run=${run},version=${version})}">Exporter en CSV</a>
+        <div class="actions">
+            <button type="submit"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg>Afficher</button>
+            <a class="bouton secondaire" th:if="${run != null}"
+               th:href="@{/qualite/export.csv(run=${run},version=${version})}">
+                <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Exporter en CSV</a>
+        </div>
     </form>
 
-    <p class="badge" th:if="${rapport != null and rapport.reference}">
-        Run de référence (aucune anomalie injectée) : toute détection est un faux positif.
+    <p class="avert" th:if="${rapport != null and rapport.reference}">
+        <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+        Cette simulation n'a reçu aucune anomalie : tout ce que l'outil signale ici est un faux positif.
     </p>
 
     <th:block th:if="${rapport != null}">
-        <div class="carte defilement">
-            <h2 th:text="'Run ' + ${#strings.substring(run.toString(), 0, 8)}">Run</h2>
-            <table>
-                <thead>
-                <tr>
-                    <th scope="col">Type</th><th scope="col">Catégorie</th><th scope="col">Injectées</th>
-                    <th scope="col">Détectées</th><th scope="col">Ratées</th><th scope="col">Faux positifs</th>
-                    <th scope="col">Taux de détection</th><th scope="col">Précision</th>
-                    <th scope="col" th:if="${rapportB != null}">Détection (comparé)</th>
-                    <th scope="col" th:if="${rapportB != null}">Précision (comparé)</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr th:each="l, it : ${rapport.types}">
-                    <td th:text="${l.libelle}">CHAMP_VIDE</td>
-                    <td th:text="${#lists.contains({'FAUTE_ORTHOGRAPHE','CASSE_INCOHERENTE','CARACTERES_SPECIAUX'}, l.libelle)} ? 'Sémantique' : 'Structurelle'">Structurelle</td>
-                    <td th:text="${l.injectees}">0</td>
-                    <td th:text="${l.detectees}">0</td>
-                    <td th:text="${l.ratees}">0</td>
-                    <td th:text="${l.fauxPositifs}">0</td>
-                    <td th:text="${l.tauxDetection != null} ? ${#numbers.formatDecimal(l.tauxDetection * 100, 1, 1)} + ' %' : '-'">-</td>
-                    <td th:text="${l.precision != null} ? ${#numbers.formatDecimal(l.precision * 100, 1, 1)} + ' %' : '-'">-</td>
-                    <td th:if="${rapportB != null}"
-                        th:with="b=${rapportB.types[it.index]}"
-                        th:text="${b.tauxDetection != null} ? ${#numbers.formatDecimal(b.tauxDetection * 100, 1, 1)} + ' %' : '-'">-</td>
-                    <td th:if="${rapportB != null}"
-                        th:with="b=${rapportB.types[it.index]}"
-                        th:text="${b.precision != null} ? ${#numbers.formatDecimal(b.precision * 100, 1, 1)} + ' %' : '-'">-</td>
-                </tr>
-                </tbody>
-                <tfoot>
-                <tr th:each="l, it : ${rapport.categories}">
-                    <th scope="row" th:text="${l.libelle == 'SEMANTIQUE'} ? 'Sémantiques' : 'Structurelles'">Structurelles</th>
-                    <td></td>
-                    <td th:text="${l.injectees}">0</td>
-                    <td th:text="${l.detectees}">0</td>
-                    <td th:text="${l.ratees}">0</td>
-                    <td th:text="${l.fauxPositifs}">0</td>
-                    <td th:text="${l.tauxDetection != null} ? ${#numbers.formatDecimal(l.tauxDetection * 100, 1, 1)} + ' %' : '-'">-</td>
-                    <td th:text="${l.precision != null} ? ${#numbers.formatDecimal(l.precision * 100, 1, 1)} + ' %' : '-'">-</td>
-                    <td th:if="${rapportB != null}"
-                        th:with="b=${rapportB.categories[it.index]}"
-                        th:text="${b.tauxDetection != null} ? ${#numbers.formatDecimal(b.tauxDetection * 100, 1, 1)} + ' %' : '-'">-</td>
-                    <td th:if="${rapportB != null}"
-                        th:with="b=${rapportB.categories[it.index]}"
-                        th:text="${b.precision != null} ? ${#numbers.formatDecimal(b.precision * 100, 1, 1)} + ' %' : '-'">-</td>
-                </tr>
-                <tr>
-                    <th scope="row">Total</th>
-                    <td></td>
-                    <td th:text="${rapport.total.injectees}">0</td>
-                    <td th:text="${rapport.total.detectees}">0</td>
-                    <td th:text="${rapport.total.ratees}">0</td>
-                    <td th:text="${rapport.total.fauxPositifs}">0</td>
-                    <td th:text="${rapport.total.tauxDetection != null} ? ${#numbers.formatDecimal(rapport.total.tauxDetection * 100, 1, 1)} + ' %' : '-'">-</td>
-                    <td th:text="${rapport.total.precision != null} ? ${#numbers.formatDecimal(rapport.total.precision * 100, 1, 1)} + ' %' : '-'">-</td>
-                    <td th:if="${rapportB != null}"
-                        th:text="${rapportB.total.tauxDetection != null} ? ${#numbers.formatDecimal(rapportB.total.tauxDetection * 100, 1, 1)} + ' %' : '-'">-</td>
-                    <td th:if="${rapportB != null}"
-                        th:text="${rapportB.total.precision != null} ? ${#numbers.formatDecimal(rapportB.total.precision * 100, 1, 1)} + ' %' : '-'">-</td>
-                </tr>
-                </tfoot>
-            </table>
-            <p class="discret">Les anomalies sémantiques (orthographe, casse, caractères spéciaux) ne se détectent que par
-                référentiel ou similarité : un taux plus bas est attendu.</p>
+        <div class="kpis">
+            <div class="kpi">
+                <span class="kpi-titre">Anomalies semées</span>
+                <span><span class="kpi-valeur" th:text="${#numbers.formatInteger(rapport.total.injectees, 1, 'WHITESPACE')}">0</span></span>
+                <span class="kpi-detail">vérité terrain, connue d'Echo seul</span>
+            </div>
+            <div class="kpi">
+                <span class="kpi-titre">Retrouvées par l'outil</span>
+                <span><span class="kpi-valeur" th:text="${#numbers.formatInteger(rapport.total.detectees, 1, 'WHITESPACE')}">0</span>
+                      <span class="kpi-unite" th:if="${rapport.total.tauxDetection != null}"
+                            th:text="${#numbers.formatDecimal(rapport.total.tauxDetection * 100, 1, 1)} + ' %'">0 %</span></span>
+                <span class="kpi-detail bon">taux de détection</span>
+            </div>
+            <div class="kpi">
+                <span class="kpi-titre">Passées à côté</span>
+                <span><span class="kpi-valeur" th:text="${#numbers.formatInteger(rapport.total.ratees, 1, 'WHITESPACE')}">0</span></span>
+                <span class="kpi-detail charge">semées mais jamais signalées</span>
+            </div>
+            <div class="kpi">
+                <span class="kpi-titre">Signalées à tort</span>
+                <span><span class="kpi-valeur" th:text="${#numbers.formatInteger(rapport.total.fauxPositifs, 1, 'WHITESPACE')}">0</span>
+                      <span class="kpi-unite" th:if="${rapport.total.precision != null}"
+                            th:text="${#numbers.formatDecimal(rapport.total.precision * 100, 1, 1)} + ' %'">0 %</span></span>
+                <span class="kpi-detail mauvais">précision de l'outil</span>
+            </div>
         </div>
+
+        <section class="carte">
+            <header>
+                <h2 th:text="'Détail par type d\'anomalie — simulation ' + ${#strings.substring(run.toString(), 0, 8)}">Détail</h2>
+                <span class="legende" th:if="${rapportB != null}">Les deux dernières colonnes sont la simulation comparée</span>
+            </header>
+            <div class="defilement">
+                <table data-triable>
+                    <thead>
+                    <tr>
+                        <th scope="col">Type d'anomalie</th><th scope="col">Catégorie</th>
+                        <th scope="col" data-type="nombre">Semées</th>
+                        <th scope="col" data-type="nombre">Retrouvées</th>
+                        <th scope="col" data-type="nombre">Ratées</th>
+                        <th scope="col" data-type="nombre">À tort</th>
+                        <th scope="col" data-type="nombre">Taux de détection</th>
+                        <th scope="col" data-type="nombre">Précision</th>
+                        <th scope="col" data-type="nombre" th:if="${rapportB != null}">Détection comparée</th>
+                        <th scope="col" data-type="nombre" th:if="${rapportB != null}">Précision comparée</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="l, it : ${rapport.types}">
+                        <td th:text="${l.libelle}">CHAMP_VIDE</td>
+                        <!--/* Classement reproduit ici faute d'etre porte par LigneQualite : a deplacer cote service. */-->
+                        <td class="discret"
+                            th:text="${#lists.contains({'FAUTE_ORTHOGRAPHE','CASSE_INCOHERENTE','CARACTERES_SPECIAUX'}, l.libelle)} ? 'Sémantique' : 'Structurelle'">Structurelle</td>
+                        <td class="chiffre" th:text="${l.injectees}">0</td>
+                        <td class="chiffre" th:text="${l.detectees}">0</td>
+                        <td class="chiffre" th:text="${l.ratees}">0</td>
+                        <td class="chiffre" th:text="${l.fauxPositifs}">0</td>
+                        <td class="chiffre" th:text="${l.tauxDetection != null} ? ${#numbers.formatDecimal(l.tauxDetection * 100, 1, 1)} + ' %' : '—'">—</td>
+                        <td class="chiffre" th:text="${l.precision != null} ? ${#numbers.formatDecimal(l.precision * 100, 1, 1)} + ' %' : '—'">—</td>
+                        <td class="chiffre" th:if="${rapportB != null}"
+                            th:with="b=${rapportB.types[it.index]}"
+                            th:text="${b.tauxDetection != null} ? ${#numbers.formatDecimal(b.tauxDetection * 100, 1, 1)} + ' %' : '—'">—</td>
+                        <td class="chiffre" th:if="${rapportB != null}"
+                            th:with="b=${rapportB.types[it.index]}"
+                            th:text="${b.precision != null} ? ${#numbers.formatDecimal(b.precision * 100, 1, 1)} + ' %' : '—'">—</td>
+                    </tr>
+                    </tbody>
+                    <tfoot>
+                    <tr th:each="l, it : ${rapport.categories}">
+                        <th scope="row" th:text="${l.libelle == 'SEMANTIQUE'} ? 'Anomalies sémantiques' : 'Anomalies structurelles'">Anomalies structurelles</th>
+                        <td></td>
+                        <td class="chiffre" th:text="${l.injectees}">0</td>
+                        <td class="chiffre" th:text="${l.detectees}">0</td>
+                        <td class="chiffre" th:text="${l.ratees}">0</td>
+                        <td class="chiffre" th:text="${l.fauxPositifs}">0</td>
+                        <td class="chiffre" th:text="${l.tauxDetection != null} ? ${#numbers.formatDecimal(l.tauxDetection * 100, 1, 1)} + ' %' : '—'">—</td>
+                        <td class="chiffre" th:text="${l.precision != null} ? ${#numbers.formatDecimal(l.precision * 100, 1, 1)} + ' %' : '—'">—</td>
+                        <td class="chiffre" th:if="${rapportB != null}"
+                            th:with="b=${rapportB.categories[it.index]}"
+                            th:text="${b.tauxDetection != null} ? ${#numbers.formatDecimal(b.tauxDetection * 100, 1, 1)} + ' %' : '—'">—</td>
+                        <td class="chiffre" th:if="${rapportB != null}"
+                            th:with="b=${rapportB.categories[it.index]}"
+                            th:text="${b.precision != null} ? ${#numbers.formatDecimal(b.precision * 100, 1, 1)} + ' %' : '—'">—</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Tout confondu</th>
+                        <td></td>
+                        <td class="chiffre" th:text="${rapport.total.injectees}">0</td>
+                        <td class="chiffre" th:text="${rapport.total.detectees}">0</td>
+                        <td class="chiffre" th:text="${rapport.total.ratees}">0</td>
+                        <td class="chiffre" th:text="${rapport.total.fauxPositifs}">0</td>
+                        <td class="chiffre" th:text="${rapport.total.tauxDetection != null} ? ${#numbers.formatDecimal(rapport.total.tauxDetection * 100, 1, 1)} + ' %' : '—'">—</td>
+                        <td class="chiffre" th:text="${rapport.total.precision != null} ? ${#numbers.formatDecimal(rapport.total.precision * 100, 1, 1)} + ' %' : '—'">—</td>
+                        <td class="chiffre" th:if="${rapportB != null}"
+                            th:text="${rapportB.total.tauxDetection != null} ? ${#numbers.formatDecimal(rapportB.total.tauxDetection * 100, 1, 1)} + ' %' : '—'">—</td>
+                        <td class="chiffre" th:if="${rapportB != null}"
+                            th:text="${rapportB.total.precision != null} ? ${#numbers.formatDecimal(rapportB.total.precision * 100, 1, 1)} + ' %' : '—'">—</td>
+                    </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <p class="aide-champ">Les anomalies sémantiques (orthographe, casse, caractères spéciaux) ne se repèrent
+                qu'en comparant à un référentiel : un taux de détection plus bas est normal.</p>
+        </section>
     </th:block>
+
+    <script th:src="@{/js/tri.js}" defer></script>
 </main>
 </body>
 </html>

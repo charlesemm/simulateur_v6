@@ -2,44 +2,75 @@
 <html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout :: page(~{::title}, ~{::main})}">
 <head>
-    <title>Historique - Simulateur CNAM</title>
+    <title>Simulations passées — Echo</title>
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-clock"/></svg>Historique des runs</h1>
-    <div id="retour" aria-live="polite"></div>
-    <p class="discret" th:if="${#lists.isEmpty(runs)}">Aucun run pour l'instant.</p>
-    <div class="carte defilement" th:unless="${#lists.isEmpty(runs)}">
-        <table>
-            <thead>
-            <tr>
-                <th scope="col">Run</th><th scope="col">Scénario</th><th scope="col">Graine</th>
-                <th scope="col">État</th><th scope="col">Parcours</th><th scope="col">Événements</th>
-                <th scope="col">Début</th><th scope="col">Fin</th><th scope="col">Erreur</th><th scope="col">Actions</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="r : ${runs}">
-                <td><code th:text="${#strings.substring(r.id.toString(), 0, 8)}" th:title="${r.id}">abcd1234</code></td>
-                <td th:text="${r.scenario}">scénario</td>
-                <td th:text="${r.seed}">42</td>
-                <td><span class="badge" th:classappend="${r.etat.name() == 'ECHOUE'} ? 'echec'" th:text="${r.etat}">ARRETE</span></td>
-                <td th:text="${r.parcoursGeneres}">0</td>
-                <td th:text="${r.evenementsEmis}">0</td>
-                <td th:text="${#temporals.format(r.debut, 'dd/MM/yyyy HH:mm:ss')}">date</td>
-                <td th:text="${#temporals.format(r.fin, 'dd/MM/yyyy HH:mm:ss')}">date</td>
-                <td th:text="${r.erreur}">erreur</td>
-                <td class="actions">
-                    <a class="bouton secondaire" th:href="@{/evenements(run=${r.id})}">Événements</a>
-                    <button type="button" class="secondaire" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')"
-                            th:hx-post="@{/lancement/{id}/rejouer(id=${r.id})}" hx-target="#retour"
-                            hx-swap="innerHTML"
-                            hx-confirm="Relancer ce scénario avec la même graine ?">Rejouer (même graine)</button>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-clock"/></svg>Simulations passées</h1>
+        <span class="badge" th:unless="${#lists.isEmpty(runs)}"
+              th:text="${#lists.size(runs)} + (${#lists.size(runs)} > 1 ? ' simulations' : ' simulation')">0 simulation</span>
     </div>
+    <p class="sous-titre">Chaque ligne garde sa graine : rejouer une simulation reproduit les mêmes patients,
+        les mêmes montants et les mêmes anomalies.</p>
+
+    <div id="retour" aria-live="polite"></div>
+
+    <section class="carte">
+        <div class="vide" th:if="${#lists.isEmpty(runs)}">
+            <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
+            <b>Aucune simulation n'a encore tourné</b>
+            <p>L'historique se remplit dès la première simulation lancée.</p>
+            <a class="bouton" th:href="@{/lancement}">
+                <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Lancer une simulation</a>
+        </div>
+
+        <div class="defilement" th:unless="${#lists.isEmpty(runs)}">
+            <table data-triable>
+                <thead>
+                <tr>
+                    <th scope="col">Référence</th>
+                    <th scope="col">Scénario</th>
+                    <th scope="col">Graine</th>
+                    <th scope="col">État</th>
+                    <th scope="col" data-type="nombre">Feuilles de soins</th>
+                    <th scope="col" data-type="nombre">Événements</th>
+                    <th scope="col">Démarrée le</th>
+                    <th scope="col">Terminée le</th>
+                    <th scope="col" data-tri="non">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${runs}">
+                    <td><code th:text="${#strings.substring(r.id.toString(), 0, 8)}" th:title="${r.id}">abcd1234</code></td>
+                    <td>
+                        <span th:text="${r.scenario}">scénario</span>
+                        <span class="erreur-champ" th:if="${r.erreur}" th:text="${r.erreur}">erreur</span>
+                    </td>
+                    <td class="chiffre" th:text="${r.seed}">42</td>
+                    <td><span th:replace="~{fragments/etat :: badge(${r.etat})}"></span></td>
+                    <td class="chiffre" th:text="${#numbers.formatInteger(r.parcoursGeneres, 1, 'WHITESPACE')}">0</td>
+                    <td class="chiffre" th:text="${#numbers.formatInteger(r.evenementsEmis, 1, 'WHITESPACE')}">0</td>
+                    <td class="chiffre" th:text="${#temporals.format(r.debut, 'dd/MM/yyyy à HH:mm')}">date</td>
+                    <td class="chiffre" th:text="${r.fin != null} ? ${#temporals.format(r.fin, 'dd/MM/yyyy à HH:mm')} : '—'">date</td>
+                    <td class="actions">
+                        <a class="bouton secondaire" th:href="@{/evenements(run=${r.id})}">
+                            <svg class="ico" aria-hidden="true"><use href="#i-feuille-soins"/></svg>Feuilles de soins</a>
+                        <a class="bouton secondaire" th:href="@{/qualite(run=${r.id})}">
+                            <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Qualité</a>
+                        <button type="button" class="secondaire" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')"
+                                th:hx-post="@{/lancement/{id}/rejouer(id=${r.id})}" hx-target="#retour"
+                                hx-swap="innerHTML"
+                                hx-confirm="Relancer ce scénario avec la même graine ?">
+                            <svg class="ico" aria-hidden="true"><use href="#i-undo"/></svg>Rejouer</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <script th:src="@{/js/tri.js}" defer></script>
 </main>
 </body>
 </html>

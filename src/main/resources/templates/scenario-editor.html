@@ -2,58 +2,100 @@
 <html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout :: page(~{::title}, ~{::main})}">
 <head>
-    <title>Scénarios - Simulateur CNAM</title>
+    <title>Scénarios — Echo</title>
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-file"/></svg>Éditeur de scénarios</h1>
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-file"/></svg>Scénarios</h1>
+    </div>
+    <p class="sous-titre">Un scénario décrit la journée à simuler : combien de patients, quelle part d'examens et
+        d'hospitalisations, quelle proportion d'anomalies, et comment la charge varie dans le temps.</p>
 
     <div class="grille">
         <form class="carte" th:hx-post="@{/scenarios/generer}" hx-target="#zone" hx-swap="outerHTML">
-            <h2>Générer le YAML</h2>
-            <label>Nom <input type="text" name="nom" value="Prestations - mon scénario" required maxlength="200"></label>
-            <label>Graine <input type="number" name="seed" value="42" step="1"></label>
-            <label>Vitesse du temps (secondes simulées par seconde réelle)
-                <input type="number" name="accelerationTemps" value="60" min="0.001" step="any"></label>
-            <label>Début du temps simulé <input type="text" name="debutSimule" placeholder="2026-03-10T08:00:00"></label>
+            <header><h2>Décrire la journée</h2></header>
+
+            <label>Nom du scénario <input type="text" name="nom" value="Prestations - mon scénario" required maxlength="200"></label>
+            <label>Graine
+                <input type="number" name="seed" value="42" step="1">
+                <span class="aide-champ">Même graine, mêmes patients et mêmes anomalies à chaque relance.</span>
+            </label>
+            <label>Vitesse du temps
+                <input type="number" name="accelerationTemps" value="60" min="0.001" step="any">
+                <span class="aide-champ">Secondes simulées par seconde réelle. 60 fait passer une minute de soins
+                    en une seconde.</span>
+            </label>
+            <label>Date et heure du premier soin
+                <input type="text" name="debutSimule" placeholder="2026-03-10T08:00:00">
+                <span class="aide-champ">Laissez vide pour partir de maintenant.</span>
+            </label>
+
             <fieldset>
-                <legend>Domaine prestations</legend>
-                <label>Débit (parcours par seconde) <input type="number" name="debit" value="5" min="0" step="any"></label>
-                <label>Avec examens (%) <input type="number" name="examens" value="60" min="0" max="100" step="any"></label>
-                <label>Avec hospitalisation (%) <input type="number" name="hospitalisation" value="10" min="0" max="100" step="any"></label>
-                <label>Prescription directe (%) <input type="number" name="direct" value="30" min="0" max="100" step="any"></label>
-                <label>Taux global d'anomalies (%, 0 = flux propre)
-                    <input type="number" name="anomaliesGlobal" value="0" min="0" max="100" step="any"></label>
+                <legend>Prestations</legend>
+                <label>Patients par seconde
+                    <input type="number" name="debit" value="5" min="0" step="any">
+                    <span class="aide-champ">Cinq patients par seconde font 300 feuilles de soins par minute.</span>
+                </label>
+                <label>Part des patients envoyés en examens
+                    <input type="number" name="examens" value="60" min="0" max="100" step="any">
+                    <span class="aide-champ">En pourcentage.</span>
+                </label>
+                <label>Part des patients hospitalisés
+                    <input type="number" name="hospitalisation" value="10" min="0" max="100" step="any">
+                    <span class="aide-champ">En pourcentage.</span>
+                </label>
+                <label>Part des patients repartis avec une ordonnance seule
+                    <input type="number" name="direct" value="30" min="0" max="100" step="any">
+                    <span class="aide-champ">En pourcentage. Les trois parts décrivent la sortie de consultation.</span>
+                </label>
+                <label>Part des événements abîmés volontairement
+                    <input type="number" name="anomaliesGlobal" value="0" min="0" max="100" step="any">
+                    <span class="aide-champ">En pourcentage. Zéro produit un flux propre, utile comme référence.</span>
+                </label>
             </fieldset>
+
             <fieldset>
-                <legend>Phases de charge (durées : 30s, 10m, 2h ; charge : normale ou x20)</legend>
+                <legend>Variations de charge</legend>
+                <p class="aide-champ">Trois tranches au plus. Durées : <code>30s</code>, <code>10m</code>,
+                    <code>2h</code>. Charge : <code>normale</code> ou <code>x20</code>.</p>
                 <div class="phase" th:each="i : ${#numbers.sequence(0, 2)}">
                     <input type="text" name="phaseDe" th:value="${i == 0} ? '0m'" placeholder="de" aria-label="Début de phase">
                     <input type="text" name="phaseA" th:value="${i == 0} ? '10m'" placeholder="à" aria-label="Fin de phase">
                     <input type="text" name="phaseCharge" th:value="${i == 0} ? 'normale'" placeholder="charge" aria-label="Charge">
                 </div>
             </fieldset>
-            <button type="submit">Générer le YAML</button>
+
+            <div class="actions">
+                <button type="submit">Écrire le scénario</button>
+            </div>
         </form>
 
         <section id="zone" th:fragment="zone" aria-live="polite">
-            <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
-            <p class="info" th:if="${message}" th:text="${message}" role="status"></p>
-            <div class="info" th:if="${resume}" th:text="${resume}" role="status"></div>
+            <p class="alerte" th:if="${erreur}" role="alert">
+                <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg><span th:text="${erreur}"></span></p>
+            <p class="info" th:if="${message}" role="status">
+                <svg class="ico" aria-hidden="true"><use href="#i-cercle-check"/></svg><span th:text="${message}"></span></p>
+            <p class="info" th:if="${resume}" role="status">
+                <svg class="ico" aria-hidden="true"><use href="#i-cercle-check"/></svg><span th:text="${resume}"></span></p>
             <div class="alerte" th:if="${erreurs != null and !#lists.isEmpty(erreurs)}" role="alert">
-                <strong>Scénario invalide :</strong>
-                <ul><li th:each="e : ${erreurs}" th:text="${e}">erreur</li></ul>
+                <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+                <span>
+                    <strong>Ce scénario ne peut pas être enregistré :</strong>
+                    <ul><li th:each="e : ${erreurs}" th:text="${e}">erreur</li></ul>
+                </span>
             </div>
 
             <form class="carte">
-                <h2>YAML du scénario</h2>
+                <header><h2>Le scénario en texte</h2></header>
                 <label>Contenu
                     <textarea name="yaml" rows="22" spellcheck="false" th:text="${yaml}" maxlength="100000"
                               required></textarea>
                 </label>
                 <div class="actions">
                     <button type="button" class="secondaire" th:hx-post="@{/scenarios/valider}"
-                            hx-include="closest form" hx-target="#zone" hx-swap="outerHTML">Valider</button>
+                            hx-include="closest form" hx-target="#zone" hx-swap="outerHTML">
+                        <svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Vérifier</button>
                     <button type="button" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')"
                             th:hx-post="@{/scenarios/enregistrer}" hx-include="closest form" hx-target="#zone"
                             hx-swap="outerHTML">Enregistrer</button>
@@ -62,37 +104,57 @@
 
             <form class="carte" th:hx-post="@{/scenarios/importer}" hx-encoding="multipart/form-data"
                   hx-target="#zone" hx-swap="outerHTML">
-                <h2>Importer un fichier YAML</h2>
-                <label>Fichier (.yaml, 100 Ko au plus)
+                <header><h2>Reprendre un fichier</h2></header>
+                <label>Fichier
                     <input type="file" name="fichier" accept=".yaml,.yml,text/yaml,application/x-yaml" required>
+                    <span class="aide-champ">Format .yaml, 100 Ko au plus. Le fichier remplit l'éditeur et y est
+                        vérifié ; rien n'est enregistré avant que vous le demandiez.</span>
                 </label>
-                <button type="submit" class="secondaire">Importer dans l'éditeur</button>
-                <p class="discret">L'import remplit l'éditeur et le valide ; rien n'est enregistré avant « Enregistrer ».</p>
+                <div class="actions">
+                    <button type="submit" class="secondaire">Ouvrir dans l'éditeur</button>
+                </div>
             </form>
         </section>
     </div>
 
     <section class="carte">
-        <h2>Scénarios disponibles</h2>
-        <div class="defilement">
-            <table>
-                <thead><tr><th scope="col">Nom</th><th scope="col">Source</th><th scope="col">Actions</th></tr></thead>
+        <header>
+            <h2>Scénarios enregistrés</h2>
+            <span class="badge" th:unless="${#lists.isEmpty(scenarios)}"
+                  th:text="${#lists.size(scenarios)}">3</span>
+        </header>
+
+        <div class="vide" th:if="${#lists.isEmpty(scenarios)}">
+            <svg class="ico" aria-hidden="true"><use href="#i-file"/></svg>
+            <b>Aucun scénario enregistré</b>
+            <p>Décrivez une journée à gauche, vérifiez-la, puis enregistrez-la pour pouvoir la lancer.</p>
+        </div>
+
+        <div class="defilement" th:unless="${#lists.isEmpty(scenarios)}">
+            <table data-triable>
+                <thead><tr><th scope="col">Nom</th><th scope="col">Provenance</th>
+                    <th scope="col" data-tri="non">Actions</th></tr></thead>
                 <tbody>
                 <tr th:each="s : ${scenarios}">
                     <td th:text="${s.nom}">parcours-normal</td>
-                    <td th:text="${s.source}">FICHIER</td>
+                    <td class="discret" th:text="${s.source.name() == 'FICHIER'} ? 'Fichier du dépôt' : 'Enregistré ici'">Fichier du dépôt</td>
                     <td class="actions">
                         <button type="button" class="secondaire"
                                 th:hx-get="@{/scenarios/charger(nom=${s.nom})}" hx-target="#zone" hx-swap="outerHTML">
-                            Charger dans l'éditeur
+                            Ouvrir dans l'éditeur
                         </button>
-                        <a class="bouton secondaire" th:href="@{/scenarios/export(nom=${s.nom})}">Exporter</a>
+                        <a class="bouton secondaire" th:href="@{/scenarios/export(nom=${s.nom})}">
+                            <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Télécharger</a>
+                        <a class="bouton secondaire" th:href="@{/lancement}">
+                            <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Lancer</a>
                     </td>
                 </tr>
                 </tbody>
             </table>
         </div>
     </section>
+
+    <script th:src="@{/js/tri.js}" defer></script>
 </main>
 </body>
 </html>

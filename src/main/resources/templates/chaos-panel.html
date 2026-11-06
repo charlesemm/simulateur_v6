@@ -2,79 +2,118 @@
 <html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout :: page(~{::title}, ~{::main})}">
 <head>
-    <title>Chaos - Simulateur CNAM</title>
+    <title>Crash tests — Echo</title>
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-zap"/></svg>Crash tests</h1>
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-zap"/></svg>Crash tests</h1>
+    </div>
+    <p class="sous-titre">Provoquer volontairement une panne pendant qu'une simulation tourne, pour vérifier qu'aucune
+        feuille de soins n'est perdue ni écrite deux fois. Chaque action s'arrête d'elle-même au bout de la durée choisie.</p>
 
     <section id="zone" th:fragment="zone" aria-live="polite">
-        <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
-        <p class="info" th:if="${message}" th:text="${message}" role="status"></p>
+        <p class="alerte" th:if="${erreur}" role="alert">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg><span th:text="${erreur}"></span></p>
+        <p class="info" th:if="${message}" role="status">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-check"/></svg><span th:text="${message}"></span></p>
 
         <p class="avert" th:unless="${actif}">
-            Aucun run actif : les actions de chaos ne peuvent être déclenchées que pendant une simulation.
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+            Aucune simulation ne tourne. Les pannes ne peuvent être provoquées que pendant une simulation :
+            lancez-en une, puis revenez ici.
         </p>
 
         <div class="grille" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
             <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
                   hx-confirm="Couper la base de données pour la durée choisie ?">
-                <h2><svg class="ico" aria-hidden="true"><use href="#i-database"/></svg>Couper la base</h2>
+                <header>
+                    <h2><svg class="ico" aria-hidden="true"><use href="#i-database"/></svg>Couper la base</h2>
+                </header>
+                <p class="discret">La simulation continue de produire ; tout s'accumule en mémoire et s'écrit au retour.</p>
                 <input type="hidden" name="type" value="COUPURE_BASE">
-                <label>Mode
+                <label>Manière de couper
                     <select name="mode">
-                        <option value="DESACTIVER">Coupure nette (proxy désactivé)</option>
-                        <option value="RESET_PEER">Connexions réinitialisées</option>
+                        <option value="DESACTIVER">Coupure nette</option>
+                        <option value="RESET_PEER">Connexions brutalement réinitialisées</option>
                     </select>
                 </label>
-                <label>Durée (secondes, <span th:text="${dureeMax}">300</span> au plus)
+                <label>Durée
                     <input type="number" name="dureeSecondes" value="30" min="1" th:max="${dureeMax}" required>
+                    <span class="aide-champ">En secondes, <span th:text="${dureeMax}">300</span> au maximum.</span>
                 </label>
-                <button type="submit" class="danger" th:disabled="${actif == null}"><svg class="ico" aria-hidden="true"><use href="#i-database"/></svg>Couper la base</button>
+                <div class="actions">
+                    <button type="submit" class="danger" th:disabled="${actif == null}">
+                        <svg class="ico" aria-hidden="true"><use href="#i-database"/></svg>Couper la base</button>
+                </div>
             </form>
 
             <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
                   hx-confirm="Ajouter de la latence sur la liaison avec la base ?">
-                <h2>Latence</h2>
+                <header>
+                    <h2><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>Ralentir la liaison</h2>
+                </header>
+                <p class="discret">Chaque écriture attend. Permet de voir à partir de quel retard la file sature.</p>
                 <input type="hidden" name="type" value="LATENCE">
-                <label>Latence ajoutée (ms)
+                <label>Retard ajouté
                     <input type="number" name="latenceMs" value="500" min="1" required>
+                    <span class="aide-champ">En millisecondes, sur chaque échange avec la base.</span>
                 </label>
-                <label>Variation (ms)
+                <label>Variation
                     <input type="number" name="jitterMs" value="0" min="0">
+                    <span class="aide-champ">En millisecondes, pour un retard irrégulier.</span>
                 </label>
-                <label>Durée (secondes)
+                <label>Durée
                     <input type="number" name="dureeSecondes" value="30" min="1" th:max="${dureeMax}" required>
+                    <span class="aide-champ">En secondes.</span>
                 </label>
-                <button type="submit" class="danger" th:disabled="${actif == null}"><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>Ajouter de la latence</button>
+                <div class="actions">
+                    <button type="submit" class="chaud" th:disabled="${actif == null}">
+                        <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>Ralentir</button>
+                </div>
             </form>
 
             <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
                   hx-confirm="Multiplier le débit de la simulation ?">
-                <h2>Surcharge</h2>
+                <header>
+                    <h2><svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>Surcharger</h2>
+                </header>
+                <p class="discret">Multiplie le nombre de feuilles de soins produites, pour chercher le point de rupture.</p>
                 <input type="hidden" name="type" value="SURCHARGE">
-                <label>Multiplicateur du débit
+                <label>Combien de fois plus de feuilles de soins
                     <select name="multiplicateur">
-                        <option th:each="p : ${paliers}" th:value="${p}" th:text="'x' + ${p}">x5</option>
+                        <option th:each="p : ${paliers}" th:value="${p}" th:text="${p} + ' fois'">5 fois</option>
                     </select>
                 </label>
-                <label>Durée (secondes)
+                <label>Durée
                     <input type="number" name="dureeSecondes" value="30" min="1" th:max="${dureeMax}" required>
+                    <span class="aide-champ">En secondes.</span>
                 </label>
-                <button type="submit" class="danger" th:disabled="${actif == null}"><svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>Surcharger</button>
+                <div class="actions">
+                    <button type="submit" class="chaud" th:disabled="${actif == null}">
+                        <svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>Surcharger</button>
+                </div>
             </form>
 
             <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
                   hx-confirm="Tronquer une partie des événements avant leur écriture ?">
-                <h2>Anomalies : messages tronqués</h2>
+                <header>
+                    <h2><svg class="ico" aria-hidden="true"><use href="#i-croix"/></svg>Tronquer des messages</h2>
+                </header>
+                <p class="discret">Coupe une partie des événements avant l'écriture, comme le ferait un réseau défaillant.</p>
                 <input type="hidden" name="type" value="MESSAGE_TRONQUE">
-                <label>Proportion d'événements touchés (0 à 1)
+                <label>Part des événements touchés
                     <input type="number" name="proportion" value="0.1" min="0.01" max="1" step="0.01" required>
+                    <span class="aide-champ">Entre 0,01 et 1 : 0,1 touche un événement sur dix.</span>
                 </label>
-                <label>Durée (secondes)
+                <label>Durée
                     <input type="number" name="dureeSecondes" value="30" min="1" th:max="${dureeMax}" required>
+                    <span class="aide-champ">En secondes.</span>
                 </label>
-                <button type="submit" class="danger" th:disabled="${actif == null}">Tronquer des messages</button>
+                <div class="actions">
+                    <button type="submit" class="chaud" th:disabled="${actif == null}">
+                        <svg class="ico" aria-hidden="true"><use href="#i-croix"/></svg>Tronquer des messages</button>
+                </div>
             </form>
         </div>
 
@@ -83,34 +122,48 @@
                     hx-confirm="Annuler toutes les actions de chaos et rétablir la liaison avec la base ?">
                 <svg class="ico" aria-hidden="true"><use href="#i-undo"/></svg>Tout rétablir
             </button>
+            <span class="discret">Remet la liaison en état et annule toutes les pannes en cours, sans attendre leur durée.</span>
         </div>
+
         <p class="avert" sec:authorize="!hasAnyRole('ADMIN','OPERATEUR')">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
             Lecture seule : votre rôle ne permet pas de déclencher du chaos.
         </p>
 
         <div id="actions" class="carte" th:fragment="actions"
              th:hx-get="@{/chaos/actions}" hx-trigger="every 3s" hx-swap="outerHTML">
-            <h2>Actions du run <code th:if="${cible}" th:text="${#strings.substring(cible.id.toString(), 0, 8)}">abcd1234</code></h2>
-            <p class="discret" th:if="${#lists.isEmpty(actions)}">Aucune action de chaos.</p>
+            <header>
+                <h2>Pannes provoquées
+                    <code th:if="${cible}" th:text="${#strings.substring(cible.id.toString(), 0, 8)}">abcd1234</code>
+                </h2>
+                <span class="legende">Rafraîchi toutes les trois secondes</span>
+            </header>
+
+            <div class="vide" th:if="${#lists.isEmpty(actions)}">
+                <svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>
+                <b>Aucune panne provoquée</b>
+                <p>Les actions déclenchées apparaissent ici, avec leur durée et le nombre d'événements touchés.</p>
+            </div>
+
             <div class="defilement" th:unless="${#lists.isEmpty(actions)}">
                 <table>
                     <thead>
                     <tr>
-                        <th scope="col">Type</th><th scope="col">Paramètres</th><th scope="col">Début</th>
-                        <th scope="col">Fin prévue</th><th scope="col">Fin</th><th scope="col">Motif</th>
-                        <th scope="col">Auteur</th><th scope="col">Événements touchés</th>
+                        <th scope="col">Panne</th><th scope="col">Réglages</th><th scope="col">Déclenchée à</th>
+                        <th scope="col">Fin prévue</th><th scope="col">Terminée à</th><th scope="col">Raison de la fin</th>
+                        <th scope="col">Déclenchée par</th><th scope="col">Événements touchés</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr th:each="a : ${actions}">
-                        <td><span class="badge" th:classappend="${a.fin == null} ? 'actif'" th:text="${a.type}">LATENCE</span></td>
-                        <td th:text="${a.parametres}">{}</td>
-                        <td th:text="${#temporals.format(a.debut, 'HH:mm:ss')}">12:00:00</td>
-                        <td th:text="${#temporals.format(a.finPrevue, 'HH:mm:ss')}">12:00:30</td>
-                        <td th:text="${a.fin == null} ? 'en cours' : ${#temporals.format(a.fin, 'HH:mm:ss')}">en cours</td>
-                        <td th:text="${a.motifFin}">EXPIREE</td>
+                        <td><span class="badge" th:classappend="${a.fin == null} ? 'charge'" th:text="${a.type}">LATENCE</span></td>
+                        <td class="payload" th:text="${a.parametres}">{}</td>
+                        <td class="chiffre" th:text="${#temporals.format(a.debut, 'HH:mm:ss')}">12:00:00</td>
+                        <td class="chiffre" th:text="${#temporals.format(a.finPrevue, 'HH:mm:ss')}">12:00:30</td>
+                        <td class="chiffre" th:text="${a.fin == null} ? 'en cours' : ${#temporals.format(a.fin, 'HH:mm:ss')}">en cours</td>
+                        <td th:text="${a.motifFin} ?: '—'">EXPIREE</td>
                         <td th:text="${a.auteur}">admin</td>
-                        <td th:text="${a.evenementsTouches}">0</td>
+                        <td class="chiffre" th:text="${#numbers.formatInteger(a.evenementsTouches, 1, 'WHITESPACE')}">0</td>
                     </tr>
                     </tbody>
                 </table>
