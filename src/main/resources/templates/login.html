@@ -12,28 +12,11 @@
 <th:block th:replace="~{icones :: sprite}"></th:block>
 
 <div class="connexion">
+    <!-- Panneau de gauche : le logo seul, aucun texte de presentation. -->
     <aside class="vitrail">
-        <p class="marque">
+        <p class="marque logo-seul">
             <span class="sceau" aria-hidden="true"><svg class="ico"><use href="#i-activity"/></svg></span>
             <b>Echo</b>
-        </p>
-
-        <div>
-            <h2>Des flux de données fabriqués de toutes pièces.</h2>
-            <p>Un domaine après l'autre — prestations, puis affiliation, puis recouvrement — Echo produit des flux
-                synthétiques, y sème des anomalies qu'il connaît à l'avance et subit des pannes provoquées, pour
-                éprouver l'outil de qualité des données sans jamais toucher à un dossier réel.</p>
-        </div>
-
-        <div class="arguments">
-            <span class="argument"><svg class="ico" aria-hidden="true"><use href="#i-activity"/></svg>Des parcours complets, de bout en bout</span>
-            <span class="argument"><svg class="ico" aria-hidden="true"><use href="#i-triangle-alerte"/></svg>Des anomalies connues à l'avance</span>
-            <span class="argument"><svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>Des pannes et des surcharges au choix</span>
-        </div>
-
-        <p class="rappel">
-            <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>
-            Aucune donnée réelle n'entre ici. Assurés, médecins, établissements et montants sont tous fictifs.
         </p>
     </aside>
 
@@ -45,7 +28,6 @@
         </button>
 
         <h1>Se connecter</h1>
-        <p class="sous-titre">Identifiants fournis par l'administrateur d'Echo.</p>
 
         <!-- Message volontairement identique pour un mauvais mot de passe, un compte inconnu ou verrouille. -->
         <p class="alerte" th:if="${param.error}" role="alert">
@@ -70,11 +52,6 @@
                 <svg class="ico" aria-hidden="true"><use href="#i-login"/></svg>Se connecter
             </button>
         </form>
-
-        <p class="pied-guichet">
-            <span>Mot de passe oublié ? Demandez-en un nouveau à un administrateur.</span>
-            <span>Phase prestations</span>
-        </p>
     </main>
 </div>
 </body>

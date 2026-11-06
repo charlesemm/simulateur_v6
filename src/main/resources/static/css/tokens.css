@@ -26,16 +26,16 @@
 }
 
 :root {
-    /* --- Polices et echelle typographique (raison 1,25 depuis 15 px) --- */
+    /* --- Polices et echelle typographique (raison 1,27 depuis 16 px) --- */
     --sans: "Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --mono: "Plex Mono", ui-monospace, Consolas, monospace;
-    --t-xs: 12px;
-    --t-s: 13.5px;
-    --t-m: 15px;
-    --t-l: 19px;
-    --t-xl: 23px;
-    --t-2xl: 29px;
-    --t-3xl: 36px;
+    --t-xs: 13px;
+    --t-s: 14.5px;
+    --t-m: 16px;
+    --t-l: 20.5px;
+    --t-xl: 25px;
+    --t-2xl: 31px;
+    --t-3xl: 39px;
 
     /* --- Neutres, legerement bleutes (jamais un gris pur) --- */
     --n0: #ffffff;
