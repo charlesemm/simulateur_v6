@@ -1,0 +1,120 @@
+/* Echo - elements HTML nus : texte, liens, formulaires, tableaux. Aucune classe ici. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+    margin: 0;
+    background: var(--fond);
+    color: var(--texte);
+    font: 400 var(--t-m)/1.55 var(--sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* Titres : hierarchie par taille et graisse, jamais par capitales. */
+h1, h2, h3, h4 {
+    margin: 0;
+    font-weight: 600;
+    letter-spacing: -.012em;
+    text-wrap: balance;
+}
+h1 { font-size: var(--t-xl); font-weight: 650; }
+h2 { font-size: var(--t-l); }
+h3 { font-size: var(--t-m); }
+h4 { font-size: var(--t-s); }
+
+p { margin: 0 0 var(--e3); max-width: 76ch; }
+p:last-child { margin-bottom: 0; }
+
+a { color: var(--bleu); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { color: var(--bleu-fort); }
+
+code, kbd, samp, pre { font-family: var(--mono); font-size: .92em; }
+
+hr { border: none; border-top: 1px solid var(--bord); margin: var(--e4) 0; }
+
+ul, ol { margin: 0 0 var(--e3); padding-left: 1.2em; }
+li + li { margin-top: var(--e1); }
+
+/* Focus clavier visible partout, sans exception. */
+:focus-visible {
+    outline: 2px solid var(--bleu);
+    outline-offset: 2px;
+    border-radius: var(--r-controle);
+}
+
+/* --- Formulaires --- */
+label { display: block; font-size: var(--t-s); font-weight: 550; }
+label + label { margin-top: var(--e3); }
+
+input, select, textarea {
+    display: block;
+    width: 100%;
+    margin-top: var(--e1);
+    padding: 8px 11px;
+    border: 1px solid var(--bord-fort);
+    border-radius: var(--r-controle);
+    background: var(--surface);
+    color: var(--texte);
+    font: 400 var(--t-m)/1.4 var(--sans);
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+input[type="number"], input[inputmode="numeric"] { font-family: var(--mono); font-weight: 450; }
+input:hover, select:hover, textarea:hover { border-color: var(--n5); }
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--bleu);
+    box-shadow: 0 0 0 3px var(--bleu-doux);
+}
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] {
+    border-color: var(--alerte);
+    background: var(--alerte-fond);
+}
+input::placeholder, textarea::placeholder { color: var(--tres-discret); }
+input[type="file"] { padding: 6px 8px; font-size: var(--t-s); }
+input[type="checkbox"], input[type="radio"] { width: auto; display: inline-block; margin: 0 6px 0 0; accent-color: var(--bleu); }
+textarea { font-family: var(--mono); font-size: var(--t-s); line-height: 1.6; resize: vertical; }
+select { appearance: none; padding-right: 30px;
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position: calc(100% - 16px) calc(50% + 1px), calc(100% - 11px) calc(50% + 1px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+fieldset { border: 1px solid var(--bord); border-radius: var(--r-panneau); margin: var(--e4) 0; padding: var(--e2) var(--e4) var(--e4); }
+legend { padding: 0 var(--e2); font-size: var(--t-s); font-weight: 600; color: var(--discret); }
+
+/* --- Tableaux : registre regle, pas une suite de cartes --- */
+table { width: 100%; border-collapse: collapse; font-size: var(--t-s); }
+caption { text-align: left; padding-bottom: var(--e2); color: var(--discret); font-size: var(--t-s); }
+th, td { text-align: left; padding: 10px var(--e3); border-bottom: 1px solid var(--bord); vertical-align: top; }
+th { font-weight: 600; color: var(--discret); white-space: nowrap; }
+thead th { border-bottom: 1px solid var(--bord-fort); }
+td { font-variant-numeric: tabular-nums; }
+tbody tr { transition: background var(--transition); }
+tbody tr:hover { background: var(--surface-2); }
+tbody tr:last-child td { border-bottom: none; }
+
+dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--e2) var(--e4); margin: 0; font-size: var(--t-s); }
+dt { color: var(--discret); }
+dd { margin: 0; font-weight: 550; overflow-wrap: anywhere; }
+
+img, svg { max-width: 100%; }
+
+/* Texte reserve aux lecteurs d'ecran. */
+.hors-ecran {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+}
+[hidden] { display: none !important; }
+
+@media (max-width: 560px) {
+    dl { grid-template-columns: 1fr; gap: var(--e1) 0; }
+    dl dd { margin-bottom: var(--e2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}

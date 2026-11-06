@@ -8,7 +8,16 @@
         return;
     }
     var POINTS = 60;
-    var etatFlux = document.getElementById('flux-etat');
+    var resume = document.getElementById('sim-resume');
+
+    /* Libellés des états du moteur, tels qu'ils doivent apparaître à l'écran. */
+    var ETATS = {
+        CREE: 'Prête à démarrer',
+        EN_COURS: 'En marche',
+        EN_PAUSE: 'En pause',
+        ARRETE: 'Terminée',
+        ECHOUE: 'Interrompue'
+    };
 
     function el(id) {
         return document.getElementById(id);
@@ -28,14 +37,16 @@
         });
     }
 
-    function badge(id, valeur, bon) {
+    /* Badge d'état : vert quand ça tourne, orange quand c'est une charge ou une panne voulue, rouge sinon. */
+    function badge(id, valeur, ton) {
         var e = el(id);
         if (!e) {
             return;
         }
         e.textContent = valeur;
-        e.classList.toggle('echec', !bon);
-        e.classList.toggle('actif', !!bon);
+        e.classList.toggle('actif', ton === 'ok');
+        e.classList.toggle('charge', ton === 'charge');
+        e.classList.toggle('echec', ton === 'echec');
     }
 
     var reduit = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -74,6 +85,32 @@
         })(debut);
     }
 
+    /* --- Traces des tuiles : une mini-courbe dessinée à la main, sans bibliothèque. --- */
+    var traces = {};
+    function tracer(id, valeur) {
+        var svg = el(id);
+        if (!svg) {
+            return;
+        }
+        var points = traces[id] || (traces[id] = []);
+        points.push(Number(valeur || 0));
+        while (points.length > 40) {
+            points.shift();
+        }
+        var ligne = svg.querySelector('polyline');
+        if (points.length < 2) {
+            ligne.setAttribute('points', '');
+            return;
+        }
+        var max = Math.max.apply(null, points);
+        var min = Math.min.apply(null, points);
+        var etendue = max - min || 1;
+        var pas = 120 / (points.length - 1);
+        ligne.setAttribute('points', points.map(function (v, i) {
+            return (i * pas).toFixed(1) + ',' + (26 - ((v - min) / etendue) * 24).toFixed(1);
+        }).join(' '));
+    }
+
     var graphiques = [];
 
     function courbe(idCanvas, libelle, variableCouleur) {
@@ -106,23 +143,23 @@
     function habiller(g) {
         var couleur = css(g.variableCouleur, '#1565c0');
         var degrade = g.canvas.getContext('2d').createLinearGradient(0, 0, 0, 240);
-        degrade.addColorStop(0, couleur + '66');
+        degrade.addColorStop(0, couleur + '55');
         degrade.addColorStop(1, couleur + '00');
         var jeu = g.data.datasets[0];
         jeu.borderColor = couleur;
         jeu.backgroundColor = degrade;
-        var texte = css('--discret', '#5a6b80');
-        g.options.scales.y.grid = {color: css('--bord', '#dde6f0')};
-        g.options.scales.y.ticks = {color: texte};
-        g.options.plugins.legend.labels.color = texte;
+        var gris = css('--discret', '#5b6c83');
+        g.options.scales.y.grid = {color: css('--bord', '#dae3ee')};
+        g.options.scales.y.ticks = {color: gris};
+        g.options.plugins.legend.labels.color = gris;
         g.update('none');
     }
     document.addEventListener('themechange', function () {
         graphiques.forEach(habiller);
     });
 
-    var debit = courbe('graphique-debit', 'Événements écrits par seconde', '--accent');
-    var latence = courbe('graphique-latence', 'Latence moyenne d\'un lot (ms)', '--vert');
+    var debit = courbe('graphique-debit', 'Lignes enregistrées par seconde', '--bleu');
+    var latence = courbe('graphique-latence', 'Temps d\'enregistrement d\'un paquet (ms)', '--vert');
 
     function pousser(graphique, etiquette, valeur) {
         if (!graphique) {
@@ -138,42 +175,98 @@
         graphique.update();
     }
 
-    function kpis(etat) {
-        animer('k-debit', etat.evenementsEcritsParSeconde, 1);
-        animer('k-total', etat.evenementsEcrits, 0);
-        animer('k-file', etat.fileTaille, 0);
-        animer('k-latence', etat.latenceLotMs, 1);
-        var base = etat.base === 'UP';
-        el('kpi-debit').classList.toggle('ok', base && etat.evenementsEcritsParSeconde > 0);
-        el('kpi-file').classList.toggle('alerte-kpi', etat.fileTaille > 0 && etat.lotsEnEchec > 0);
-        el('kpi-latence').classList.toggle('alerte-kpi', !base || etat.latenceLotMs > 500);
+    /* Le rythme métier : des feuilles de soins par minute, somme de tous les domaines actifs. */
+    function rythmeParMinute(debits) {
+        return (debits || []).reduce(function (total, d) {
+            return total + Number(d.parcoursParSeconde || 0);
+        }, 0) * 60;
+    }
+
+    function phrase(etat) {
+        var run = etat.run;
+        if (!run) {
+            return 'Aucune simulation en cours. Lancez-en une depuis l\'écran Lancement.';
+        }
+        var morceaux = ['Scénario ' + run.scenario];
+        morceaux.push('graine ' + run.seed);
+        if (run.etat === 'EN_COURS') {
+            morceaux.push(nombre(rythmeParMinute(etat.debits)) + ' feuilles de soins par minute');
+        }
+        return morceaux.join(', ') + '.';
     }
 
     function afficher(etat) {
         var run = etat.run;
+        var enMarche = !!run && run.etat === 'EN_COURS';
+        var baseDebout = etat.base === 'UP';
+        var perturbations = (etat.proxy && etat.proxy.toxics) || [];
+
+        texte('ecran-titre', run ? 'Simulation ' + (ETATS[run.etat] || run.etat).toLowerCase() : 'Aucune simulation');
         if (run) {
-            badge('sim-etat', run.etat, run.etat === 'EN_COURS');
-            texte('sim-scenario', run.scenario);
-            texte('sim-graine', run.seed);
-            texte('sim-parcours', nombre(run.parcoursGeneres));
-            texte('sim-emis', nombre(run.evenementsEmis));
+            badge('sim-etat', ETATS[run.etat] || run.etat,
+                enMarche ? 'ok' : run.etat === 'ECHOUE' ? 'echec' : run.etat === 'EN_PAUSE' ? 'charge' : null);
         } else {
-            badge('sim-etat', 'Aucun run', false);
-            texte('sim-scenario', '-');
-            texte('sim-graine', '-');
-            texte('sim-parcours', '-');
-            texte('sim-emis', '-');
+            badge('sim-etat', 'Rien en cours', null);
         }
+        resume.textContent = phrase(etat);
+
         var erreur = el('sim-erreur');
         if (erreur) {
             erreur.hidden = !(run && run.erreur);
             erreur.textContent = run && run.erreur ? run.erreur : '';
         }
 
-        badge('base-etat', etat.base, etat.base === 'UP');
-        badge('proxy-etat', etat.proxy.etat, etat.proxy.etat === 'ACTIF');
-        texte('proxy-toxics', etat.proxy.toxics.length ? etat.proxy.toxics.join(', ') : 'aucune');
+        /* --- Tuiles --- */
+        var parcours = run ? run.parcoursGeneres : 0;
+        var rythme = rythmeParMinute(etat.debits);
+        animer('k-parcours', parcours, 0);
+        animer('k-total', etat.evenementsEcrits, 0);
+        animer('k-rythme', rythme, 0);
+        animer('k-file', etat.fileTaille, 0);
 
+        texte('k-parcours-detail', run
+            ? nombre(run.evenementsEmis) + ' événements produits'
+            : 'en attente d\'une simulation');
+        texte('k-total-detail', nombre(etat.evenementsEcritsParSeconde, 1) + ' lignes par seconde');
+        texte('k-rythme-detail', enMarche ? 'rythme tenu' : 'à l\'arrêt');
+        texte('k-file-detail', etat.fileTaille > 0
+            ? 'écriture en retard sur la génération'
+            : 'rien en attente');
+
+        var detailFile = el('k-file-detail');
+        if (detailFile) {
+            detailFile.classList.toggle('charge', etat.fileTaille > 0);
+        }
+        var detailRythme = el('k-rythme-detail');
+        if (detailRythme) {
+            detailRythme.classList.toggle('bon', enMarche);
+        }
+
+        tracer('trace-parcours', parcours);
+        tracer('trace-total', etat.evenementsEcrits);
+        tracer('trace-rythme', rythme);
+        tracer('trace-file', etat.fileTaille);
+
+        /* --- Santé --- */
+        badge('base-etat', baseDebout ? 'Tout va bien' : 'Base injoignable', baseDebout ? 'ok' : 'echec');
+        texte('s-ecriture', etat.lotsEnEchec > 0
+            ? 'reprises après échec'
+            : etat.fileTaille > 0 ? 'en retard de ' + nombre(etat.fileTaille) + ' lignes' : 'à jour');
+        texte('s-liaison', perturbations.length
+            ? 'perturbée volontairement'
+            : baseDebout ? 'normale, ' + nombre(etat.latenceLotMs, 0) + ' ms par paquet' : 'coupée');
+        texte('s-pannes', perturbations.length ? perturbations.join(', ') : 'aucune');
+        texte('s-echecs', nombre(etat.lotsEnEchec));
+
+        /* --- Ce qui tourne --- */
+        texte('sim-scenario', run ? run.scenario : '—');
+        texte('sim-graine', run ? run.seed : '—');
+        texte('sim-parcours', run ? nombre(run.parcoursGeneres) : '—');
+        texte('sim-emis', run ? nombre(run.evenementsEmis) : '—');
+
+        /* --- Détail technique --- */
+        badge('proxy-etat', etat.proxy.etat, etat.proxy.etat === 'ACTIF' ? 'ok' : 'echec');
+        texte('proxy-toxics', perturbations.length ? perturbations.join(', ') : 'aucune');
         texte('m-ecrits-s', nombre(etat.evenementsEcritsParSeconde, 1));
         texte('m-ecrits', nombre(etat.evenementsEcrits));
         texte('m-file', nombre(etat.fileTaille));
@@ -181,6 +274,7 @@
         texte('m-latence-max', nombre(etat.latenceLotMaxMs, 1) + ' ms');
         texte('m-erreurs', nombre(etat.lotsEnEchec));
 
+        /* --- Par domaine, en rythme métier --- */
         var corps = el('debits');
         corps.textContent = '';
         if (etat.debits.length === 0) {
@@ -188,21 +282,27 @@
             var cellule = document.createElement('td');
             cellule.colSpan = 3;
             cellule.className = 'discret';
-            cellule.textContent = 'Aucun run actif';
+            cellule.textContent = 'Aucune simulation en cours.';
             vide.appendChild(cellule);
             corps.appendChild(vide);
         }
         etat.debits.forEach(function (d) {
             var ligne = document.createElement('tr');
-            [d.domaine, nombre(d.parcoursParSeconde, 1), nombre(d.evenementsParSeconde, 1)].forEach(function (v) {
+            var cellules = [
+                d.domaine,
+                nombre(Number(d.parcoursParSeconde || 0) * 60, 0),
+                nombre(Number(d.evenementsParSeconde || 0) * 60, 0)
+            ];
+            cellules.forEach(function (v, i) {
                 var td = document.createElement('td');
                 td.textContent = v;
+                if (i > 0) {
+                    td.className = 'chiffre';
+                }
                 ligne.appendChild(td);
             });
             corps.appendChild(ligne);
         });
-
-        kpis(etat);
 
         var heure = new Date(etat.instant).toLocaleTimeString('fr-FR');
         pousser(debit, heure, etat.evenementsEcritsParSeconde);
@@ -213,13 +313,12 @@
     source.addEventListener('etat', function (e) {
         try {
             afficher(JSON.parse(e.data));
-            etatFlux.textContent = 'Flux en direct, mis à jour chaque seconde.';
         } catch (erreur) {
-            etatFlux.textContent = 'Donnée illisible reçue du flux.';
+            resume.textContent = 'Le flux a envoyé une donnée illisible.';
         }
     });
     source.onerror = function () {
-        etatFlux.textContent = 'Flux interrompu : nouvelle tentative en cours…';
+        resume.textContent = 'Flux interrompu. Nouvelle tentative en cours…';
     };
     window.addEventListener('beforeunload', function () {
         source.close();

@@ -3,28 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mot de passe - Simulateur CNAM</title>
+    <title>Mot de passe — Echo</title>
+    <meta name="color-scheme" content="light dark">
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script th:src="@{/js/theme.js}"></script>
 </head>
 <body class="centre">
-<main class="carte">
-    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-lock"/></svg>Changer le mot de passe</h1>
-    <p class="info" th:if="${obligatoire}">Votre mot de passe est temporaire : choisissez-en un nouveau pour continuer.</p>
-    <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
-    <form th:action="@{/mot-de-passe}" method="post">
-        <label>Mot de passe actuel
-            <input type="password" name="ancien" autocomplete="current-password" required>
-        </label>
-        <label>Nouveau mot de passe (12 caractères au minimum)
-            <input type="password" name="nouveau" autocomplete="new-password" minlength="12" required>
-        </label>
-        <label>Confirmation
-            <input type="password" name="confirmation" autocomplete="new-password" minlength="12" required>
-        </label>
-        <button type="submit">Enregistrer</button>
-    </form>
-    <form th:action="@{/logout}" method="post">
-        <button type="submit" class="secondaire">Se déconnecter</button>
+<th:block th:replace="~{icones :: sprite}"></th:block>
+<main>
+    <section class="carte">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-lock"/></svg>Changer le mot de passe</h1>
+
+        <p class="info" th:if="${obligatoire}">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+            Votre mot de passe est temporaire. Choisissez-en un nouveau pour continuer.
+        </p>
+        <p class="alerte" th:if="${erreur}" role="alert">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+            <span th:text="${erreur}"></span>
+        </p>
+
+        <form th:action="@{/mot-de-passe}" method="post">
+            <label class="champ">Mot de passe actuel
+                <svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>
+                <input type="password" name="ancien" autocomplete="current-password" required>
+            </label>
+            <label class="champ">Nouveau mot de passe
+                <svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>
+                <input type="password" name="nouveau" autocomplete="new-password" minlength="12" required>
+                <span class="aide-champ">12 caractères au minimum.</span>
+            </label>
+            <label class="champ">Confirmation
+                <svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>
+                <input type="password" name="confirmation" autocomplete="new-password" minlength="12" required>
+            </label>
+            <div class="actions">
+                <button type="submit">Enregistrer le nouveau mot de passe</button>
+            </div>
+        </form>
+    </section>
+
+    <form th:action="@{/logout}" method="post" class="actions">
+        <button type="submit" class="secondaire">
+            <svg class="ico" aria-hidden="true"><use href="#i-logout"/></svg>Se déconnecter
+        </button>
     </form>
 </main>
 </body>

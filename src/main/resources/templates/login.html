@@ -3,36 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Connexion - Simulateur CNAM</title>
+    <title>Connexion — Echo</title>
     <meta name="color-scheme" content="light dark">
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script th:src="@{/js/theme.js}"></script>
 </head>
-<body class="centre">
+<body class="accueil">
 <th:block th:replace="~{icones :: sprite}"></th:block>
-<button type="button" class="icone-seule secondaire bascule-flottant" data-bascule-theme>
-    <svg class="ico t-auto" aria-hidden="true"><use href="#i-monitor"/></svg>
-    <svg class="ico t-light" aria-hidden="true"><use href="#i-sun"/></svg>
-    <svg class="ico t-dark" aria-hidden="true"><use href="#i-moon"/></svg>
-</button>
-<main class="carte">
-    <div class="logo" aria-hidden="true"><svg class="ico"><use href="#i-activity"/></svg></div>
-    <h1>Simulateur de flux CNAM</h1>
-    <p class="discret">Données entièrement synthétiques.</p>
-    <!-- Message volontairement identique pour un mauvais mot de passe, un compte inconnu ou verrouille. -->
-    <p class="alerte" th:if="${param.error}" role="alert">Identifiant ou mot de passe incorrect.</p>
-    <p class="info" th:if="${param.logout}">Vous êtes déconnecté.</p>
-    <form th:action="@{/login}" method="post">
-        <label>Identifiant
-            <span class="champ"><svg class="ico" aria-hidden="true"><use href="#i-user"/></svg>
-                <input type="text" name="username" autocomplete="username" required autofocus></span>
-        </label>
-        <label>Mot de passe
-            <span class="champ"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>
-                <input type="password" name="password" autocomplete="current-password" required></span>
-        </label>
-        <button type="submit" class="plein"><svg class="ico" aria-hidden="true"><use href="#i-logout"/></svg>Se connecter</button>
-    </form>
-</main>
+
+<div class="connexion">
+    <aside class="vitrail">
+        <p class="marque">
+            <span class="sceau" aria-hidden="true"><svg class="ico"><use href="#i-activity"/></svg></span>
+            <b>Echo</b>
+        </p>
+
+        <div>
+            <h2>Des flux de prestations fabriqués de toutes pièces.</h2>
+            <p>Parcours de soins synthétiques, anomalies semées volontairement, pannes provoquées : de quoi éprouver
+                l'outil de qualité des données sans jamais toucher à un dossier réel.</p>
+        </div>
+
+        <div class="arguments">
+            <span class="argument"><svg class="ico" aria-hidden="true"><use href="#i-feuille-soins"/></svg>Feuilles de soins de bout en bout</span>
+            <span class="argument"><svg class="ico" aria-hidden="true"><use href="#i-triangle-alerte"/></svg>Anomalies connues à l'avance</span>
+            <span class="argument"><svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>Crash tests et surcharges</span>
+        </div>
+
+        <p class="rappel">
+            <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>
+            Aucune donnée réelle n'entre ici. Assurés, médecins, établissements et montants sont tous fictifs.
+        </p>
+    </aside>
+
+    <main class="guichet">
+        <button type="button" class="secondaire icone-seule coin" data-bascule-theme>
+            <svg class="ico t-auto" aria-hidden="true"><use href="#i-monitor"/></svg>
+            <svg class="ico t-light" aria-hidden="true"><use href="#i-sun"/></svg>
+            <svg class="ico t-dark" aria-hidden="true"><use href="#i-moon"/></svg>
+        </button>
+
+        <h1>Se connecter</h1>
+        <p class="sous-titre">Identifiants fournis par l'administrateur d'Echo.</p>
+
+        <!-- Message volontairement identique pour un mauvais mot de passe, un compte inconnu ou verrouille. -->
+        <p class="alerte" th:if="${param.error}" role="alert">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+            Identifiant ou mot de passe incorrect.
+        </p>
+        <p class="info" th:if="${param.logout}">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-check"/></svg>
+            Vous êtes déconnecté.
+        </p>
+
+        <form th:action="@{/login}" method="post">
+            <label class="champ">Identifiant
+                <svg class="ico" aria-hidden="true"><use href="#i-user"/></svg>
+                <input type="text" name="username" autocomplete="username" required autofocus>
+            </label>
+            <label class="champ">Mot de passe
+                <svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>
+                <input type="password" name="password" autocomplete="current-password" required>
+            </label>
+            <button type="submit" class="plein">
+                <svg class="ico" aria-hidden="true"><use href="#i-login"/></svg>Se connecter
+            </button>
+        </form>
+
+        <p class="pied-guichet">
+            <span>Mot de passe oublié ? Demandez-en un nouveau à un administrateur.</span>
+            <span>Phase prestations</span>
+        </p>
+    </main>
+</div>
 </body>
 </html>

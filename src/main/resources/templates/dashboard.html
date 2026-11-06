@@ -1,78 +1,137 @@
 <!DOCTYPE html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::main})}">
 <head>
-    <title>Tableau de bord - Simulateur CNAM</title>
+    <title>Tableau de bord — Echo</title>
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-dashboard"/></svg>Tableau de bord</h1>
-    <p id="flux-etat" class="discret" role="status">Connexion au flux en cours…</p>
 
-    <div class="kpis" aria-label="Indicateurs clés">
-        <div class="kpi" id="kpi-debit"><div class="kpi-titre">Débit d'écriture</div>
-            <div><span class="kpi-valeur" id="k-debit" data-decimales="1">0</span><span class="kpi-unite">évt/s</span></div></div>
-        <div class="kpi"><div class="kpi-titre">Événements écrits</div>
-            <div><span class="kpi-valeur" id="k-total">0</span></div></div>
-        <div class="kpi" id="kpi-file"><div class="kpi-titre">File d'attente</div>
-            <div><span class="kpi-valeur" id="k-file">0</span></div></div>
-        <div class="kpi" id="kpi-latence"><div class="kpi-titre">Latence d'un lot</div>
-            <div><span class="kpi-valeur" id="k-latence" data-decimales="1">0</span><span class="kpi-unite">ms</span></div></div>
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-dashboard"/></svg><span id="ecran-titre">Simulation</span></h1>
+        <span id="sim-etat" class="badge">Rien en cours</span>
+    </div>
+    <p class="sous-titre" id="sim-resume" role="status">Connexion au flux en cours…</p>
+
+    <p class="alerte" id="sim-erreur" role="alert" hidden></p>
+
+    <div class="kpis" aria-label="Indicateurs de la simulation">
+        <div class="kpi">
+            <span class="kpi-titre">Feuilles de soins créées</span>
+            <span><span class="kpi-valeur" id="k-parcours">0</span></span>
+            <span class="kpi-detail" id="k-parcours-detail">en attente d'une simulation</span>
+            <svg class="kpi-trace" id="trace-parcours" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true">
+                <polyline fill="none" stroke="var(--bleu)" stroke-width="2" stroke-linejoin="round" points=""/>
+            </svg>
+        </div>
+        <div class="kpi">
+            <span class="kpi-titre">Lignes enregistrées en base</span>
+            <span><span class="kpi-valeur" id="k-total">0</span></span>
+            <span class="kpi-detail" id="k-total-detail">aucune écriture</span>
+            <svg class="kpi-trace" id="trace-total" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true">
+                <polyline fill="none" stroke="var(--vert)" stroke-width="2" stroke-linejoin="round" points=""/>
+            </svg>
+        </div>
+        <div class="kpi">
+            <span class="kpi-titre">Rythme de la simulation</span>
+            <span><span class="kpi-valeur" id="k-rythme" data-decimales="0">0</span><span class="kpi-unite">feuilles / min</span></span>
+            <span class="kpi-detail" id="k-rythme-detail">à l'arrêt</span>
+            <svg class="kpi-trace" id="trace-rythme" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true">
+                <polyline fill="none" stroke="var(--bleu)" stroke-width="2" stroke-linejoin="round" points=""/>
+            </svg>
+        </div>
+        <div class="kpi">
+            <span class="kpi-titre">Reste à enregistrer</span>
+            <span><span class="kpi-valeur" id="k-file">0</span></span>
+            <span class="kpi-detail" id="k-file-detail">rien en attente</span>
+            <svg class="kpi-trace" id="trace-file" viewBox="0 0 120 28" preserveAspectRatio="none" aria-hidden="true">
+                <polyline fill="none" stroke="var(--orange)" stroke-width="2" stroke-linejoin="round" points=""/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="raccourcis" id="raccourcis">
+        <a class="bouton signature" th:href="@{/lancement}">
+            <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Piloter la simulation</a>
+        <a class="bouton secondaire" th:href="@{/evenements}">
+            <svg class="ico" aria-hidden="true"><use href="#i-feuille-soins"/></svg>Voir les feuilles de soins</a>
+        <a class="bouton secondaire" th:href="@{/qualite}">
+            <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Comparer avec l'outil qualité</a>
+        <a class="bouton chaud" th:href="@{/chaos}">
+            <svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>Provoquer une panne</a>
     </div>
 
     <div id="tableau" class="grille" th:data-flux="@{/flux}">
-        <section class="carte" aria-labelledby="t-simulateur">
-            <h2 id="t-simulateur">Simulateur</h2>
-            <p><span id="sim-etat" class="badge">Aucun run</span></p>
-            <dl>
-                <dt>Scénario</dt><dd id="sim-scenario">-</dd>
-                <dt>Graine</dt><dd id="sim-graine">-</dd>
-                <dt>Parcours générés</dt><dd id="sim-parcours">-</dd>
-                <dt>Événements émis</dt><dd id="sim-emis">-</dd>
-            </dl>
-            <p class="alerte" id="sim-erreur" role="alert" hidden></p>
-        </section>
 
-        <section class="carte" aria-labelledby="t-infra">
-            <h2 id="t-infra">Base et liaison</h2>
+        <section class="carte" aria-labelledby="t-sante">
+            <header><h2 id="t-sante">Santé de la simulation</h2><span id="base-etat" class="badge">?</span></header>
             <dl>
-                <dt>Base PostgreSQL</dt><dd><span id="base-etat" class="badge">?</span></dd>
-                <dt>Proxy (Toxiproxy)</dt><dd><span id="proxy-etat" class="badge">?</span></dd>
-                <dt>Perturbations actives</dt><dd id="proxy-toxics">aucune</dd>
+                <dt>Enregistrement en base</dt><dd id="s-ecriture">—</dd>
+                <dt>Liaison avec la base</dt><dd id="s-liaison">—</dd>
+                <dt>Pannes en cours</dt><dd id="s-pannes">aucune</dd>
+                <dt>Écritures en échec</dt><dd id="s-echecs" class="chiffre">0</dd>
             </dl>
         </section>
 
-        <section class="carte" aria-labelledby="t-mesures">
-            <h2 id="t-mesures">Écriture</h2>
+        <section class="carte" aria-labelledby="t-scenario">
+            <header><h2 id="t-scenario">Ce qui tourne</h2></header>
             <dl>
-                <dt>Événements écrits / s</dt><dd id="m-ecrits-s">0</dd>
-                <dt>Événements écrits (total)</dt><dd id="m-ecrits">0</dd>
-                <dt>File d'attente</dt><dd id="m-file">0</dd>
-                <dt>Latence d'un lot (moyenne récente)</dt><dd id="m-latence">0 ms</dd>
-                <dt>Latence d'un lot (maximum)</dt><dd id="m-latence-max">0 ms</dd>
-                <dt>Erreurs d'écriture de lot</dt><dd id="m-erreurs">0</dd>
+                <dt>Scénario</dt><dd id="sim-scenario">—</dd>
+                <dt>Graine</dt><dd id="sim-graine" class="chiffre">—</dd>
+                <dt>Feuilles de soins créées</dt><dd id="sim-parcours" class="chiffre">—</dd>
+                <dt>Événements produits</dt><dd id="sim-emis" class="chiffre">—</dd>
             </dl>
+            <p class="aide-champ">Une même graine rejoue exactement les mêmes patients et les mêmes anomalies.</p>
         </section>
 
-        <section class="carte large" aria-labelledby="t-debit">
-            <h2 id="t-debit">Débit par domaine</h2>
-            <table>
-                <thead>
-                <tr><th scope="col">Domaine</th><th scope="col">Parcours / s</th><th scope="col">Événements émis / s</th></tr>
-                </thead>
-                <tbody id="debits"><tr><td colspan="3" class="discret">Aucun run actif</td></tr></tbody>
-            </table>
+        <section class="carte large" aria-labelledby="t-domaines">
+            <header>
+                <h2 id="t-domaines">Ce que produit chaque domaine</h2>
+                <span class="legende">Mesuré sur la dernière seconde</span>
+            </header>
+            <div class="defilement">
+                <table>
+                    <thead>
+                    <tr>
+                        <th scope="col">Domaine</th>
+                        <th scope="col">Feuilles de soins par minute</th>
+                        <th scope="col">Événements par minute</th>
+                    </tr>
+                    </thead>
+                    <tbody id="debits">
+                    <tr><td colspan="3" class="discret">Aucune simulation en cours.</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </section>
 
         <section class="carte large" aria-labelledby="t-g1">
-            <h2 id="t-g1">Débit d'écriture (60 dernières secondes)</h2>
+            <header><h2 id="t-g1">Enregistrements par seconde</h2>
+                <span class="legende">Soixante dernières secondes</span></header>
             <div class="graphique"><canvas id="graphique-debit" role="img"
-                                           aria-label="Courbe du débit d'écriture en événements par seconde"></canvas></div>
+                                           aria-label="Courbe du nombre de lignes enregistrées par seconde"></canvas></div>
         </section>
 
         <section class="carte large" aria-labelledby="t-g2">
-            <h2 id="t-g2">Latence d'écriture d'un lot, en ms (60 dernières secondes)</h2>
+            <header><h2 id="t-g2">Temps d'enregistrement d'un paquet</h2>
+                <span class="legende">En millisecondes, soixante dernières secondes</span></header>
             <div class="graphique"><canvas id="graphique-latence" role="img"
-                                           aria-label="Courbe de la latence d'écriture d'un lot en millisecondes"></canvas></div>
+                                           aria-label="Courbe du temps d'enregistrement d'un paquet en millisecondes"></canvas></div>
+        </section>
+
+        <section class="carte large">
+            <details id="technique">
+                <summary>Détail technique</summary>
+                <dl>
+                    <dt>Lignes enregistrées par seconde</dt><dd id="m-ecrits-s" class="chiffre">0</dd>
+                    <dt>Lignes enregistrées au total</dt><dd id="m-ecrits" class="chiffre">0</dd>
+                    <dt>File d'attente du collecteur</dt><dd id="m-file" class="chiffre">0</dd>
+                    <dt>Temps d'un paquet, moyenne récente</dt><dd id="m-latence" class="chiffre">0 ms</dd>
+                    <dt>Temps d'un paquet, maximum</dt><dd id="m-latence-max" class="chiffre">0 ms</dd>
+                    <dt>Paquets en échec</dt><dd id="m-erreurs" class="chiffre">0</dd>
+                    <dt>Liaison (Toxiproxy)</dt><dd><span id="proxy-etat" class="badge">?</span></dd>
+                    <dt>Perturbations injectées</dt><dd id="proxy-toxics">aucune</dd>
+                </dl>
+            </details>
         </section>
     </div>
 

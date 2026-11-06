@@ -1,0 +1,183 @@
+/* Echo - jetons de design. Seul endroit ou une couleur, une taille ou un espacement est defini.
+   Aucune ressource externe : les polices sont servies depuis /fonts. */
+
+/* IBM Plex Sans : variable, une seule requete pour toutes les graisses. */
+@font-face {
+    font-family: "Plex Sans";
+    src: url("../fonts/plex-sans-var.woff2") format("woff2-variations");
+    font-weight: 100 700;
+    font-style: normal;
+    font-display: swap;
+}
+/* IBM Plex Mono : reserve aux chiffres, montants et identifiants. */
+@font-face {
+    font-family: "Plex Mono";
+    src: url("../fonts/plex-mono-400.woff2") format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Plex Mono";
+    src: url("../fonts/plex-mono-500.woff2") format("woff2");
+    font-weight: 500 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    /* --- Polices et echelle typographique (raison 1,25 depuis 15 px) --- */
+    --sans: "Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "Plex Mono", ui-monospace, Consolas, monospace;
+    --t-xs: 12px;
+    --t-s: 13.5px;
+    --t-m: 15px;
+    --t-l: 19px;
+    --t-xl: 23px;
+    --t-2xl: 29px;
+    --t-3xl: 36px;
+
+    /* --- Neutres, legerement bleutes (jamais un gris pur) --- */
+    --n0: #ffffff;
+    --n1: #f4f7fb;
+    --n2: #eaf0f7;
+    --n3: #dae3ee;
+    --n4: #bdcade;
+    --n5: #8d9db4;
+    --n6: #5b6c83;
+    --n8: #1c2c41;
+    --n9: #0e1b2b;
+
+    /* --- Couleurs de marque et d'action --- */
+    --bleu: #1565c0;
+    --bleu-fort: #0d47a1;
+    --bleu-doux: #e5effb;
+    --vert: #15a05a;
+    --vert-doux: #e3f6eb;
+    --orange: #e2670b;
+    --orange-doux: #fdeedd;
+    /* Signature Echo : reserve a la marque, a la destination courante et au panneau de connexion. */
+    --signature: linear-gradient(135deg, #1565c0 0%, #15a05a 100%);
+
+    /* --- Surfaces --- */
+    --fond: var(--n1);
+    --surface: var(--n0);
+    --surface-2: var(--n2);
+    --bord: var(--n3);
+    --bord-fort: var(--n4);
+    --texte: var(--n9);
+    --discret: var(--n6);
+    --tres-discret: var(--n5);
+
+    /* --- Sens : vert = ca tourne, orange = charge ou panne voulue, rouge = anomalie subie --- */
+    --ok: #0f7a44;
+    --ok-fond: var(--vert-doux);
+    --avert: #b35309;
+    --avert-fond: var(--orange-doux);
+    --alerte: #b3261e;
+    --alerte-fond: #fdecea;
+
+    /* --- Espacements --- */
+    --e1: 4px;
+    --e2: 8px;
+    --e3: 12px;
+    --e4: 16px;
+    --e5: 24px;
+    --e6: 32px;
+    --e7: 48px;
+
+    /* --- Formes : le rayon marque le role, il n'est pas uniforme --- */
+    --r-controle: 6px;
+    --r-panneau: 10px;
+    --r-ronde: 999px;
+
+    /* --- Elevation : deux niveaux, pas plus --- */
+    --ombre-pose: 0 1px 2px rgba(14, 27, 43, .05);
+    --ombre-flottante: 0 10px 28px rgba(14, 27, 43, .12), 0 2px 6px rgba(14, 27, 43, .05);
+
+    --duree: .16s;
+    --courbe: cubic-bezier(.4, 0, .2, 1);
+    --transition: var(--duree) var(--courbe);
+
+    --rail-large: 240px;
+    --rail-etroit: 64px;
+    --page-max: 1320px;
+
+    color-scheme: light;
+}
+
+/* Sombre : systeme sans choix explicite, ou choix explicite. Les deux blocs portent les memes valeurs. */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]):not([data-theme="dark"]) {
+        --n0: #0d1626;
+        --n1: #080f1b;
+        --n2: #15223a;
+        --n3: #203049;
+        --n4: #35486a;
+        --n5: #6d809b;
+        --n6: #97a7bd;
+        --n8: #d3dce8;
+        --n9: #e9eff7;
+
+        --bleu: #5aa5f7;
+        --bleu-fort: #8cc2fb;
+        --bleu-doux: #13284a;
+        --vert: #3ddc97;
+        --vert-doux: #0f3324;
+        --orange: #ff9b48;
+        --orange-doux: #39230f;
+        --signature: linear-gradient(135deg, #5aa5f7 0%, #3ddc97 100%);
+
+        --fond: var(--n1);
+        --surface: var(--n0);
+        --surface-2: var(--n2);
+
+        --ok: #3ddc97;
+        --ok-fond: var(--vert-doux);
+        --avert: #ffb06b;
+        --avert-fond: var(--orange-doux);
+        --alerte: #ff8f87;
+        --alerte-fond: #3a1d1b;
+
+        --ombre-pose: 0 1px 2px rgba(0, 0, 0, .5);
+        --ombre-flottante: 0 12px 30px rgba(0, 0, 0, .6), 0 2px 6px rgba(0, 0, 0, .4);
+
+        color-scheme: dark;
+    }
+}
+:root[data-theme="dark"] {
+    --n0: #0d1626;
+    --n1: #080f1b;
+    --n2: #15223a;
+    --n3: #203049;
+    --n4: #35486a;
+    --n5: #6d809b;
+    --n6: #97a7bd;
+    --n8: #d3dce8;
+    --n9: #e9eff7;
+
+    --bleu: #5aa5f7;
+    --bleu-fort: #8cc2fb;
+    --bleu-doux: #13284a;
+    --vert: #3ddc97;
+    --vert-doux: #0f3324;
+    --orange: #ff9b48;
+    --orange-doux: #39230f;
+    --signature: linear-gradient(135deg, #5aa5f7 0%, #3ddc97 100%);
+
+    --fond: var(--n1);
+    --surface: var(--n0);
+    --surface-2: var(--n2);
+
+    --ok: #3ddc97;
+    --ok-fond: var(--vert-doux);
+    --avert: #ffb06b;
+    --avert-fond: var(--orange-doux);
+    --alerte: #ff8f87;
+    --alerte-fond: #3a1d1b;
+
+    --ombre-pose: 0 1px 2px rgba(0, 0, 0, .5);
+    --ombre-flottante: 0 12px 30px rgba(0, 0, 0, .6), 0 2px 6px rgba(0, 0, 0, .4);
+
+    color-scheme: dark;
+}

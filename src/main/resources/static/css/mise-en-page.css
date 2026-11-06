@@ -1,0 +1,216 @@
+/* Echo - coquille de l'application : rail lateral, en-tete, barre basse, page de connexion. */
+
+.saut { position: absolute; left: -9999px; }
+.saut:focus {
+    left: var(--e2); top: var(--e2); z-index: 80;
+    padding: 8px var(--e3); background: var(--surface); color: var(--texte);
+    border: 1px solid var(--bord-fort); border-radius: var(--r-controle);
+}
+
+/* ---------- Coquille ---------- */
+.coquille { display: grid; grid-template-columns: var(--rail-large) minmax(0, 1fr); min-height: 100vh; }
+[data-rail="etroit"] .coquille { grid-template-columns: var(--rail-etroit) minmax(0, 1fr); }
+
+/* ---------- Rail lateral ---------- */
+.rail {
+    position: sticky; top: 0; align-self: start; height: 100vh;
+    display: flex; flex-direction: column; gap: 2px;
+    padding: var(--e3) var(--e2);
+    background: var(--surface); border-right: 1px solid var(--bord);
+    overflow-y: auto; overscroll-behavior: contain;
+}
+.marque {
+    display: flex; align-items: center; gap: var(--e2);
+    padding: var(--e2); margin-bottom: var(--e3);
+    color: var(--texte); text-decoration: none;
+}
+.sceau {
+    width: 30px; height: 30px; flex: none; border-radius: 9px;
+    display: grid; place-items: center;
+    background: var(--signature); color: #fff;
+}
+.sceau .ico { width: 17px; height: 17px; stroke-width: 2; }
+.marque b { font-size: 17px; font-weight: 650; letter-spacing: -.02em; }
+
+.groupe { padding: var(--e3) var(--e2) var(--e1); font-size: var(--t-xs); font-weight: 600; color: var(--tres-discret); }
+.rail a.destination {
+    display: flex; align-items: center; gap: 11px;
+    padding: 8px 10px; border-radius: var(--r-controle);
+    color: var(--discret); text-decoration: none;
+    font-size: var(--t-s); font-weight: 550; white-space: nowrap;
+    transition: background var(--transition), color var(--transition);
+}
+.rail a.destination:hover { background: var(--bleu-doux); color: var(--bleu); }
+.rail a.destination[aria-current="page"] { background: var(--signature); color: #fff; }
+.rail a.destination .ico { width: 17px; height: 17px; }
+.rail a.destination.chaude:hover { background: var(--avert-fond); color: var(--avert); }
+.compteur {
+    margin-left: auto; padding: 0 7px; border-radius: var(--r-ronde);
+    background: var(--ok-fond); color: var(--ok);
+    font-family: var(--mono); font-size: var(--t-xs); font-weight: 500;
+}
+.rail a.destination[aria-current="page"] .compteur { background: rgba(255, 255, 255, .22); color: #fff; }
+.rail-bas { margin-top: auto; padding-top: var(--e3); }
+.rail-bas button { width: 100%; justify-content: flex-start; gap: 11px; padding: 8px 10px; }
+
+[data-rail="etroit"] .rail .libelle,
+[data-rail="etroit"] .rail .groupe,
+[data-rail="etroit"] .rail .marque b,
+[data-rail="etroit"] .rail .compteur { display: none; }
+[data-rail="etroit"] .rail a.destination,
+[data-rail="etroit"] .rail-bas button { justify-content: center; padding: 10px 0; }
+[data-rail="etroit"] .rail .marque { justify-content: center; padding: var(--e2) 0; }
+[data-rail="etroit"] .pivote { transform: rotate(180deg); }
+
+/* ---------- En-tete ---------- */
+.entete {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: var(--e3);
+    padding: var(--e3) var(--e4);
+    border-bottom: 1px solid var(--bord);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter: blur(10px);
+}
+.fil { font-size: var(--t-s); color: var(--discret); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fil b { color: var(--texte); font-weight: 550; }
+
+.recherche {
+    margin-left: auto; display: flex; align-items: center; gap: var(--e2);
+    min-width: 0; max-width: 24rem; flex: 1 1 14rem;
+    padding: 7px 10px;
+    border: 1px solid var(--bord-fort); border-radius: var(--r-ronde);
+    background: var(--surface); color: var(--discret);
+    font: 400 var(--t-s) var(--sans); text-align: left; cursor: text;
+}
+.recherche:hover { border-color: var(--n5); }
+.recherche .etiquette { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.recherche kbd {
+    padding: 2px 6px; border: 1px solid var(--bord); border-radius: 4px;
+    background: var(--surface-2); font-size: 11px; font-weight: 500; color: var(--discret);
+}
+.compte { display: flex; align-items: center; gap: var(--e2); }
+.compte form { margin: 0; }
+.jeton {
+    width: 32px; height: 32px; flex: none; border-radius: 50%;
+    display: grid; place-items: center;
+    border: 1px solid var(--bord); background: var(--bleu-doux); color: var(--bleu);
+    font-size: var(--t-xs); font-weight: 600;
+}
+
+/* Bascule de theme : une seule des trois icones est visible. */
+.t-auto, .t-light, .t-dark { display: none; }
+:root:not([data-choix]) .t-auto,
+[data-choix="auto"] .t-auto,
+[data-choix="light"] .t-light,
+[data-choix="dark"] .t-dark { display: inline-block; }
+
+/* ---------- Contenu ---------- */
+.page {
+    max-width: var(--page-max); margin: 0 auto;
+    padding: var(--e5) var(--e4) var(--e7);
+    display: flex; flex-direction: column; gap: var(--e4);
+}
+.titre-ecran { display: flex; align-items: baseline; gap: var(--e3); flex-wrap: wrap; }
+.titre-ecran h1 { display: flex; align-items: center; }
+.sous-titre { font-size: var(--t-s); color: var(--discret); margin: 0; }
+
+/* ---------- Barre basse (mobile) ---------- */
+.basse { display: none; }
+
+/* ---------- Page de connexion ---------- */
+body.accueil { min-height: 100vh; display: grid; }
+.connexion { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); min-height: 100vh; background: var(--surface); }
+.vitrail {
+    position: relative; overflow: hidden; color: #fff;
+    padding: var(--e7) var(--e6);
+    display: flex; flex-direction: column; justify-content: space-between; gap: var(--e5);
+    background: linear-gradient(150deg, #0d47a1 0%, #1565c0 44%, #15a05a 100%);
+}
+.vitrail::after {
+    content: ""; position: absolute; inset: auto -70px -140px auto;
+    width: 320px; height: 320px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(226, 103, 11, .5), transparent 68%);
+}
+.vitrail > * { position: relative; }
+.vitrail .marque { margin: 0; color: #fff; }
+.vitrail .sceau { background: rgba(255, 255, 255, .18); }
+.vitrail h2 { font-size: var(--t-xl); font-weight: 600; max-width: 24ch; }
+.vitrail p { color: rgba(255, 255, 255, .85); font-size: var(--t-s); max-width: 38ch; }
+.arguments { display: flex; flex-direction: column; gap: var(--e2); }
+.argument { display: flex; align-items: center; gap: var(--e2); font-size: var(--t-s); font-weight: 500; }
+.argument .ico { opacity: .9; }
+.rappel {
+    display: flex; align-items: flex-start; gap: var(--e2);
+    padding: var(--e3); border-radius: var(--r-controle);
+    background: rgba(255, 255, 255, .13); border: 1px solid rgba(255, 255, 255, .22);
+    font-size: var(--t-xs); line-height: 1.5; color: #fff;
+}
+.rappel .ico { flex: none; margin-top: 1px; color: #ffcb92; }
+
+.guichet {
+    position: relative;
+    padding: var(--e7) var(--e6);
+    display: flex; flex-direction: column; justify-content: center; gap: var(--e3);
+}
+.guichet > form { display: flex; flex-direction: column; gap: var(--e3); }
+.guichet .coin { position: absolute; top: var(--e3); right: var(--e3); }
+.guichet h1 { font-size: var(--t-xl); }
+.guichet .sous-titre { margin-bottom: var(--e2); }
+.pied-guichet { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--e2); font-size: var(--t-xs); color: var(--discret); }
+
+/* Champ avec icone a gauche. */
+.champ { position: relative; display: block; }
+/* L'icone se place sur la ligne du champ, sous le libelle (qui occupe la premiere ligne). */
+.champ > .ico { position: absolute; left: 11px; top: 2.5em; color: var(--discret); pointer-events: none; }
+.champ input { padding-left: 34px; }
+.champ:focus-within > .ico { color: var(--bleu); }
+
+/* ---------- Ecran centre (changement de mot de passe) ---------- */
+body.centre { min-height: 100vh; display: grid; place-items: center; padding: var(--e4); }
+body.centre > main { width: 100%; max-width: 440px; }
+body.centre .carte { box-shadow: var(--ombre-flottante); }
+body.centre form + form { margin-top: var(--e3); }
+
+/* ---------- Adaptations ---------- */
+@media (max-width: 1080px) {
+    .coquille, [data-rail="etroit"] .coquille { grid-template-columns: var(--rail-etroit) minmax(0, 1fr); }
+    .rail .libelle, .rail .groupe, .rail .marque b, .rail .compteur { display: none; }
+    .rail a.destination, .rail-bas button { justify-content: center; padding: 10px 0; }
+    .rail .marque { justify-content: center; padding: var(--e2) 0; }
+    .rail-bas .replier { display: none; }
+    .connexion { grid-template-columns: 1fr; min-height: 0; }
+    .vitrail { padding: var(--e5) var(--e4); gap: var(--e4); }
+    .vitrail h2 { font-size: var(--t-l); }
+    .guichet { padding: var(--e6) var(--e4); }
+}
+
+@media (max-width: 720px) {
+    .coquille, [data-rail="etroit"] .coquille { grid-template-columns: minmax(0, 1fr); }
+    .rail { display: none; }
+    .page { padding: var(--e4) var(--e3) 84px; }
+    .fil { display: none; }
+    .recherche { margin-left: 0; }
+    .recherche .etiquette, .recherche kbd { display: none; }
+    .recherche { flex: none; width: 36px; height: 36px; justify-content: center; padding: 0; }
+
+    .basse {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+        display: flex; gap: 2px;
+        padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+        background: color-mix(in srgb, var(--surface) 94%, transparent);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid var(--bord);
+    }
+    .basse a {
+        flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px;
+        padding: 6px 0; border-radius: var(--r-controle);
+        color: var(--discret); text-decoration: none; font-size: 10.5px; font-weight: 550;
+    }
+    .basse a .ico { width: 19px; height: 19px; }
+    .basse a[aria-current="page"] { color: var(--bleu); background: var(--bleu-doux); }
+    .vitrail .arguments { display: none; }
+}
+
+@media (max-width: 420px) {
+    .cache-mobile { display: none; }
+}
