@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -30,8 +31,14 @@ class TableauDeBordServiceTest {
     private final ScenarioService scenarios = mock(ScenarioService.class);
     private final InfrastructureEtat infra = mock(InfrastructureEtat.class);
     private final SimpleMeterRegistry registre = new SimpleMeterRegistry();
-    private final TableauDeBordService service = new TableauDeBordService(runs, scenarios, registre, infra,
-            Clock.fixed(Instant.parse("2026-11-05T10:00:00Z"), ZoneOffset.UTC));
+    /** Horloge pilotee par le test : le temps n'avance que quand on le dit (ni sleep ni aleas de machine). */
+    private final AtomicReference<Instant> maintenant = new AtomicReference<>(Instant.parse("2026-11-05T10:00:00Z"));
+    private final Clock horloge = new Clock() {
+        @Override public ZoneOffset getZone() { return ZoneOffset.UTC; }
+        @Override public Clock withZone(java.time.ZoneId zone) { return this; }
+        @Override public Instant instant() { return maintenant.get(); }
+    };
+    private final TableauDeBordService service = new TableauDeBordService(runs, scenarios, registre, infra, horloge);
     private final UUID id = UUID.randomUUID();
 
     private RunInfo run(long parcours, long emis) {
@@ -55,7 +62,7 @@ class TableauDeBordServiceTest {
 
     @Test
     @DisplayName("Avec un run actif : le debit est la difference entre deux echantillons, rattache au domaine du scenario")
-    void debitMesure() throws InterruptedException {
+    void debitMesure() {
         when(infra.instantane()).thenReturn(
                 new InfrastructureEtat.Instantane("DOWN", new ProxyVue("COUPE", List.of("latence"))));
         when(scenarios.charger("parcours-normal")).thenReturn(new Scenario("parcours-normal", 42L, 1.0,
@@ -65,7 +72,7 @@ class TableauDeBordServiceTest {
         when(runs.actif()).thenReturn(Optional.of(run(0, 0)));
         service.echantillonner();   // premier echantillon : pas de difference possible
 
-        Thread.sleep(200);
+        maintenant.set(maintenant.get().plusSeconds(2));   // exactement 2 s simulees
         ecrits.increment(100);
         when(runs.actif()).thenReturn(Optional.of(run(10, 50)));
         EtatTableauDeBord etat = service.echantillonner();
@@ -73,9 +80,9 @@ class TableauDeBordServiceTest {
         assertThat(etat.run().etat()).isEqualTo("EN_COURS");
         assertThat(etat.debits()).hasSize(1);
         assertThat(etat.debits().get(0).domaine()).isEqualTo("prestations");
-        assertThat(etat.debits().get(0).parcoursParSeconde()).isBetween(10 / 5.0, 10 / 0.19);
-        assertThat(etat.debits().get(0).evenementsParSeconde()).isBetween(50 / 5.0, 50 / 0.19);
-        assertThat(etat.evenementsEcritsParSeconde()).isBetween(100 / 5.0, 100 / 0.19);
+        assertThat(etat.debits().get(0).parcoursParSeconde()).isEqualTo(10 / 2.0);
+        assertThat(etat.debits().get(0).evenementsParSeconde()).isEqualTo(50 / 2.0);
+        assertThat(etat.evenementsEcritsParSeconde()).isEqualTo(100 / 2.0);
         assertThat(etat.evenementsEcrits()).isEqualTo(100);
         assertThat(etat.base()).isEqualTo("DOWN");
         assertThat(etat.proxy().toxics()).containsExactly("latence");
