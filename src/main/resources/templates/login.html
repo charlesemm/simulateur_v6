@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Connexion - Simulateur CNAM</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="centre">
+<main class="carte">
+    <h1>Simulateur de flux CNAM</h1>
+    <p class="discret">Données entièrement synthétiques.</p>
+    <!-- Message volontairement identique pour un mauvais mot de passe, un compte inconnu ou verrouille. -->
+    <p class="alerte" th:if="${param.error}" role="alert">Identifiant ou mot de passe incorrect.</p>
+    <p class="info" th:if="${param.logout}">Vous êtes déconnecté.</p>
+    <form th:action="@{/login}" method="post">
+        <label>Identifiant
+            <input type="text" name="username" autocomplete="username" required autofocus>
+        </label>
+        <label>Mot de passe
+            <input type="password" name="password" autocomplete="current-password" required>
+        </label>
+        <button type="submit">Se connecter</button>
+    </form>
+</main>
+</body>
+</html>

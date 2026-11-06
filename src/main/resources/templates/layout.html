@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!--/* Gabarit commun. Chaque page : <html th:replace="~{layout :: page(~{::title}, ~{::main})}"> */-->
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:fragment="page(titre, contenu)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" th:content="${_csrf?.token}" content="">
+    <meta name="csrf-header" th:content="${_csrf?.headerName}" content="X-CSRF-TOKEN">
+    <!-- htmx : pas d'évaluation de code ni de scripts reçus dans les réponses -->
+    <meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false,"selfRequestsOnly":true}'>
+    <title th:replace="${titre}">Simulateur CNAM</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script th:src="@{/js/vendor/htmx.min.js}" defer></script>
+    <script th:src="@{/js/app.js}" defer></script>
+</head>
+<body>
+<a class="saut" href="#contenu">Aller au contenu</a>
+<header class="barre">
+    <span class="marque">Simulateur CNAM</span>
+    <nav aria-label="Navigation principale">
+        <a th:href="@{/dashboard}">Tableau de bord</a>
+        <a th:href="@{/lancement}">Lancement</a>
+        <a th:href="@{/chaos}">Chaos</a>
+        <a th:href="@{/evenements}">Événements</a>
+        <a th:href="@{/historique}">Historique</a>
+        <a th:href="@{/scenarios}">Scénarios</a>
+        <a th:href="@{/admin/utilisateurs}" sec:authorize="hasRole('ADMIN')">Administration</a>
+    </nav>
+    <div class="compte">
+        <span sec:authentication="name">utilisateur</span>
+        <a th:href="@{/mot-de-passe}">Mot de passe</a>
+        <form th:action="@{/logout}" method="post">
+            <button type="submit" class="secondaire">Déconnexion</button>
+        </form>
+    </div>
+</header>
+<main th:replace="${contenu}">
+    Contenu
+</main>
+</body>
+</html>

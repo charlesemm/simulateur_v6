@@ -17,7 +17,13 @@ public record SimulateurProperties(
         Ecriture ecriture,
         @DefaultValue Chaos chaos) {
 
-    public record Securite(String cleApi, String motDePasseAdminInitial, int echecsAvantVerrouillage) {
+    /**
+     * @param echecsAvantVerrouillage echecs de connexion consecutifs avant verrouillage du compte
+     * @param verrouillageMinutes     duree du verrouillage temporaire
+     */
+    public record Securite(String cleApi, String motDePasseAdminInitial,
+                           @DefaultValue("5") int echecsAvantVerrouillage,
+                           @DefaultValue("15") int verrouillageMinutes) {
     }
 
     public record Toxiproxy(String url, String proxy) {

@@ -1,39 +1,50 @@
 package ci.cnam.simulator.security;
 
-import ci.cnam.simulator.SimulateurProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
+import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Deux chaines separees, comme prevu au cahier des charges :
  * <ul>
  *   <li>{@code /api/**} : cle d'API ({@link ApiKeyFilter}), sans session, CSRF desactive ;</li>
- *   <li>le reste : formulaire de connexion, session, CSRF actif.</li>
+ *   <li>le reste : formulaire de connexion, session, CSRF actif, roles {@link Role} verifies cote serveur
+ *       ({@code @PreAuthorize}).</li>
  * </ul>
- * Les roles utilisateur ({@code ADMIN}, {@code OPERATEUR}, {@code OBSERVATEUR}) et les comptes
- * en base viennent a la brique "Securite et interface".
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
-    /** Chemins de documentation, laisses ouverts pour que Swagger puisse s'afficher et tester. */
+    /** Documentation : ouverte aux comptes connectes seulement (la cle d'API se saisit dans Swagger). */
     private static final String[] DOCUMENTATION = {
             "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**"
     };
 
+    /** Ressources servies localement, necessaires a la page de connexion elle-meme. */
+    private static final String[] RESSOURCES_PUBLIQUES = {"/css/**", "/js/**", "/error"};
+
     @Bean
-    ApiKeyFilter apiKeyFilter(SimulateurProperties proprietes) {
-        return new ApiKeyFilter(proprietes.securite().cleApi());
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    ApiKeyFilter apiKeyFilter(ApiKeyService cles) {
+        return new ApiKeyFilter(cles::valide);
     }
 
     /**
@@ -74,9 +85,18 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(a -> a
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
-                        .requestMatchers(DOCUMENTATION).permitAll()
+                        .requestMatchers("/login").permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers(RESSOURCES_PUBLIQUES).permitAll()
+                        .requestMatchers(DOCUMENTATION).authenticated()
                         .anyRequest().authenticated())
-                .formLogin(Customizer.withDefaults());
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        // Message identique pour mauvais mot de passe, compte inconnu, verrouille ou desactive.
+                        .failureHandler(new SimpleUrlAuthenticationFailureHandler("/login?error"))
+                        .defaultSuccessUrl("/", false))
+                .logout(logout -> logout.logoutSuccessUrl("/login?logout"))
+                .addFilterAfter(new MotDePasseAChangerFilter(), AnonymousAuthenticationFilter.class);
         return http.build();
     }
 }

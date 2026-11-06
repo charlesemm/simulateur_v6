@@ -61,6 +61,7 @@ class ApiMockMvcTest {
 
     @Autowired MockMvc mvc;
     @MockitoBean RunManager runs;
+    @MockitoBean ci.cnam.simulator.security.AuditService audit;
     @MockitoBean ScenarioService scenarios;
     @MockitoBean EventQueryService evenements;
 

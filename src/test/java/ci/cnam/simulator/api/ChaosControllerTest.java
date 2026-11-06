@@ -51,6 +51,7 @@ class ChaosControllerTest {
 
     @Autowired MockMvc mvc;
     @MockitoBean ChaosInjector chaos;
+    @MockitoBean ci.cnam.simulator.security.AuditService audit;
 
     private static ChaosAction action(UUID run, ChaosType type) {
         Instant debut = Instant.parse("2026-01-01T08:00:00Z");

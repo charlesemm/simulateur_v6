@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title>Lancement - Simulateur CNAM</title>
+</head>
+<body>
+<main id="contenu" class="page">
+    <h1>Lancement d'une simulation</h1>
+
+    <section id="zone" th:fragment="zone" aria-live="polite">
+        <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
+        <p class="info" th:if="${message}" th:text="${message}" role="status"></p>
+
+        <div class="carte" th:if="${actif}">
+            <h2>Run en cours</h2>
+            <dl>
+                <dt>Identifiant</dt><dd th:text="${actif.id}">id</dd>
+                <dt>Scénario</dt><dd th:text="${actif.scenario}">scénario</dd>
+                <dt>Graine</dt><dd th:text="${actif.seed}">42</dd>
+                <dt>État</dt><dd><span class="badge" th:text="${actif.etat}">EN_COURS</span></dd>
+                <dt>Parcours / événements</dt><dd th:text="${actif.parcoursGeneres + ' / ' + actif.evenementsEmis}">0 / 0</dd>
+            </dl>
+            <div class="actions" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
+                <button type="button" th:if="${actif.etat.name() == 'EN_COURS'}"
+                        th:hx-post="@{/lancement/{id}/pause(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML">
+                    Pause
+                </button>
+                <button type="button" th:if="${actif.etat.name() == 'EN_PAUSE'}"
+                        th:hx-post="@{/lancement/{id}/reprendre(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML">
+                    Reprendre
+                </button>
+                <button type="button" class="danger"
+                        th:hx-post="@{/lancement/{id}/arreter(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML"
+                        hx-confirm="Arrêter le run en cours ? Les événements en attente seront écrits avant l'arrêt.">
+                    Arrêter
+                </button>
+            </div>
+        </div>
+
+        <div class="carte" th:unless="${actif}">
+            <h2>Nouveau run</h2>
+            <form sec:authorize="hasAnyRole('ADMIN','OPERATEUR')" th:hx-post="@{/lancement}" hx-target="#zone"
+                  hx-swap="outerHTML">
+                <label>Scénario
+                    <select name="scenario" required>
+                        <option th:each="s : ${scenarios}" th:value="${s.nom}" th:text="${s.nom}">parcours-normal</option>
+                    </select>
+                </label>
+                <label>Graine (vide = celle du scénario)
+                    <input type="number" name="graine" step="1" inputmode="numeric">
+                </label>
+                <label>Vitesse du temps : secondes simulées par seconde réelle (vide = celle du scénario)
+                    <input type="number" name="vitesse" min="0.001" max="100000" step="any" list="vitesses">
+                    <datalist id="vitesses"><option value="1"></option><option value="10"></option>
+                        <option value="60"></option><option value="100"></option></datalist>
+                </label>
+                <button type="submit">Démarrer</button>
+            </form>
+            <p class="avert" sec:authorize="!hasAnyRole('ADMIN','OPERATEUR')">
+                Lecture seule : votre rôle ne permet pas de lancer une simulation.
+            </p>
+        </div>
+
+        <div class="carte">
+            <h2>Derniers runs</h2>
+            <p class="discret" th:if="${#lists.isEmpty(recents)}">Aucun run pour l'instant.</p>
+            <div class="defilement" th:unless="${#lists.isEmpty(recents)}">
+                <table>
+                    <thead>
+                    <tr>
+                        <th scope="col">Run</th><th scope="col">Scénario</th><th scope="col">Graine</th>
+                        <th scope="col">État</th><th scope="col">Début</th>
+                        <th scope="col" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">Action</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="r : ${recents}">
+                        <td><code th:text="${#strings.substring(r.id.toString(), 0, 8)}">abcd1234</code></td>
+                        <td th:text="${r.scenario}">scénario</td>
+                        <td th:text="${r.seed}">42</td>
+                        <td><span class="badge" th:text="${r.etat}">ARRETE</span></td>
+                        <td th:text="${#temporals.format(r.debut, 'dd/MM/yyyy HH:mm:ss')}">date</td>
+                        <td sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
+                            <button type="button" class="secondaire" th:unless="${actif}"
+                                    th:hx-post="@{/lancement/{id}/rejouer(id=${r.id})}" hx-target="#zone"
+                                    hx-swap="outerHTML"
+                                    hx-confirm="Relancer ce scénario avec la même graine ?">
+                                Rejouer (même graine)
+                            </button>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+</body>
+</html>

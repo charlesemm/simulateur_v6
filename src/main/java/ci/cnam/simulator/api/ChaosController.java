@@ -3,6 +3,7 @@ package ci.cnam.simulator.api;
 import ci.cnam.simulator.api.dto.ChaosActionResponse;
 import ci.cnam.simulator.api.dto.ChaosRequest;
 import ci.cnam.simulator.chaos.ChaosInjector;
+import ci.cnam.simulator.security.AuditService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,8 +28,10 @@ import org.springframework.web.bind.annotation.RestController;
 public class ChaosController {
 
     private final ChaosInjector chaos;
+    private final AuditService audit;
 
-    public ChaosController(ChaosInjector chaos) {
+    public ChaosController(ChaosInjector chaos, AuditService audit) {
+        this.audit = audit;
         this.chaos = chaos;
     }
 
@@ -39,14 +42,19 @@ public class ChaosController {
                     + "quand le run s'arrete. Une seule action active par type.")
     public ChaosActionResponse declencher(@PathVariable UUID id, @Valid @RequestBody ChaosRequest requete,
                                           Authentication auth) {
-        return ChaosActionResponse.de(chaos.declencher(id, requete.type(),
+        ChaosActionResponse action = ChaosActionResponse.de(chaos.declencher(id, requete.type(),
                 Duration.ofSeconds(requete.dureeSecondes()), requete.parametres(), auteur(auth)));
+        audit.enregistrer(auteur(auth), "CHAOS_DECLENCHE", id.toString(),
+                requete.type() + " " + requete.dureeSecondes() + " s " + (requete.parametres() == null ? "" : requete.parametres()));
+        return action;
     }
 
     @DeleteMapping
     @Operation(summary = "Tout retablir immediatement (renvoie les actions annulees)")
     public List<ChaosActionResponse> retablirTout(@PathVariable UUID id, Authentication auth) {
-        return chaos.retablirTout(id, auteur(auth)).stream().map(ChaosActionResponse::de).toList();
+        List<ChaosActionResponse> annulees = chaos.retablirTout(id, auteur(auth)).stream().map(ChaosActionResponse::de).toList();
+        audit.enregistrer(auteur(auth), "CHAOS_RETABLI", id.toString(), annulees.size() + " action(s) annulee(s)");
+        return annulees;
     }
 
     @GetMapping

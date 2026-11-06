@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title>Historique - Simulateur CNAM</title>
+</head>
+<body>
+<main id="contenu" class="page">
+    <h1>Historique des runs</h1>
+    <div id="retour" aria-live="polite"></div>
+    <p class="discret" th:if="${#lists.isEmpty(runs)}">Aucun run pour l'instant.</p>
+    <div class="carte defilement" th:unless="${#lists.isEmpty(runs)}">
+        <table>
+            <thead>
+            <tr>
+                <th scope="col">Run</th><th scope="col">Scénario</th><th scope="col">Graine</th>
+                <th scope="col">État</th><th scope="col">Parcours</th><th scope="col">Événements</th>
+                <th scope="col">Début</th><th scope="col">Fin</th><th scope="col">Erreur</th><th scope="col">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${runs}">
+                <td><code th:text="${#strings.substring(r.id.toString(), 0, 8)}" th:title="${r.id}">abcd1234</code></td>
+                <td th:text="${r.scenario}">scénario</td>
+                <td th:text="${r.seed}">42</td>
+                <td><span class="badge" th:classappend="${r.etat.name() == 'ECHOUE'} ? 'echec'" th:text="${r.etat}">ARRETE</span></td>
+                <td th:text="${r.parcoursGeneres}">0</td>
+                <td th:text="${r.evenementsEmis}">0</td>
+                <td th:text="${#temporals.format(r.debut, 'dd/MM/yyyy HH:mm:ss')}">date</td>
+                <td th:text="${#temporals.format(r.fin, 'dd/MM/yyyy HH:mm:ss')}">date</td>
+                <td th:text="${r.erreur}">erreur</td>
+                <td class="actions">
+                    <a class="bouton secondaire" th:href="@{/evenements(run=${r.id})}">Événements</a>
+                    <button type="button" class="secondaire" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')"
+                            th:hx-post="@{/lancement/{id}/rejouer(id=${r.id})}" hx-target="#retour"
+                            hx-swap="innerHTML"
+                            hx-confirm="Relancer ce scénario avec la même graine ?">Rejouer (même graine)</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+</body>
+</html>

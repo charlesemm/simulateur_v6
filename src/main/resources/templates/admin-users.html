@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title>Administration - Simulateur CNAM</title>
+</head>
+<body>
+<main id="contenu" class="page">
+    <h1>Administration des utilisateurs</h1>
+
+    <section id="zone" th:fragment="zone" aria-live="polite">
+        <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
+        <p class="info" th:if="${message}" th:text="${message}" role="status"></p>
+
+        <form class="carte" th:hx-post="@{/admin/utilisateurs}" hx-target="#zone" hx-swap="outerHTML">
+            <h2>Créer un compte</h2>
+            <label>Nom d'utilisateur (minuscules, chiffres, . _ -)
+                <input type="text" name="nom" required minlength="3" maxlength="50" pattern="[a-z0-9._-]{3,50}"
+                       autocomplete="off">
+            </label>
+            <label>Mot de passe temporaire (12 caractères au minimum)
+                <input type="password" name="motDePasse" required minlength="12" autocomplete="new-password">
+            </label>
+            <label>Rôle
+                <select name="role">
+                    <option th:each="r : ${roles}" th:value="${r}" th:text="${r}">OBSERVATEUR</option>
+                </select>
+            </label>
+            <button type="submit">Créer</button>
+        </form>
+
+        <div class="carte defilement">
+            <h2>Comptes</h2>
+            <table>
+                <thead>
+                <tr>
+                    <th scope="col">Utilisateur</th><th scope="col">Rôle</th><th scope="col">État</th>
+                    <th scope="col">Dernière connexion</th><th scope="col">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="u : ${utilisateurs}">
+                    <td th:text="${u.nomUtilisateur}">admin</td>
+                    <td>
+                        <form class="en-ligne" th:hx-post="@{/admin/utilisateurs/{id}/role(id=${u.id})}"
+                              hx-target="#zone" hx-swap="outerHTML"
+                              hx-confirm="Changer le rôle de cet utilisateur ?">
+                            <select name="role" th:aria-label="'Rôle de ' + ${u.nomUtilisateur}">
+                                <option th:each="r : ${roles}" th:value="${r}" th:text="${r}"
+                                        th:selected="${r == u.role}">ADMIN</option>
+                            </select>
+                            <button type="submit" class="secondaire">Appliquer</button>
+                        </form>
+                    </td>
+                    <td>
+                        <span class="badge" th:classappend="${!u.actif} ? 'echec'" th:text="${u.actif} ? 'actif' : 'désactivé'">actif</span>
+                        <span class="badge echec" th:if="${u.verrouille(maintenant)}">verrouillé</span>
+                        <span class="badge" th:if="${u.motDePasseAChanger}">mot de passe à changer</span>
+                    </td>
+                    <td th:text="${#temporals.format(u.dateDerniereConnexion, 'dd/MM/yyyy HH:mm')}">date</td>
+                    <td class="actions">
+                        <button type="button" class="secondaire"
+                                th:hx-post="@{/admin/utilisateurs/{id}/actif(id=${u.id})}" hx-target="#zone"
+                                hx-swap="outerHTML" hx-confirm="Activer ou désactiver ce compte ?"
+                                th:text="${u.actif} ? 'Désactiver' : 'Activer'">Désactiver</button>
+                        <button type="button" class="secondaire"
+                                th:hx-post="@{/admin/utilisateurs/{id}/deverrouiller(id=${u.id})}" hx-target="#zone"
+                                hx-swap="outerHTML">Déverrouiller</button>
+                        <form class="en-ligne" th:hx-post="@{/admin/utilisateurs/{id}/mot-de-passe(id=${u.id})}"
+                              hx-target="#zone" hx-swap="outerHTML"
+                              hx-confirm="Remplacer le mot de passe par ce mot de passe temporaire ?">
+                            <input type="password" name="motDePasse" minlength="12" required placeholder="Nouveau mot de passe temporaire"
+                                   th:aria-label="'Mot de passe temporaire de ' + ${u.nomUtilisateur}" autocomplete="new-password">
+                            <button type="submit" class="secondaire">Réinitialiser</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="carte defilement">
+            <h2>Journal d'audit (100 dernières lignes)</h2>
+            <p class="discret" th:if="${#lists.isEmpty(journal)}">Aucune entrée.</p>
+            <table th:unless="${#lists.isEmpty(journal)}">
+                <thead>
+                <tr><th scope="col">Date</th><th scope="col">Qui</th><th scope="col">Quoi</th>
+                    <th scope="col">Sur quoi</th><th scope="col">Détails</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="l : ${journal}">
+                    <td th:text="${#temporals.format(l.date, 'dd/MM/yyyy HH:mm:ss')}">date</td>
+                    <td th:text="${l.acteur}">admin</td>
+                    <td th:text="${l.action}">RUN_LANCE</td>
+                    <td th:text="${l.cible}">cible</td>
+                    <td th:text="${l.details}">détails</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>
