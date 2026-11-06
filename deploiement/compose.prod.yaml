@@ -1,0 +1,121 @@
+# ═══════════════════════════════════════════════════════════════
+# ECHO v6 — Compose de production (srv-gouv)
+#
+# Ce fichier reprend le dispositif deja en service pour la v5 (Python) :
+# meme serveur, meme nginx, meme GHCR, meme podman-compose sous sudo.
+# Voir docs/05-deploiement.md pour la bascule v5 -> v6.
+#
+# Ce qu'il change par rapport au compose.yaml de la racine :
+#
+#   1. Il TIRE l'image publiee sur GHCR au lieu de la construire. Un serveur
+#      de production ne compile pas : il deroule l'artefact que la CI a
+#      construit et teste.
+#   2. Plus AUCUNE valeur par defaut pour les secrets. La forme « :? » fait
+#      echouer le lancement avec un message clair, plutot que de demarrer sur
+#      un mot de passe de developpement sans que personne ne le remarque.
+#   3. « restart: always » et non « unless-stopped » — lecon de la v5 :
+#      podman-restart.service, qui relance les conteneurs au demarrage de la
+#      machine, lance « podman start --all --filter restart-policy=always ».
+#      Un conteneur en « unless-stopped » n'entre PAS dans ce filtre : le
+#      serveur reviendrait en ligne sans Echo, en donnant l'illusion d'etre
+#      couvert puisque le service, lui, serait actif.
+#   4. Les ports ne sont publies que sur la BOUCLE LOCALE. Le portier est le
+#      nginx de l'hote, qui joint l'application en 127.0.0.1:8088.
+#   5. Nom de projet « echo6 » : les volumes s'appellent donc echo6_pgdata et
+#      NON echo_pgdata. C'est volontaire — la base de la v5 (schema alembic)
+#      et celle de la v6 (schema Flyway) sont incompatibles, et la v5 doit
+#      rester intacte et redemarrable pendant toute la bascule.
+#
+# ⚠️ srv-gouv est une machine PARTAGEE (Socle, AnyFiX, Echo v5). Les ports
+# 8000, 8080 et 5432 y sont deja pris. D'ou 8088 et 5440 cote hote.
+# ═══════════════════════════════════════════════════════════════
+
+name: echo6
+
+services:
+
+  # ── Base de donnees ──────────────────────────────────────────
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-simulateur}
+      POSTGRES_USER: ${DB_USER:-simulateur}
+      POSTGRES_PASSWORD: "${DB_PASSWORD:?absent du .env - voir docs/05-deploiement.md section 4}"
+    # Publie sur la boucle locale uniquement, pour un client SQL via tunnel SSH.
+    # Le prefixe « 127.0.0.1: » est indispensable : sans lui, Podman publie sur
+    # 0.0.0.0 et la base devient joignable de tout le reseau.
+    # 5440 cote hote : 5432 est pris sur srv-gouv, 5439 est celui de la v5.
+    ports:
+      - "127.0.0.1:5440:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # ── Toxiproxy ────────────────────────────────────────────────
+  # Pas un outil de developpement : les crash tests sont une FONCTION du
+  # produit. L'application ne joint donc jamais PostgreSQL en direct.
+  # L'API de controle (8474) n'est publiee sur aucune interface.
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    restart: always
+    command: ["-host=0.0.0.0", "-config=/config/toxiproxy.json"]
+    volumes:
+      - /opt/echo6/docker/toxiproxy.json:/config/toxiproxy.json:ro,Z
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Application ──────────────────────────────────────────────
+  # Pas de service « migrations » separe, contrairement a la v5 : Flyway
+  # s'execute au demarrage de l'application, dans le meme processus.
+  simulator:
+    image: "${ECHO_IMAGE:?absent du .env - voir docs/05-deploiement.md section 4}"
+    restart: always
+    mem_limit: 2g            # a revoir apres les mesures sur srv-gouv
+    cpus: 2.0
+    # « 127.0.0.1: » en tete n'est pas decoratif, c'est la protection la plus
+    # importante de ce fichier. Sans ce prefixe, l'application serait offerte
+    # EN CLAIR a tout le reseau et n'importe qui pourrait court-circuiter le
+    # TLS de nginx — un cookie de session y circulerait sans chiffrement.
+    # 8088 cote hote : 8087 est celui de la v5, qui reste en place le temps
+    # de la bascule. Dans le conteneur, l'application ecoute sur 8080.
+    ports:
+      - "127.0.0.1:8088:8080"
+    environment:
+      DB_URL: jdbc:postgresql://toxiproxy:5432/${DB_NAME:-simulateur}?reWriteBatchedInserts=true
+      DB_USER: ${DB_USER:-simulateur}
+      DB_PASSWORD: ${DB_PASSWORD}
+      API_KEY: "${API_KEY:?absent du .env - voir docs/05-deploiement.md section 4}"
+      # Seule variable facultative, et deliberement : elle ne sert qu'au
+      # premier demarrage (AdminInitial). Le guide demande ensuite de la vider
+      # — avec la forme « :? », une valeur vide bloquerait le demarrage
+      # suivant. « :- » laisse passer.
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-}
+      # L'acces se fait en HTTPS via nginx : le cookie de session doit porter
+      # l'attribut Secure.
+      SESSION_COOKIE_SECURE: "true"
+      TOXIPROXY_URL: http://toxiproxy:8474
+      SCENARIOS_DIR: /app/scenarios
+    volumes:
+      - /opt/echo6/scenarios:/app/scenarios:Z
+    depends_on:
+      toxiproxy:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/simulateur/actuator/health | grep -q UP || exit 1"]
+      interval: 30s
+      timeout: 6s
+      retries: 3
+      start_period: 60s
+
+# Le portier n'est pas ici : c'est le nginx de l'hote, configure par
+# deploiement/nginx/echo.ipscnam.ci.conf. Il termine le TLS (wildcard
+# *.ipscnam.ci) et relaie vers 127.0.0.1:8088.
+
+volumes:
+  pgdata:
