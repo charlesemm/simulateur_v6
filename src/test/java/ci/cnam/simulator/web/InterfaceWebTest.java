@@ -568,7 +568,14 @@ class InterfaceWebTest {
         MvcResult r = mvc.perform(get("/login")).andExpect(status().isOk())
                 .andExpect(content().string(containsString("name=\"_csrf\""))).andReturn();
         assertThat(r.getResponse().getContentAsString()).doesNotContainPattern("(src|href)=\"(https?:)?//");
-        mvc.perform(get("/css/app.css")).andExpect(status().isOk());
+        // Styles, scripts et polices doivent repondre SANS etre connecte, sinon la page de connexion
+        // retombe silencieusement sur la police du systeme.
+        for (String ressource : List.of("/css/app.css", "/css/tokens.css", "/css/base.css",
+                "/css/composants.css", "/css/mise-en-page.css",
+                "/fonts/plex-sans-var.woff2", "/fonts/plex-mono-400.woff2",
+                "/js/theme.js", "/js/app.js")) {
+            mvc.perform(get(ressource)).andExpect(status().isOk());
+        }
     }
 
     @Test

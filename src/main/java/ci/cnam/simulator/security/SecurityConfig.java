@@ -35,7 +35,8 @@ public class SecurityConfig {
     };
 
     /** Ressources servies localement, necessaires a la page de connexion elle-meme. */
-    private static final String[] RESSOURCES_PUBLIQUES = {"/css/**", "/js/**", "/error"};
+    /** Styles, scripts et polices doivent etre lisibles avant la connexion : la page /login s'en sert. */
+    private static final String[] RESSOURCES_PUBLIQUES = {"/css/**", "/js/**", "/fonts/**", "/error"};
 
     @Bean
     PasswordEncoder passwordEncoder() {
