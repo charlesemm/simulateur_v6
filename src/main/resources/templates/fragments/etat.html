@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<!--/* Badge d'etat d'une simulation. Usage : <span th:replace="~{fragments/etat :: badge(${r.etat})}"></span>
+       Un seul endroit traduit les etats du moteur en mots lisibles. */-->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<span th:fragment="badge(etat)" class="badge"
+      th:classappend="${etat.name() == 'EN_COURS'} ? 'actif'
+                    : (${etat.name() == 'EN_PAUSE'} ? 'charge'
+                    : (${etat.name() == 'ECHOUE'} ? 'echec' : ''))"
+      th:text="${etat.name() == 'EN_COURS'} ? 'En marche'
+             : (${etat.name() == 'EN_PAUSE'} ? 'En pause'
+             : (${etat.name() == 'ARRETE'} ? 'Terminée'
+             : (${etat.name() == 'ECHOUE'} ? 'Interrompue' : 'Prête à démarrer')))">En marche</span>
+</body>
+</html>

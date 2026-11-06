@@ -2,44 +2,55 @@
 <html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout :: page(~{::title}, ~{::main})}">
 <head>
-    <title>Lancement - Simulateur CNAM</title>
+    <title>Lancement — Echo</title>
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1>Lancement d'une simulation</h1>
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-play"/></svg>Lancement</h1>
+    </div>
+    <p class="sous-titre">Une seule simulation tourne à la fois. Choisissez un scénario, et la graine si vous voulez
+        rejouer exactement les mêmes données.</p>
 
-    <section id="zone" th:fragment="zone" aria-live="polite">
-        <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
-        <p class="info" th:if="${message}" th:text="${message}" role="status"></p>
+    <section id="zone" th:fragment="zone" aria-live="polite" class="grille">
+        <p class="alerte large" th:if="${erreur}" role="alert">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg><span th:text="${erreur}"></span></p>
+        <p class="info large" th:if="${message}" role="status">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-check"/></svg><span th:text="${message}"></span></p>
 
-        <div class="carte" th:if="${actif}">
-            <h2>Run en cours</h2>
+        <div class="carte large" th:if="${actif}">
+            <header>
+                <h2>Simulation en cours</h2>
+                <span th:replace="~{fragments/etat :: badge(${actif.etat})}"></span>
+            </header>
             <dl>
-                <dt>Identifiant</dt><dd th:text="${actif.id}">id</dd>
                 <dt>Scénario</dt><dd th:text="${actif.scenario}">scénario</dd>
-                <dt>Graine</dt><dd th:text="${actif.seed}">42</dd>
-                <dt>État</dt><dd><span class="badge" th:text="${actif.etat}">EN_COURS</span></dd>
-                <dt>Parcours / événements</dt><dd th:text="${actif.parcoursGeneres + ' / ' + actif.evenementsEmis}">0 / 0</dd>
+                <dt>Graine</dt><dd class="chiffre" th:text="${actif.seed}">42</dd>
+                <dt>Parcours créés</dt><dd class="chiffre" th:text="${#numbers.formatInteger(actif.parcoursGeneres, 1, 'WHITESPACE')}">0</dd>
+                <dt>Événements produits</dt><dd class="chiffre" th:text="${#numbers.formatInteger(actif.evenementsEmis, 1, 'WHITESPACE')}">0</dd>
+                <dt>Référence</dt><dd><code th:text="${actif.id}">id</code></dd>
             </dl>
             <div class="actions" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
                 <button type="button" th:if="${actif.etat.name() == 'EN_COURS'}"
                         th:hx-post="@{/lancement/{id}/pause(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML">
-                    Pause
+                    <svg class="ico" aria-hidden="true"><use href="#i-pause"/></svg>Mettre en pause
                 </button>
-                <button type="button" th:if="${actif.etat.name() == 'EN_PAUSE'}"
+                <button type="button" class="succes" th:if="${actif.etat.name() == 'EN_PAUSE'}"
                         th:hx-post="@{/lancement/{id}/reprendre(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML">
-                    Reprendre
+                    <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Reprendre
                 </button>
                 <button type="button" class="danger"
                         th:hx-post="@{/lancement/{id}/arreter(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML"
-                        hx-confirm="Arrêter le run en cours ? Les événements en attente seront écrits avant l'arrêt.">
-                    Arrêter
+                        hx-confirm="Arrêter la simulation en cours ? Les événements en attente seront enregistrés avant l'arrêt.">
+                    <svg class="ico" aria-hidden="true"><use href="#i-stop"/></svg>Arrêter
                 </button>
+                <a class="bouton secondaire" th:href="@{/dashboard}">
+                    <svg class="ico" aria-hidden="true"><use href="#i-dashboard"/></svg>Suivre en direct</a>
             </div>
         </div>
 
         <div class="carte" th:unless="${actif}">
-            <h2>Nouveau run</h2>
+            <header><h2>Nouvelle simulation</h2></header>
             <form sec:authorize="hasAnyRole('ADMIN','OPERATEUR')" th:hx-post="@{/lancement}" hx-target="#zone"
                   hx-swap="outerHTML">
                 <label>Scénario
@@ -47,46 +58,63 @@
                         <option th:each="s : ${scenarios}" th:value="${s.nom}" th:text="${s.nom}">parcours-normal</option>
                     </select>
                 </label>
-                <label>Graine (vide = celle du scénario)
-                    <input type="number" name="graine" step="1" inputmode="numeric">
+                <label>Graine
+                    <input type="number" name="graine" step="1" inputmode="numeric" placeholder="celle du scénario">
+                    <span class="aide-champ">Deux simulations lancées avec la même graine produisent exactement
+                        les mêmes données et les mêmes anomalies.</span>
                 </label>
-                <label>Vitesse du temps : secondes simulées par seconde réelle (vide = celle du scénario)
-                    <input type="number" name="vitesse" min="0.001" max="100000" step="any" list="vitesses">
+                <label>Vitesse du temps
+                    <input type="number" name="vitesse" min="0.001" max="100000" step="any" list="vitesses"
+                           placeholder="celle du scénario">
                     <datalist id="vitesses"><option value="1"></option><option value="10"></option>
                         <option value="60"></option><option value="100"></option></datalist>
+                    <span class="aide-champ">Secondes simulées par seconde réelle. 60 fait passer une minute simulée
+                        en une seconde.</span>
                 </label>
-                <button type="submit">Démarrer</button>
+                <div class="actions">
+                    <button type="submit" class="succes"><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Démarrer</button>
+                </div>
             </form>
             <p class="avert" sec:authorize="!hasAnyRole('ADMIN','OPERATEUR')">
+                <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
                 Lecture seule : votre rôle ne permet pas de lancer une simulation.
             </p>
         </div>
 
-        <div class="carte">
-            <h2>Derniers runs</h2>
-            <p class="discret" th:if="${#lists.isEmpty(recents)}">Aucun run pour l'instant.</p>
+        <div class="carte" th:classappend="${actif} ? 'large'">
+            <header>
+                <h2>Dernières simulations</h2>
+                <a class="bouton secondaire" th:href="@{/historique}" th:unless="${#lists.isEmpty(recents)}">Tout l'historique</a>
+            </header>
+
+            <div class="vide" th:if="${#lists.isEmpty(recents)}">
+                <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
+                <b>Aucune simulation n'a encore tourné</b>
+                <p>Choisissez un scénario ci-dessus pour produire les premiers parcours.</p>
+            </div>
+
             <div class="defilement" th:unless="${#lists.isEmpty(recents)}">
                 <table>
                     <thead>
                     <tr>
-                        <th scope="col">Run</th><th scope="col">Scénario</th><th scope="col">Graine</th>
-                        <th scope="col">État</th><th scope="col">Début</th>
+                        <th scope="col">Référence</th><th scope="col">Scénario</th><th scope="col">Graine</th>
+                        <th scope="col">État</th><th scope="col">Démarrée le</th>
                         <th scope="col" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">Action</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr th:each="r : ${recents}">
-                        <td><code th:text="${#strings.substring(r.id.toString(), 0, 8)}">abcd1234</code></td>
+                        <td><code th:text="${#strings.substring(r.id.toString(), 0, 8)}" th:title="${r.id}">abcd1234</code></td>
                         <td th:text="${r.scenario}">scénario</td>
-                        <td th:text="${r.seed}">42</td>
-                        <td><span class="badge" th:text="${r.etat}">ARRETE</span></td>
-                        <td th:text="${#temporals.format(r.debut, 'dd/MM/yyyy HH:mm:ss')}">date</td>
+                        <td class="chiffre" th:text="${r.seed}">42</td>
+                        <td><span th:replace="~{fragments/etat :: badge(${r.etat})}"></span></td>
+                        <td class="chiffre" th:text="${#temporals.format(r.debut, 'dd/MM/yyyy à HH:mm')}">date</td>
                         <td sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
                             <button type="button" class="secondaire" th:unless="${actif}"
                                     th:hx-post="@{/lancement/{id}/rejouer(id=${r.id})}" hx-target="#zone"
                                     hx-swap="outerHTML"
                                     hx-confirm="Relancer ce scénario avec la même graine ?">
-                                Rejouer (même graine)
+                                <svg class="ico" aria-hidden="true"><use href="#i-undo"/></svg>Rejouer
                             </button>
                         </td>
                     </tr>

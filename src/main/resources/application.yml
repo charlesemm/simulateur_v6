@@ -45,6 +45,11 @@ spring:
     locations: classpath:db/migration
   thymeleaf:
     cache: ${THYMELEAF_CACHE:true}
+    servlet:
+      # La page est rendue entierement avant d'etre envoyee. Sinon le sprite d'icones (volumineux, en tete de page)
+      # depasse le tampon de reponse, la reponse part deja, et le jeton CSRF du formulaire ne peut plus creer
+      # de session : « Cannot create a session after the response has been committed » et la connexion echoue.
+      produce-partial-output-while-processing: false
   jackson:
     serialization:
       write-dates-as-timestamps: false

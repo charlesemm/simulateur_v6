@@ -2,48 +2,65 @@
 <html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout :: page(~{::title}, ~{::main})}">
 <head>
-    <title>Événements - Simulateur CNAM</title>
+    <title>Flux de données — Echo</title>
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1>Explorateur d'événements</h1>
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-activity"/></svg>Flux de données</h1>
+    </div>
+    <p class="sous-titre">Chaque ligne est une étape franchie par un dossier. En prestations : arrivée du patient,
+        vérification des droits, consultation, examens, délivrance, clôture.</p>
 
     <form class="carte filtres" th:action="@{/evenements}" method="get"
           th:hx-get="@{/evenements}" hx-target="#tableau" hx-swap="outerHTML" hx-push-url="true"
           hx-trigger="submit, change">
-        <label>Run
+        <label>Simulation
             <select name="run">
                 <option th:each="r : ${runs}" th:value="${r.id}" th:selected="${r.id == run}"
-                        th:text="${#strings.substring(r.id.toString(), 0, 8) + ' - ' + r.scenario + ' (' + r.etat + ')'}">
+                        th:text="${#strings.substring(r.id.toString(), 0, 8) + ' — ' + r.scenario}">
                     run
                 </option>
             </select>
         </label>
         <label>Domaine <input type="text" name="domaine" th:value="${domaine}" placeholder="prestations"></label>
-        <label>Type <input type="text" name="type" th:value="${type}" placeholder="FACTURE_OUVERTE"></label>
-        <label>Statut <input type="text" name="statut" th:value="${statut}" placeholder="ECRIT"></label>
-        <button type="submit">Filtrer</button>
+        <label>Étape <input type="text" name="type" th:value="${type}" placeholder="FACTURE_OUVERTE"></label>
+        <label>Statut d'écriture <input type="text" name="statut" th:value="${statut}" placeholder="ECRIT"></label>
+        <div class="actions">
+            <button type="submit"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg>Filtrer</button>
+            <a class="bouton secondaire" th:href="@{/evenements(run=${run})}"
+               th:if="${domaine != null or type != null or statut != null}">Retirer les filtres</a>
+        </div>
     </form>
 
     <section id="tableau" th:fragment="tableau" class="carte" aria-live="polite">
         <div class="entete-tableau">
             <p>
-                <strong th:text="${resultat.total}">0</strong> événement(s)
-                <span th:if="${resultat.totalPages > 0}"
-                      th:text="'- page ' + ${resultat.page + 1} + ' sur ' + ${resultat.totalPages}">page 1 sur 1</span>
+                <strong th:text="${#numbers.formatInteger(resultat.total, 1, 'WHITESPACE')}">0</strong> événement<th:block
+                    th:if="${resultat.total != 1}">s</th:block>
+                <span class="discret" th:if="${resultat.totalPages > 1}"
+                      th:text="'— page ' + ${resultat.page + 1} + ' sur ' + ${resultat.totalPages}">page 1 sur 1</span>
             </p>
             <a class="bouton secondaire" th:if="${run}"
                th:href="@{/evenements/export.csv(run=${run},domaine=${domaine},type=${type},statut=${statut})}">
-                Exporter en CSV
+                <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Exporter en CSV
             </a>
         </div>
-        <p class="discret" th:if="${#lists.isEmpty(resultat.contenu)}">Aucun événement pour ces critères.</p>
+
+        <div class="vide" th:if="${#lists.isEmpty(resultat.contenu)}">
+            <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg>
+            <b>Aucun événement pour ces critères</b>
+            <p>Vérifiez la simulation choisie, ou retirez un filtre : l'étape et le statut s'écrivent en majuscules,
+                comme <code>CONSULTATION_REALISEE</code>.</p>
+            <a class="bouton secondaire" th:href="@{/evenements(run=${run})}">Retirer les filtres</a>
+        </div>
+
         <div class="defilement" th:unless="${#lists.isEmpty(resultat.contenu)}">
             <table>
                 <thead>
                 <tr>
-                    <th scope="col">Type</th><th scope="col">Domaine</th><th scope="col">Facture</th>
-                    <th scope="col">Temps simulé</th><th scope="col">Temps réel</th><th scope="col">Statut</th>
+                    <th scope="col">Étape</th><th scope="col">Domaine</th><th scope="col">Dossier</th>
+                    <th scope="col">Date du soin</th><th scope="col">Enregistré le</th><th scope="col">Statut</th>
                     <th scope="col">Contenu</th>
                     <th scope="col" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">Rejeu</th>
                 </tr>
@@ -52,26 +69,32 @@
                 <tr th:each="e : ${resultat.contenu}">
                     <td th:text="${e.type}">FACTURE_OUVERTE</td>
                     <td th:text="${e.domaine}">prestations</td>
-                    <td><code th:if="${e.factureId}" th:text="${#strings.substring(e.factureId.toString(), 0, 8)}">abcd1234</code></td>
-                    <td th:text="${#temporals.format(e.timestampSimule, 'dd/MM/yyyy HH:mm:ss')}">date</td>
-                    <td th:text="${#temporals.format(e.timestampReel, 'dd/MM/yyyy HH:mm:ss')}">date</td>
-                    <td><span class="badge" th:classappend="${e.statut != ecrit} ? 'echec'" th:text="${e.statut}">ECRIT</span></td>
+                    <td><code th:if="${e.factureId}" th:text="${#strings.substring(e.factureId.toString(), 0, 8)}"
+                              th:title="${e.factureId}">abcd1234</code></td>
+                    <td class="chiffre" th:text="${#temporals.format(e.timestampSimule, 'dd/MM/yyyy à HH:mm:ss')}">date</td>
+                    <td class="chiffre" th:text="${#temporals.format(e.timestampReel, 'dd/MM/yyyy à HH:mm:ss')}">date</td>
+                    <td><span class="badge" th:classappend="${e.statut != ecrit} ? 'echec' : 'actif'"
+                              th:text="${e.statut == ecrit} ? 'Enregistré' : ${e.statut}">ECRIT</span></td>
                     <td class="payload" th:title="${e.payload}" th:text="${#strings.abbreviate(e.payload.toString(), 90)}">{}</td>
                     <td sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
                         <button type="button" class="secondaire" th:if="${e.statut != ecrit}"
                                 th:hx-post="@{/evenements/{id}/rejouer(id=${e.eventId})}"
                                 hx-target="closest td" hx-swap="innerHTML"
-                                hx-confirm="Rejouer cet événement échoué ?">Rejouer</button>
+                                hx-confirm="Rejouer cet événement échoué ?">
+                            <svg class="ico" aria-hidden="true"><use href="#i-undo"/></svg>Rejouer</button>
                     </td>
                 </tr>
                 </tbody>
             </table>
         </div>
+
         <nav class="pagination" aria-label="Pagination" th:if="${resultat.totalPages > 1}">
             <a class="bouton secondaire" th:if="${resultat.page > 0}"
                th:href="@{/evenements(run=${run},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page - 1},taille=${resultat.taille})}"
                th:hx-get="@{/evenements(run=${run},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page - 1},taille=${resultat.taille})}"
-               hx-target="#tableau" hx-swap="outerHTML" hx-push-url="true">Précédente</a>
+               hx-target="#tableau" hx-swap="outerHTML" hx-push-url="true">
+                <svg class="ico" aria-hidden="true"><use href="#i-chevron-gauche"/></svg>Précédente</a>
+            <span class="position" th:text="'Page ' + ${resultat.page + 1} + ' sur ' + ${resultat.totalPages}">Page 1 sur 1</span>
             <a class="bouton secondaire" th:if="${resultat.page + 1 < resultat.totalPages}"
                th:href="@{/evenements(run=${run},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page + 1},taille=${resultat.taille})}"
                th:hx-get="@{/evenements(run=${run},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page + 1},taille=${resultat.taille})}"

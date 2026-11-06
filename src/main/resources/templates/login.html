@@ -3,25 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Connexion - Simulateur CNAM</title>
+    <title>Connexion — Echo</title>
+    <meta name="color-scheme" content="light dark">
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script th:src="@{/js/theme.js}"></script>
 </head>
-<body class="centre">
-<main class="carte">
-    <h1>Simulateur de flux CNAM</h1>
-    <p class="discret">Données entièrement synthétiques.</p>
-    <!-- Message volontairement identique pour un mauvais mot de passe, un compte inconnu ou verrouille. -->
-    <p class="alerte" th:if="${param.error}" role="alert">Identifiant ou mot de passe incorrect.</p>
-    <p class="info" th:if="${param.logout}">Vous êtes déconnecté.</p>
-    <form th:action="@{/login}" method="post">
-        <label>Identifiant
-            <input type="text" name="username" autocomplete="username" required autofocus>
-        </label>
-        <label>Mot de passe
-            <input type="password" name="password" autocomplete="current-password" required>
-        </label>
-        <button type="submit">Se connecter</button>
-    </form>
-</main>
+<body class="accueil">
+<th:block th:replace="~{icones :: sprite}"></th:block>
+
+<div class="connexion">
+    <!-- Panneau de gauche : le logo seul, aucun texte de presentation. -->
+    <aside class="vitrail">
+        <p class="marque logo-seul">
+            <span class="sceau" aria-hidden="true"><svg class="ico"><use href="#i-activity"/></svg></span>
+            <b>Echo</b>
+        </p>
+    </aside>
+
+    <main class="guichet">
+        <button type="button" class="secondaire icone-seule coin" data-bascule-theme>
+            <svg class="ico t-auto" aria-hidden="true"><use href="#i-monitor"/></svg>
+            <svg class="ico t-light" aria-hidden="true"><use href="#i-sun"/></svg>
+            <svg class="ico t-dark" aria-hidden="true"><use href="#i-moon"/></svg>
+        </button>
+
+        <h1>Se connecter</h1>
+
+        <!-- Message volontairement identique pour un mauvais mot de passe, un compte inconnu ou verrouille. -->
+        <p class="alerte" th:if="${param.error}" role="alert">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+            Identifiant ou mot de passe incorrect.
+        </p>
+        <p class="info" th:if="${param.logout}">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-check"/></svg>
+            Vous êtes déconnecté.
+        </p>
+
+        <form th:action="@{/login}" method="post">
+            <label class="champ">Identifiant
+                <svg class="ico" aria-hidden="true"><use href="#i-user"/></svg>
+                <input type="text" name="username" autocomplete="username" required autofocus>
+            </label>
+            <label class="champ">Mot de passe
+                <svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>
+                <input type="password" name="password" autocomplete="current-password" required>
+            </label>
+            <button type="submit" class="plein">
+                <svg class="ico" aria-hidden="true"><use href="#i-login"/></svg>Se connecter
+            </button>
+        </form>
+    </main>
+</div>
 </body>
 </html>
