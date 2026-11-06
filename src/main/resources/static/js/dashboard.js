@@ -38,21 +38,67 @@
         e.classList.toggle('actif', !!bon);
     }
 
+    var reduit = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function css(nom, defaut) {
+        return getComputedStyle(document.documentElement).getPropertyValue(nom).trim() || defaut;
+    }
+
+    // Nombre qui glisse vers sa nouvelle valeur au lieu de sauter.
+    var cours = {};
+    function animer(id, cible, decimales) {
+        var e = el(id);
+        if (!e) {
+            return;
+        }
+        var depart = cours[id] ? cours[id].valeur : 0;
+        cible = Number(cible || 0);
+        if (cours[id] && cours[id].raf) {
+            cancelAnimationFrame(cours[id].raf);
+        }
+        if (reduit || depart === cible) {
+            cours[id] = {valeur: cible};
+            e.textContent = nombre(cible, decimales);
+            return;
+        }
+        var debut = performance.now();
+        var etat = cours[id] = {valeur: depart};
+        (function pas(t) {
+            var p = Math.min(1, (t - debut) / 600);
+            var f = 1 - Math.pow(1 - p, 3);
+            etat.valeur = depart + (cible - depart) * f;
+            e.textContent = nombre(etat.valeur, decimales);
+            if (p < 1) {
+                etat.raf = requestAnimationFrame(pas);
+            }
+        })(debut);
+    }
+
     function courbe(idCanvas, libelle) {
         var canvas = el(idCanvas);
         if (!canvas || typeof Chart === 'undefined') {
             return null;
         }
-        var couleur = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#0b5cad';
+        var couleur = css('--accent', '#0b5cad');
+        var texteDiscret = css('--discret', '#5b6478');
+        var bord = css('--bord', '#e1e5ee');
+        var ctx = canvas.getContext('2d');
+        var degrade = ctx.createLinearGradient(0, 0, 0, 240);
+        degrade.addColorStop(0, couleur + '55');
+        degrade.addColorStop(1, couleur + '00');
         return new Chart(canvas, {
             type: 'line',
-            data: {labels: [], datasets: [{label: libelle, data: [], borderColor: couleur, backgroundColor: couleur,
-                pointRadius: 0, tension: 0.2, borderWidth: 2}]},
+            data: {labels: [], datasets: [{label: libelle, data: [], borderColor: couleur, backgroundColor: degrade,
+                fill: true, pointRadius: 0, pointHoverRadius: 4, tension: 0.35, borderWidth: 2.5}]},
             options: {
-                animation: false,
+                animation: reduit ? false : {duration: 400},
                 maintainAspectRatio: false,
-                scales: {x: {display: false}, y: {beginAtZero: true}},
-                plugins: {legend: {display: true}}
+                interaction: {mode: 'index', intersect: false},
+                scales: {
+                    x: {display: false},
+                    y: {beginAtZero: true, grid: {color: bord}, border: {display: false}, ticks: {color: texteDiscret}}
+                },
+                plugins: {legend: {labels: {color: texteDiscret, usePointStyle: true, boxWidth: 8}}}
             }
         });
     }
@@ -71,7 +117,18 @@
             d.labels.shift();
             d.datasets[0].data.shift();
         }
-        graphique.update('none');
+        graphique.update();
+    }
+
+    function kpis(etat) {
+        animer('k-debit', etat.evenementsEcritsParSeconde, 1);
+        animer('k-total', etat.evenementsEcrits, 0);
+        animer('k-file', etat.fileTaille, 0);
+        animer('k-latence', etat.latenceLotMs, 1);
+        var base = etat.base === 'UP';
+        el('kpi-debit').classList.toggle('ok', base && etat.evenementsEcritsParSeconde > 0);
+        el('kpi-file').classList.toggle('alerte-kpi', etat.fileTaille > 0 && etat.lotsEnEchec > 0);
+        el('kpi-latence').classList.toggle('alerte-kpi', !base || etat.latenceLotMs > 500);
     }
 
     function afficher(etat) {
@@ -126,6 +183,8 @@
             });
             corps.appendChild(ligne);
         });
+
+        kpis(etat);
 
         var heure = new Date(etat.instant).toLocaleTimeString('fr-FR');
         pousser(debit, heure, etat.evenementsEcritsParSeconde);

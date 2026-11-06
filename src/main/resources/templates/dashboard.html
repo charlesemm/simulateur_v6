@@ -8,6 +8,17 @@
     <h1>Tableau de bord</h1>
     <p id="flux-etat" class="discret" role="status">Connexion au flux en cours…</p>
 
+    <div class="kpis" aria-label="Indicateurs clés">
+        <div class="kpi" id="kpi-debit"><div class="kpi-titre">Débit d'écriture</div>
+            <div><span class="kpi-valeur" id="k-debit" data-decimales="1">0</span><span class="kpi-unite">évt/s</span></div></div>
+        <div class="kpi"><div class="kpi-titre">Événements écrits</div>
+            <div><span class="kpi-valeur" id="k-total">0</span></div></div>
+        <div class="kpi" id="kpi-file"><div class="kpi-titre">File d'attente</div>
+            <div><span class="kpi-valeur" id="k-file">0</span></div></div>
+        <div class="kpi" id="kpi-latence"><div class="kpi-titre">Latence d'un lot</div>
+            <div><span class="kpi-valeur" id="k-latence" data-decimales="1">0</span><span class="kpi-unite">ms</span></div></div>
+    </div>
+
     <div id="tableau" class="grille" th:data-flux="@{/flux}">
         <section class="carte" aria-labelledby="t-simulateur">
             <h2 id="t-simulateur">Simulateur</h2>
