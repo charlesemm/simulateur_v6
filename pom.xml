@@ -27,7 +27,7 @@
         <tomcat.version>10.1.61</tomcat.version>
         <postgresql.version>42.7.14</postgresql.version>
         <htmx.version>2.0.4</htmx.version>
-        <chartjs.version>4.4.7</chartjs.version>
+        <chartjs.version>4.6.1</chartjs.version>
     </properties>
 
     <dependencies>
