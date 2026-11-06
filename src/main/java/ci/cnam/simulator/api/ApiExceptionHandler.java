@@ -83,6 +83,13 @@ public class ApiExceptionHandler {
         return ResponseEntity.badRequest().body(ErreurResponse.de("REQUETE_INVALIDE", message));
     }
 
+    /** Detections de l'outil qualite refusees en bloc (evenement inconnu du run, champ manquant). */
+    @ExceptionHandler(ci.cnam.simulator.quality.DetectionInvalideException.class)
+    public ResponseEntity<ErreurResponse> detectionInvalide(ci.cnam.simulator.quality.DetectionInvalideException e) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(new ErreurResponse("DETECTION_INVALIDE", e.getMessage(), e.erreurs()));
+    }
+
     /** Toxiproxy injoignable ou qui refuse la commande : le chaos n'a pas ete applique (ou pas retire). */
     @ExceptionHandler(ChaosIndisponibleException.class)
     public ResponseEntity<ErreurResponse> chaosIndisponible(ChaosIndisponibleException e) {
