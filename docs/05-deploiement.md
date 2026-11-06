@@ -116,8 +116,11 @@ sudo mkdir -p /opt/echo6/docker /opt/echo6/scenarios
 # Sans deux-points : sur srv-gouv (rattachée à l'Active Directory) le groupe
 # principal est « utilisateurs du domaine », qui contient TOUS les comptes de
 # l'institution. Lui donner l'écriture ouvrirait /opt/echo6 à tout le monde.
-sudo chown "$USER" /opt/echo6
-ls -ld /opt/echo6              # adm-mnguessan doit figurer en proprietaire
+# -R : « sudo mkdir -p » a cree docker/ et scenarios/ en root. Sans le -R, la
+# copie des fichiers DANS ces sous-dossiers est refusee (« Permission denied »)
+# alors que /opt/echo6 lui-meme est bien a vous.
+sudo chown -R "$USER" /opt/echo6
+ls -ld /opt/echo6 /opt/echo6/docker /opt/echo6/scenarios    # adm-mnguessan sur les TROIS lignes
 ```
 
 Les quatre fichiers à déposer, depuis le poste (PowerShell) :
@@ -128,7 +131,9 @@ scp deploiement/compose.prod.yaml  adm-mnguessan@10.10.4.165:/opt/echo6/
 scp deploiement/.env.exemple       adm-mnguessan@10.10.4.165:/opt/echo6/
 scp deploiement/sauvegarde.sh      adm-mnguessan@10.10.4.165:/opt/echo6/
 scp docker/toxiproxy.json          adm-mnguessan@10.10.4.165:/opt/echo6/docker/
-scp -r scenarios/*                 adm-mnguessan@10.10.4.165:/opt/echo6/scenarios/
+# Pas de joker ici : PowerShell ne developpe pas « scenarios/* » pour une
+# commande externe, scp recevrait les deux caracteres tels quels.
+scp -r scenarios/prestations       adm-mnguessan@10.10.4.165:/opt/echo6/scenarios/
 ```
 
 Le vhost nginx se copie séparément, et seulement au moment de la bascule (section 7).
@@ -153,8 +158,16 @@ Six lignes à remplir : `ECHO_IMAGE` (le tag publié à la section 3), `DB_NAME`
 > `.env` ne change pas celui de la base : l'application ne se connecterait plus. Le choisir une bonne fois.
 >
 > Toutes ces variables, sauf `ADMIN_INITIAL_PASSWORD`, sont en forme `:?` dans `compose.prod.yaml` : s'il en manque
-> une, le lancement **échoue en la nommant**. Un démarrage silencieux sur un mot de passe de développement serait
-> pire qu'un échec.
+> une — **ou si elle est vide** —, le lancement échoue. Un démarrage silencieux sur un mot de passe de
+> développement serait pire qu'un échec.
+>
+> **Mais `podman-compose` 1.0.6 ne dit pas laquelle.** Il affiche une pile Python se terminant par
+> `RuntimeError: absent du .env - voir docs/05-deploiement.md section 4`, sans nommer la variable (contrairement à
+> `docker compose`). Pour la trouver :
+>
+> ```bash
+> sudo grep -nE '^[A-Z_]+=$' /opt/echo6/.env     # toute ligne qui ressort est coupable
+> ```
 
 ### SELinux
 
