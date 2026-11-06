@@ -175,7 +175,7 @@
         graphique.update();
     }
 
-    /* Le rythme métier : des feuilles de soins par minute, somme de tous les domaines actifs. */
+    /* Le rythme métier : des parcours par minute, somme de tous les domaines actifs. */
     function rythmeParMinute(debits) {
         return (debits || []).reduce(function (total, d) {
             return total + Number(d.parcoursParSeconde || 0);
@@ -190,7 +190,7 @@
         var morceaux = ['Scénario ' + run.scenario];
         morceaux.push('graine ' + run.seed);
         if (run.etat === 'EN_COURS') {
-            morceaux.push(nombre(rythmeParMinute(etat.debits)) + ' feuilles de soins par minute');
+            morceaux.push(nombre(rythmeParMinute(etat.debits)) + ' parcours par minute');
         }
         return morceaux.join(', ') + '.';
     }

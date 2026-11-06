@@ -134,35 +134,47 @@ body.accueil { min-height: 100vh; display: grid; }
 .vitrail > * { position: relative; }
 .vitrail .marque { margin: 0; color: #fff; }
 .vitrail .sceau { background: rgba(255, 255, 255, .18); }
-.vitrail h2 { font-size: var(--t-xl); font-weight: 600; max-width: 24ch; }
-.vitrail p { color: rgba(255, 255, 255, .85); font-size: var(--t-s); max-width: 38ch; }
-.arguments { display: flex; flex-direction: column; gap: var(--e2); }
-.argument { display: flex; align-items: center; gap: var(--e2); font-size: var(--t-s); font-weight: 500; }
-.argument .ico { opacity: .9; }
+.vitrail h2 { font-size: var(--t-2xl); font-weight: 600; max-width: 24ch; }
+.vitrail p { color: rgba(255, 255, 255, .88); font-size: var(--t-m); max-width: 42ch; }
+.arguments { display: flex; flex-direction: column; gap: var(--e3); }
+.argument { display: flex; align-items: center; gap: var(--e3); font-size: var(--t-m); font-weight: 500; }
+.argument .ico { width: 1.25em; height: 1.25em; opacity: .9; }
 .rappel {
     display: flex; align-items: flex-start; gap: var(--e2);
-    padding: var(--e3); border-radius: var(--r-controle);
+    padding: var(--e3) var(--e4); border-radius: var(--r-controle);
     background: rgba(255, 255, 255, .13); border: 1px solid rgba(255, 255, 255, .22);
-    font-size: var(--t-xs); line-height: 1.5; color: #fff;
+    font-size: var(--t-s); line-height: 1.55; color: #fff;
 }
-.rappel .ico { flex: none; margin-top: 1px; color: #ffcb92; }
+.rappel .ico { flex: none; margin-top: 2px; color: #ffcb92; }
 
+/* Guichet : le bloc de connexion est centre dans sa colonne, horizontalement et verticalement. */
 .guichet {
     position: relative;
-    padding: var(--e7) var(--e6);
-    display: flex; flex-direction: column; justify-content: center; gap: var(--e3);
+    padding: var(--e7) var(--e5);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--e4);
+    text-align: center;
 }
-.guichet > form { display: flex; flex-direction: column; gap: var(--e3); }
+.guichet > *:not(.coin) { width: 100%; max-width: 360px; }
+.guichet > form { display: flex; flex-direction: column; gap: var(--e4); text-align: left; }
 .guichet .coin { position: absolute; top: var(--e3); right: var(--e3); }
-.guichet h1 { font-size: var(--t-xl); }
-.guichet .sous-titre { margin-bottom: var(--e2); }
-.pied-guichet { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--e2); font-size: var(--t-xs); color: var(--discret); }
+.guichet h1 { font-size: var(--t-2xl); justify-content: center; }
+.guichet .sous-titre { font-size: var(--t-m); }
+.guichet label { font-size: var(--t-m); }
+.guichet input { padding: 11px 13px; font-size: 16px; }
+.guichet button.plein { font-size: var(--t-m); padding: 13px var(--e4); }
+.guichet .alerte, .guichet .info { text-align: left; font-size: var(--t-s); }
+.pied-guichet {
+    display: flex; flex-direction: column; gap: var(--e1);
+    font-size: var(--t-s); color: var(--discret);
+}
 
 /* Champ avec icone a gauche. */
 .champ { position: relative; display: block; }
 /* L'icone se place sur la ligne du champ, sous le libelle (qui occupe la premiere ligne). */
-.champ > .ico { position: absolute; left: 11px; top: 2.5em; color: var(--discret); pointer-events: none; }
-.champ input { padding-left: 34px; }
+.champ > .ico { position: absolute; left: 12px; top: 2.5em; color: var(--discret); pointer-events: none; }
+.champ input { padding-left: 38px; }
+.guichet .champ > .ico { top: 2.6em; }
+.guichet .champ input { padding-left: 42px; }
 .champ:focus-within > .ico { color: var(--bleu); }
 
 /* ---------- Ecran centre (changement de mot de passe) ---------- */

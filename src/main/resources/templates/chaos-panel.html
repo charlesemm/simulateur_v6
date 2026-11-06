@@ -10,7 +10,7 @@
         <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-zap"/></svg>Crash tests</h1>
     </div>
     <p class="sous-titre">Provoquer volontairement une panne pendant qu'une simulation tourne, pour vérifier qu'aucune
-        feuille de soins n'est perdue ni écrite deux fois. Chaque action s'arrête d'elle-même au bout de la durée choisie.</p>
+        événement n'est perdu ni écrit deux fois. Chaque action s'arrête d'elle-même au bout de la durée choisie.</p>
 
     <section id="zone" th:fragment="zone" aria-live="polite">
         <p class="alerte" th:if="${erreur}" role="alert">
@@ -78,9 +78,9 @@
                 <header>
                     <h2><svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>Surcharger</h2>
                 </header>
-                <p class="discret">Multiplie le nombre de feuilles de soins produites, pour chercher le point de rupture.</p>
+                <p class="discret">Multiplie le nombre de parcours produites, pour chercher le point de rupture.</p>
                 <input type="hidden" name="type" value="SURCHARGE">
-                <label>Combien de fois plus de feuilles de soins
+                <label>Combien de fois plus de parcours
                     <select name="multiplicateur">
                         <option th:each="p : ${paliers}" th:value="${p}" th:text="${p} + ' fois'">5 fois</option>
                     </select>

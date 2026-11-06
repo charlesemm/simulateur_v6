@@ -9,8 +9,8 @@
     <div class="titre-ecran">
         <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-file"/></svg>Scénarios</h1>
     </div>
-    <p class="sous-titre">Un scénario décrit la journée à simuler : combien de patients, quelle part d'examens et
-        d'hospitalisations, quelle proportion d'anomalies, et comment la charge varie dans le temps.</p>
+    <p class="sous-titre">Un scénario décrit la journée à simuler, domaine par domaine : quel volume, quelle
+        répartition des parcours, quelle proportion d'anomalies, et comment la charge varie dans le temps.</p>
 
     <div class="grille">
         <form class="carte" th:hx-post="@{/scenarios/generer}" hx-target="#zone" hx-swap="outerHTML">
@@ -19,11 +19,11 @@
             <label>Nom du scénario <input type="text" name="nom" value="Prestations - mon scénario" required maxlength="200"></label>
             <label>Graine
                 <input type="number" name="seed" value="42" step="1">
-                <span class="aide-champ">Même graine, mêmes patients et mêmes anomalies à chaque relance.</span>
+                <span class="aide-champ">Même graine, mêmes données et mêmes anomalies à chaque relance.</span>
             </label>
             <label>Vitesse du temps
                 <input type="number" name="accelerationTemps" value="60" min="0.001" step="any">
-                <span class="aide-champ">Secondes simulées par seconde réelle. 60 fait passer une minute de soins
+                <span class="aide-champ">Secondes simulées par seconde réelle. 60 fait passer une minute simulée
                     en une seconde.</span>
             </label>
             <label>Date et heure du premier soin
@@ -35,7 +35,7 @@
                 <legend>Prestations</legend>
                 <label>Patients par seconde
                     <input type="number" name="debit" value="5" min="0" step="any">
-                    <span class="aide-champ">Cinq patients par seconde font 300 feuilles de soins par minute.</span>
+                    <span class="aide-champ">Cinq patients par seconde font 300 parcours par minute.</span>
                 </label>
                 <label>Part des patients envoyés en examens
                     <input type="number" name="examens" value="60" min="0" max="100" step="any">

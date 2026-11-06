@@ -10,7 +10,7 @@
         <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-play"/></svg>Lancement</h1>
     </div>
     <p class="sous-titre">Une seule simulation tourne à la fois. Choisissez un scénario, et la graine si vous voulez
-        rejouer exactement les mêmes patients.</p>
+        rejouer exactement les mêmes données.</p>
 
     <section id="zone" th:fragment="zone" aria-live="polite" class="grille">
         <p class="alerte large" th:if="${erreur}" role="alert">
@@ -26,7 +26,7 @@
             <dl>
                 <dt>Scénario</dt><dd th:text="${actif.scenario}">scénario</dd>
                 <dt>Graine</dt><dd class="chiffre" th:text="${actif.seed}">42</dd>
-                <dt>Feuilles de soins créées</dt><dd class="chiffre" th:text="${#numbers.formatInteger(actif.parcoursGeneres, 1, 'WHITESPACE')}">0</dd>
+                <dt>Parcours créés</dt><dd class="chiffre" th:text="${#numbers.formatInteger(actif.parcoursGeneres, 1, 'WHITESPACE')}">0</dd>
                 <dt>Événements produits</dt><dd class="chiffre" th:text="${#numbers.formatInteger(actif.evenementsEmis, 1, 'WHITESPACE')}">0</dd>
                 <dt>Référence</dt><dd><code th:text="${actif.id}">id</code></dd>
             </dl>
@@ -41,7 +41,7 @@
                 </button>
                 <button type="button" class="danger"
                         th:hx-post="@{/lancement/{id}/arreter(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML"
-                        hx-confirm="Arrêter la simulation en cours ? Les feuilles de soins en attente seront enregistrées avant l'arrêt.">
+                        hx-confirm="Arrêter la simulation en cours ? Les événements en attente seront enregistrés avant l'arrêt.">
                     <svg class="ico" aria-hidden="true"><use href="#i-stop"/></svg>Arrêter
                 </button>
                 <a class="bouton secondaire" th:href="@{/dashboard}">
@@ -61,14 +61,14 @@
                 <label>Graine
                     <input type="number" name="graine" step="1" inputmode="numeric" placeholder="celle du scénario">
                     <span class="aide-champ">Deux simulations lancées avec la même graine produisent exactement
-                        les mêmes patients et les mêmes anomalies.</span>
+                        les mêmes données et les mêmes anomalies.</span>
                 </label>
                 <label>Vitesse du temps
                     <input type="number" name="vitesse" min="0.001" max="100000" step="any" list="vitesses"
                            placeholder="celle du scénario">
                     <datalist id="vitesses"><option value="1"></option><option value="10"></option>
                         <option value="60"></option><option value="100"></option></datalist>
-                    <span class="aide-champ">Secondes simulées par seconde réelle. 60 fait passer une minute de soins
+                    <span class="aide-champ">Secondes simulées par seconde réelle. 60 fait passer une minute simulée
                         en une seconde.</span>
                 </label>
                 <div class="actions">
@@ -90,7 +90,7 @@
             <div class="vide" th:if="${#lists.isEmpty(recents)}">
                 <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
                 <b>Aucune simulation n'a encore tourné</b>
-                <p>Choisissez un scénario ci-dessus pour produire les premières feuilles de soins.</p>
+                <p>Choisissez un scénario ci-dessus pour produire les premiers parcours.</p>
             </div>
 
             <div class="defilement" th:unless="${#lists.isEmpty(recents)}">

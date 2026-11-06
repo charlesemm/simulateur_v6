@@ -143,7 +143,7 @@
             '<div class="palette" role="dialog" aria-modal="true" aria-label="Recherche">' +
             '<input type="search" class="palette-saisie" placeholder="Aller à un écran…" aria-label="Rechercher un écran" autocomplete="off">' +
             '<ul class="palette-liste" role="listbox"></ul>' +
-            '<p class="palette-pied">Entrée pour ouvrir, Échap pour fermer. La recherche des simulations et des feuilles de soins arrive avec son écran dédié.</p>' +
+            '<p class="palette-pied">Entrée pour ouvrir, Échap pour fermer. La recherche des simulations et des dossiers arrive avec son écran dédié.</p>' +
             '</div>';
         document.body.appendChild(fond);
 

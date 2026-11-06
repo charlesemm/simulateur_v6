@@ -2,14 +2,14 @@
 <html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout :: page(~{::title}, ~{::main})}">
 <head>
-    <title>Feuilles de soins — Echo</title>
+    <title>Flux de données — Echo</title>
 </head>
 <body>
 <main id="contenu" class="page">
     <div class="titre-ecran">
-        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-feuille-soins"/></svg>Feuilles de soins</h1>
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-activity"/></svg>Flux de données</h1>
     </div>
-    <p class="sous-titre">Chaque ligne est une étape franchie par une feuille de soins : arrivée du patient,
+    <p class="sous-titre">Chaque ligne est une étape franchie par un dossier. En prestations : arrivée du patient,
         vérification des droits, consultation, examens, délivrance, clôture.</p>
 
     <form class="carte filtres" th:action="@{/evenements}" method="get"
@@ -48,7 +48,7 @@
         </div>
 
         <div class="vide" th:if="${#lists.isEmpty(resultat.contenu)}">
-            <svg class="ico" aria-hidden="true"><use href="#i-feuille-soins"/></svg>
+            <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg>
             <b>Aucun événement pour ces critères</b>
             <p>Vérifiez la simulation choisie, ou retirez un filtre : l'étape et le statut s'écrivent en majuscules,
                 comme <code>CONSULTATION_REALISEE</code>.</p>
@@ -59,7 +59,7 @@
             <table>
                 <thead>
                 <tr>
-                    <th scope="col">Étape</th><th scope="col">Domaine</th><th scope="col">Feuille de soins</th>
+                    <th scope="col">Étape</th><th scope="col">Domaine</th><th scope="col">Dossier</th>
                     <th scope="col">Date du soin</th><th scope="col">Enregistré le</th><th scope="col">Statut</th>
                     <th scope="col">Contenu</th>
                     <th scope="col" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">Rejeu</th>
