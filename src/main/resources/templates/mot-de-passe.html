@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mot de passe - Simulateur CNAM</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="centre">
+<main class="carte">
+    <h1>Changer le mot de passe</h1>
+    <p class="info" th:if="${obligatoire}">Votre mot de passe est temporaire : choisissez-en un nouveau pour continuer.</p>
+    <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
+    <form th:action="@{/mot-de-passe}" method="post">
+        <label>Mot de passe actuel
+            <input type="password" name="ancien" autocomplete="current-password" required>
+        </label>
+        <label>Nouveau mot de passe (12 caractères au minimum)
+            <input type="password" name="nouveau" autocomplete="new-password" minlength="12" required>
+        </label>
+        <label>Confirmation
+            <input type="password" name="confirmation" autocomplete="new-password" minlength="12" required>
+        </label>
+        <button type="submit">Enregistrer</button>
+    </form>
+    <form th:action="@{/logout}" method="post">
+        <button type="submit" class="secondaire">Se déconnecter</button>
+    </form>
+</main>
+</body>
+</html>

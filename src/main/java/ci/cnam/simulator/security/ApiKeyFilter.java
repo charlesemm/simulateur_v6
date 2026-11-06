@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.List;
+import java.util.function.Predicate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,8 +21,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *
  * <p>La cle attendue vient de la variable d'environnement {@code API_KEY}
  * (propriete {@code simulateur.securite.cle-api}). Elle est lue dans l'en-tete
- * {@code X-API-Key} et comparee a temps constant. Sans cle ou avec une mauvaise cle :
- * 401 au format d'erreur de l'API. Les roles arrivent a la brique "Securite".
+ * {@code X-API-Key} et verifiee contre des empreintes SHA-256 ({@link ApiKeyService}), a temps constant.
+ * Sans cle ou avec une mauvaise cle : 401 au format d'erreur de l'API.
  */
 public class ApiKeyFilter extends OncePerRequestFilter {
 
@@ -31,10 +32,18 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     private static final String CORPS_401 =
             "{\"code\":\"CLE_API_INVALIDE\",\"message\":\"Cle d'API absente ou invalide (en-tete X-API-Key)\"}";
 
-    private final byte[] cleAttendue;
+    private final Predicate<String> verificateur;
 
+    /** Une seule cle attendue, comparee a temps constant (tests, ou usage sans base). */
     public ApiKeyFilter(String cleAttendue) {
-        this.cleAttendue = cleAttendue == null ? new byte[0] : cleAttendue.getBytes(StandardCharsets.UTF_8);
+        byte[] attendue = cleAttendue == null ? new byte[0] : cleAttendue.getBytes(StandardCharsets.UTF_8);
+        this.verificateur = fournie -> attendue.length > 0
+                && MessageDigest.isEqual(attendue, fournie.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** Verification deleguee (en production : {@link ApiKeyService#valide}, sur des empreintes). */
+    public ApiKeyFilter(Predicate<String> verificateur) {
+        this.verificateur = verificateur;
     }
 
     @Override
@@ -42,8 +51,7 @@ public class ApiKeyFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String fournie = requete.getHeader(ENTETE);
-        if (fournie == null || cleAttendue.length == 0
-                || !MessageDigest.isEqual(cleAttendue, fournie.getBytes(StandardCharsets.UTF_8))) {
+        if (fournie == null || !verificateur.test(fournie)) {
             reponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             reponse.setContentType(MediaType.APPLICATION_JSON_VALUE);
             reponse.setCharacterEncoding(StandardCharsets.UTF_8.name());
