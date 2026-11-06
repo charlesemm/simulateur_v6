@@ -1,0 +1,93 @@
+# Publication de l'image sur GHCR.
+#
+# C'est la piece qui manquait a la v6 : le serveur de production ne compile
+# pas, il tire un artefact deja construit et deja teste. Ce chantier produit
+# cet artefact, exactement comme le faisait la v5.
+#
+# Declenchement :
+#   - sur un TAG « v1.0.0 »       -> publie 1.0.0 et sha-<court> (la voie normale)
+#   - a la main (workflow_dispatch) -> publie sha-<court>, pour essayer une
+#     image avant de poser un tag
+#
+# PAS sur chaque poussee vers main, deliberement : une image par commit
+# encombre le registre et laisse croire que n'importe quel commit est
+# deployable. Ce qui se deploie porte un numero de version.
+#
+# Le deploiement, lui, reste manuel : voir docs/05-deploiement.md.
+
+name: Image
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  REGISTRE: ghcr.io
+  IMAGE: ${{ github.repository }}      # ex. charlesemm/simulateur_v6
+
+jobs:
+  publier:
+    name: Construire et publier sur GHCR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Indispensable : sans « packages: write », la poussee vers GHCR echoue
+      # en « denied » alors que l'identification, elle, a reussi.
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # On ne publie pas une image dont les tests n'ont pas tourne. ci.yml a
+      # deja verifie la branche, mais un tag peut etre pose sur n'importe
+      # quel commit : on revalide ici, sur le code exact qui part en prod.
+      - name: Compiler et tester
+        run: ./mvnw -B -q clean verify
+
+      - name: S'identifier sur GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRE }}
+          username: ${{ github.actor }}
+          # Jeton fourni automatiquement au chantier : aucun secret a creer.
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calculer les etiquettes
+        id: etiquettes
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRE }}/${{ env.IMAGE }}
+          # « v1.0.0 » donne l'etiquette « 1.0.0 » (sans le v), plus
+          # « sha-a1b2c3d » dans tous les cas. Pas de « latest » : une
+          # production qui suit « latest » ne sait pas ce qu'elle execute.
+          tags: |
+            type=semver,pattern={{version}}
+            type=sha,format=short
+
+      - name: Construire et publier
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # Le projet suit la convention Podman : Containerfile, pas Dockerfile.
+          file: ./Containerfile
+          push: true
+          tags: ${{ steps.etiquettes.outputs.tags }}
+          labels: ${{ steps.etiquettes.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Rappeler quoi deployer
+        run: |
+          echo "Images publiees :"
+          echo "${{ steps.etiquettes.outputs.tags }}"
+          echo ""
+          echo "Pour deployer, sur srv-gouv :"
+          echo "  sudo vi /opt/echo6/.env        # ECHO_IMAGE=<une des lignes ci-dessus>"
+          echo "  cd /opt/echo6 && sudo podman-compose -f compose.prod.yaml pull && sudo podman-compose -f compose.prod.yaml up -d"
