@@ -10,29 +10,37 @@
     <!-- htmx : pas d'évaluation de code ni de scripts reçus dans les réponses -->
     <meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false,"selfRequestsOnly":true}'>
     <title th:replace="${titre}">Simulateur CNAM</title>
+    <meta name="color-scheme" content="light dark">
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script th:src="@{/js/theme.js}"></script>
     <script th:src="@{/js/vendor/htmx.min.js}" defer></script>
     <script th:src="@{/js/app.js}" defer></script>
 </head>
 <body>
+<th:block th:replace="~{icones :: sprite}"></th:block>
 <a class="saut" href="#contenu">Aller au contenu</a>
 <header class="barre">
     <span class="marque">Simulateur CNAM</span>
     <nav aria-label="Navigation principale">
-        <a th:href="@{/dashboard}">Tableau de bord</a>
-        <a th:href="@{/lancement}">Lancement</a>
-        <a th:href="@{/chaos}">Chaos</a>
-        <a th:href="@{/evenements}">Événements</a>
-        <a th:href="@{/historique}">Historique</a>
-        <a th:href="@{/qualite}">Qualité</a>
-        <a th:href="@{/scenarios}">Scénarios</a>
-        <a th:href="@{/admin/utilisateurs}" sec:authorize="hasRole('ADMIN')">Administration</a>
+        <a th:href="@{/dashboard}"><svg class="ico" aria-hidden="true"><use href="#i-dashboard"/></svg>Tableau de bord</a>
+        <a th:href="@{/lancement}"><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Lancement</a>
+        <a th:href="@{/chaos}"><svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>Chaos</a>
+        <a th:href="@{/evenements}"><svg class="ico" aria-hidden="true"><use href="#i-list"/></svg>Événements</a>
+        <a th:href="@{/historique}"><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>Historique</a>
+        <a th:href="@{/qualite}"><svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Qualité</a>
+        <a th:href="@{/scenarios}"><svg class="ico" aria-hidden="true"><use href="#i-file"/></svg>Scénarios</a>
+        <a th:href="@{/admin/utilisateurs}" sec:authorize="hasRole('ADMIN')"><svg class="ico" aria-hidden="true"><use href="#i-users"/></svg>Administration</a>
     </nav>
     <div class="compte">
-        <span sec:authentication="name">utilisateur</span>
-        <a th:href="@{/mot-de-passe}">Mot de passe</a>
+        <button type="button" class="icone-seule secondaire" data-bascule-theme>
+            <svg class="ico t-auto" aria-hidden="true"><use href="#i-monitor"/></svg>
+            <svg class="ico t-light" aria-hidden="true"><use href="#i-sun"/></svg>
+            <svg class="ico t-dark" aria-hidden="true"><use href="#i-moon"/></svg>
+        </button>
+        <span class="utilisateur"><svg class="ico" aria-hidden="true"><use href="#i-user"/></svg><span sec:authentication="name">utilisateur</span></span>
+        <a th:href="@{/mot-de-passe}" title="Changer le mot de passe"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg><span class="cache-mobile">Mot de passe</span></a>
         <form th:action="@{/logout}" method="post">
-            <button type="submit" class="secondaire">Déconnexion</button>
+            <button type="submit" class="secondaire"><svg class="ico" aria-hidden="true"><use href="#i-logout"/></svg>Déconnexion</button>
         </form>
     </div>
 </header>

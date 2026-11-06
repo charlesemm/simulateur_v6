@@ -6,7 +6,7 @@
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1>Explorateur d'événements</h1>
+    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-list"/></svg>Explorateur d'événements</h1>
 
     <form class="carte filtres" th:action="@{/evenements}" method="get"
           th:hx-get="@{/evenements}" hx-target="#tableau" hx-swap="outerHTML" hx-push-url="true"
@@ -22,7 +22,7 @@
         <label>Domaine <input type="text" name="domaine" th:value="${domaine}" placeholder="prestations"></label>
         <label>Type <input type="text" name="type" th:value="${type}" placeholder="FACTURE_OUVERTE"></label>
         <label>Statut <input type="text" name="statut" th:value="${statut}" placeholder="ECRIT"></label>
-        <button type="submit">Filtrer</button>
+        <button type="submit"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg>Filtrer</button>
     </form>
 
     <section id="tableau" th:fragment="tableau" class="carte" aria-live="polite">

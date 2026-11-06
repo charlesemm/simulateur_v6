@@ -74,21 +74,16 @@
         })(debut);
     }
 
-    function courbe(idCanvas, libelle) {
+    var graphiques = [];
+
+    function courbe(idCanvas, libelle, variableCouleur) {
         var canvas = el(idCanvas);
         if (!canvas || typeof Chart === 'undefined') {
             return null;
         }
-        var couleur = css('--accent', '#0b5cad');
-        var texteDiscret = css('--discret', '#5b6478');
-        var bord = css('--bord', '#e1e5ee');
-        var ctx = canvas.getContext('2d');
-        var degrade = ctx.createLinearGradient(0, 0, 0, 240);
-        degrade.addColorStop(0, couleur + '55');
-        degrade.addColorStop(1, couleur + '00');
-        return new Chart(canvas, {
+        var graphique = new Chart(canvas, {
             type: 'line',
-            data: {labels: [], datasets: [{label: libelle, data: [], borderColor: couleur, backgroundColor: degrade,
+            data: {labels: [], datasets: [{label: libelle, data: [],
                 fill: true, pointRadius: 0, pointHoverRadius: 4, tension: 0.35, borderWidth: 2.5}]},
             options: {
                 animation: reduit ? false : {duration: 400},
@@ -96,15 +91,38 @@
                 interaction: {mode: 'index', intersect: false},
                 scales: {
                     x: {display: false},
-                    y: {beginAtZero: true, grid: {color: bord}, border: {display: false}, ticks: {color: texteDiscret}}
+                    y: {beginAtZero: true, border: {display: false}}
                 },
-                plugins: {legend: {labels: {color: texteDiscret, usePointStyle: true, boxWidth: 8}}}
+                plugins: {legend: {labels: {usePointStyle: true, boxWidth: 8}}}
             }
         });
+        graphique.variableCouleur = variableCouleur;
+        graphiques.push(graphique);
+        habiller(graphique);
+        return graphique;
     }
 
-    var debit = courbe('graphique-debit', 'Événements écrits par seconde');
-    var latence = courbe('graphique-latence', 'Latence moyenne d\'un lot (ms)');
+    // Couleurs lues dans le thème courant (clair / sombre) ; rappelé à chaque changement de thème.
+    function habiller(g) {
+        var couleur = css(g.variableCouleur, '#1565c0');
+        var degrade = g.canvas.getContext('2d').createLinearGradient(0, 0, 0, 240);
+        degrade.addColorStop(0, couleur + '66');
+        degrade.addColorStop(1, couleur + '00');
+        var jeu = g.data.datasets[0];
+        jeu.borderColor = couleur;
+        jeu.backgroundColor = degrade;
+        var texte = css('--discret', '#5a6b80');
+        g.options.scales.y.grid = {color: css('--bord', '#dde6f0')};
+        g.options.scales.y.ticks = {color: texte};
+        g.options.plugins.legend.labels.color = texte;
+        g.update('none');
+    }
+    document.addEventListener('themechange', function () {
+        graphiques.forEach(habiller);
+    });
+
+    var debit = courbe('graphique-debit', 'Événements écrits par seconde', '--accent');
+    var latence = courbe('graphique-latence', 'Latence moyenne d\'un lot (ms)', '--vert');
 
     function pousser(graphique, etiquette, valeur) {
         if (!graphique) {

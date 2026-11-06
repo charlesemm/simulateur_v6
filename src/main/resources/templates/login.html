@@ -4,10 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Connexion - Simulateur CNAM</title>
+    <meta name="color-scheme" content="light dark">
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script th:src="@{/js/theme.js}"></script>
 </head>
 <body class="centre">
+<th:block th:replace="~{icones :: sprite}"></th:block>
+<button type="button" class="icone-seule secondaire bascule-flottant" data-bascule-theme>
+    <svg class="ico t-auto" aria-hidden="true"><use href="#i-monitor"/></svg>
+    <svg class="ico t-light" aria-hidden="true"><use href="#i-sun"/></svg>
+    <svg class="ico t-dark" aria-hidden="true"><use href="#i-moon"/></svg>
+</button>
 <main class="carte">
+    <div class="logo" aria-hidden="true"><svg class="ico"><use href="#i-activity"/></svg></div>
     <h1>Simulateur de flux CNAM</h1>
     <p class="discret">Données entièrement synthétiques.</p>
     <!-- Message volontairement identique pour un mauvais mot de passe, un compte inconnu ou verrouille. -->
@@ -15,12 +24,14 @@
     <p class="info" th:if="${param.logout}">Vous êtes déconnecté.</p>
     <form th:action="@{/login}" method="post">
         <label>Identifiant
-            <input type="text" name="username" autocomplete="username" required autofocus>
+            <span class="champ"><svg class="ico" aria-hidden="true"><use href="#i-user"/></svg>
+                <input type="text" name="username" autocomplete="username" required autofocus></span>
         </label>
         <label>Mot de passe
-            <input type="password" name="password" autocomplete="current-password" required>
+            <span class="champ"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>
+                <input type="password" name="password" autocomplete="current-password" required></span>
         </label>
-        <button type="submit">Se connecter</button>
+        <button type="submit" class="plein"><svg class="ico" aria-hidden="true"><use href="#i-logout"/></svg>Se connecter</button>
     </form>
 </main>
 </body>

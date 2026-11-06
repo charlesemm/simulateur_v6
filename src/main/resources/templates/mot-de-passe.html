@@ -8,7 +8,7 @@
 </head>
 <body class="centre">
 <main class="carte">
-    <h1>Changer le mot de passe</h1>
+    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-lock"/></svg>Changer le mot de passe</h1>
     <p class="info" th:if="${obligatoire}">Votre mot de passe est temporaire : choisissez-en un nouveau pour continuer.</p>
     <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
     <form th:action="@{/mot-de-passe}" method="post">

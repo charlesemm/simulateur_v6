@@ -6,7 +6,7 @@
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1>Crash tests</h1>
+    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-zap"/></svg>Crash tests</h1>
 
     <section id="zone" th:fragment="zone" aria-live="polite">
         <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
@@ -19,7 +19,7 @@
         <div class="grille" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
             <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
                   hx-confirm="Couper la base de données pour la durée choisie ?">
-                <h2>Couper la base</h2>
+                <h2><svg class="ico" aria-hidden="true"><use href="#i-database"/></svg>Couper la base</h2>
                 <input type="hidden" name="type" value="COUPURE_BASE">
                 <label>Mode
                     <select name="mode">
@@ -30,7 +30,7 @@
                 <label>Durée (secondes, <span th:text="${dureeMax}">300</span> au plus)
                     <input type="number" name="dureeSecondes" value="30" min="1" th:max="${dureeMax}" required>
                 </label>
-                <button type="submit" class="danger" th:disabled="${actif == null}">Couper la base</button>
+                <button type="submit" class="danger" th:disabled="${actif == null}"><svg class="ico" aria-hidden="true"><use href="#i-database"/></svg>Couper la base</button>
             </form>
 
             <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
@@ -46,7 +46,7 @@
                 <label>Durée (secondes)
                     <input type="number" name="dureeSecondes" value="30" min="1" th:max="${dureeMax}" required>
                 </label>
-                <button type="submit" class="danger" th:disabled="${actif == null}">Ajouter de la latence</button>
+                <button type="submit" class="danger" th:disabled="${actif == null}"><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>Ajouter de la latence</button>
             </form>
 
             <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
@@ -61,7 +61,7 @@
                 <label>Durée (secondes)
                     <input type="number" name="dureeSecondes" value="30" min="1" th:max="${dureeMax}" required>
                 </label>
-                <button type="submit" class="danger" th:disabled="${actif == null}">Surcharger</button>
+                <button type="submit" class="danger" th:disabled="${actif == null}"><svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>Surcharger</button>
             </form>
 
             <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"
@@ -81,7 +81,7 @@
         <div class="actions" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
             <button type="button" th:hx-post="@{/chaos/retablir}" hx-target="#zone" hx-swap="outerHTML"
                     hx-confirm="Annuler toutes les actions de chaos et rétablir la liaison avec la base ?">
-                Tout rétablir
+                <svg class="ico" aria-hidden="true"><use href="#i-undo"/></svg>Tout rétablir
             </button>
         </div>
         <p class="avert" sec:authorize="!hasAnyRole('ADMIN','OPERATEUR')">

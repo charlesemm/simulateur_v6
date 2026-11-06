@@ -1,48 +1,81 @@
 /* Feuille de style locale : aucune ressource externe (polices, CDN). */
 :root {
-    --fond: #f3f5f9;
+    --fond: #f2f7fc;
     --carte: #ffffff;
-    --carte-2: #f8f9fc;
-    --texte: #182033;
-    --discret: #5b6478;
-    --bord: #e1e5ee;
-    --accent: #0b5cad;
-    --accent-fort: #084a8c;
-    --accent-doux: #e8f1fb;
+    --carte-2: #f6f9fd;
+    --texte: #0f2137;
+    --discret: #5a6b80;
+    --bord: #dde6f0;
+    --accent: #1565c0;
+    --accent-fort: #0d47a1;
+    --accent-doux: #e6f0fb;
     --accent-texte: #ffffff;
+    --vert: #15a05a;
+    --vert-doux: #e4f6ec;
     --alerte: #b3261e;
     --alerte-fond: #fdecea;
-    --ok: #1e7b34;
-    --ok-fond: #e6f4ea;
+    --ok: #137a43;
+    --ok-fond: #e4f6ec;
     --avert: #8a5a00;
     --avert-fond: #fff4d6;
-    --ombre-1: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .06);
-    --ombre-2: 0 4px 12px rgba(16, 24, 40, .08), 0 2px 4px rgba(16, 24, 40, .05);
+    --degrade: linear-gradient(135deg, #1565c0 0%, #15a05a 100%);
+    --ombre-1: 0 1px 2px rgba(15, 33, 55, .06), 0 1px 3px rgba(15, 33, 55, .06);
+    --ombre-2: 0 4px 12px rgba(15, 33, 55, .09), 0 2px 4px rgba(15, 33, 55, .05);
     --rayon: 12px;
     --rayon-s: 8px;
     --trans: .18s cubic-bezier(.4, 0, .2, 1);
+    color-scheme: light;
 }
 
+/* Sombre : choix explicite, ou système si aucun choix clair (theme.js pose data-theme). */
+:root[data-theme="dark"] {
+    --fond: #0a1220;
+    --carte: #111c2e;
+    --carte-2: #16233a;
+    --texte: #e8eef7;
+    --discret: #93a4bb;
+    --bord: #22324b;
+    --accent: #5aa5f7;
+    --accent-fort: #8cc2fb;
+    --accent-doux: #14284a;
+    --accent-texte: #06121f;
+    --vert: #3ddc97;
+    --vert-doux: #123628;
+    --alerte: #ff8f87;
+    --alerte-fond: #3a1d1b;
+    --ok: #3ddc97;
+    --ok-fond: #123628;
+    --avert: #f0c36a;
+    --avert-fond: #38300f;
+    --degrade: linear-gradient(135deg, #5aa5f7 0%, #3ddc97 100%);
+    --ombre-1: 0 1px 2px rgba(0, 0, 0, .4);
+    --ombre-2: 0 6px 16px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+}
 @media (prefers-color-scheme: dark) {
-    :root {
-        --fond: #0f121a;
-        --carte: #181d29;
-        --carte-2: #1d2331;
-        --texte: #e7eaf0;
-        --discret: #9aa3b5;
-        --bord: #2a3144;
-        --accent: #6aa9ee;
-        --accent-fort: #8fc0f4;
-        --accent-doux: #1b2a40;
-        --accent-texte: #0b1220;
-        --alerte: #ff8f87;
-        --alerte-fond: #3a1d1b;
-        --ok: #7bd48f;
-        --ok-fond: #17301f;
-        --avert: #f0c36a;
-        --avert-fond: #38300f;
-        --ombre-1: 0 1px 2px rgba(0, 0, 0, .4);
-        --ombre-2: 0 6px 16px rgba(0, 0, 0, .45);
+    :root:not([data-theme="light"]):not([data-theme="dark"]) {
+        --fond: #0a1220;
+    --carte: #111c2e;
+    --carte-2: #16233a;
+    --texte: #e8eef7;
+    --discret: #93a4bb;
+    --bord: #22324b;
+    --accent: #5aa5f7;
+    --accent-fort: #8cc2fb;
+    --accent-doux: #14284a;
+    --accent-texte: #06121f;
+    --vert: #3ddc97;
+    --vert-doux: #123628;
+    --alerte: #ff8f87;
+    --alerte-fond: #3a1d1b;
+    --ok: #3ddc97;
+    --ok-fond: #123628;
+    --avert: #f0c36a;
+    --avert-fond: #38300f;
+    --degrade: linear-gradient(135deg, #5aa5f7 0%, #3ddc97 100%);
+    --ombre-1: 0 1px 2px rgba(0, 0, 0, .4);
+    --ombre-2: 0 6px 16px rgba(0, 0, 0, .5);
+    color-scheme: dark;
     }
 }
 
@@ -268,3 +301,49 @@ body.chargement::after { width: 70%; opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* ---- Icônes, thème, accents bleu / blanc / vert ---- */
+.ico {
+    width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em;
+    fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.barre nav a { display: inline-flex; align-items: center; gap: 7px; }
+.ico-titre {
+    width: 1.6em; height: 1.6em; padding: .3em; margin-right: 10px; vertical-align: -.35em;
+    border-radius: 10px; color: #fff; background: var(--degrade); stroke-width: 2.2;
+}
+.page h1 { display: flex; align-items: center; }
+.page h1 .ico-titre { vertical-align: middle; }
+
+/* Bascule de thème : une seule des trois icônes est visible selon le choix */
+.icone-seule { padding: 7px 9px; border-radius: 999px; }
+.icone-seule .ico { width: 1.25em; height: 1.25em; margin: 0; vertical-align: middle; }
+.t-auto, .t-light, .t-dark { display: none; }
+:root:not([data-choix]) .t-auto, [data-choix="auto"] .t-auto,
+[data-choix="light"] .t-light, [data-choix="dark"] .t-dark { display: inline-block; }
+.bascule-flottant { position: fixed; top: 14px; right: 14px; background: var(--carte); z-index: 5; }
+
+.barre .compte .utilisateur { display: inline-flex; align-items: center; gap: 6px; color: var(--discret); font-weight: 600; }
+.barre .compte a { display: inline-flex; align-items: center; gap: 6px; }
+.barre .compte button { gap: 6px; }
+
+/* Boutons : vert pour démarrer, dégradé pour l'action principale */
+button.succes { background: var(--vert); border-color: var(--vert); color: #04210f; }
+button.plein { width: 100%; margin-top: 6px; padding: 10px 15px; background: var(--degrade); border-color: transparent; color: #fff; }
+.barre nav a[aria-current="page"] { background: var(--degrade); color: #fff; box-shadow: var(--ombre-1); }
+.barre .marque::before { background: var(--degrade); box-shadow: 0 0 0 4px var(--accent-doux); }
+.kpi::before { background: var(--degrade); }
+.kpi.ok::before { background: var(--vert); }
+
+/* Connexion */
+.logo {
+    width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 14px;
+    background: var(--degrade); color: #fff; box-shadow: var(--ombre-2);
+}
+.logo .ico { width: 28px; height: 28px; }
+.champ { position: relative; display: block; }
+.champ .ico { position: absolute; left: 11px; top: 50%; margin-top: 2.5px; transform: translateY(-50%); color: var(--discret); pointer-events: none; }
+.champ input { padding-left: 36px; }
+.champ:focus-within .ico { color: var(--accent); }
+
+@media (max-width: 760px) { .cache-mobile { display: none; } }

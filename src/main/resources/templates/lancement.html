@@ -6,7 +6,7 @@
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1>Lancement d'une simulation</h1>
+    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-play"/></svg>Lancement d'une simulation</h1>
 
     <section id="zone" th:fragment="zone" aria-live="polite">
         <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
@@ -24,16 +24,16 @@
             <div class="actions" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
                 <button type="button" th:if="${actif.etat.name() == 'EN_COURS'}"
                         th:hx-post="@{/lancement/{id}/pause(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML">
-                    Pause
+                    <svg class="ico" aria-hidden="true"><use href="#i-pause"/></svg>Pause
                 </button>
                 <button type="button" th:if="${actif.etat.name() == 'EN_PAUSE'}"
                         th:hx-post="@{/lancement/{id}/reprendre(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML">
-                    Reprendre
+                    <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Reprendre
                 </button>
                 <button type="button" class="danger"
                         th:hx-post="@{/lancement/{id}/arreter(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML"
                         hx-confirm="Arrêter le run en cours ? Les événements en attente seront écrits avant l'arrêt.">
-                    Arrêter
+                    <svg class="ico" aria-hidden="true"><use href="#i-stop"/></svg>Arrêter
                 </button>
             </div>
         </div>
@@ -55,7 +55,7 @@
                     <datalist id="vitesses"><option value="1"></option><option value="10"></option>
                         <option value="60"></option><option value="100"></option></datalist>
                 </label>
-                <button type="submit">Démarrer</button>
+                <button type="submit" class="succes"><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Démarrer</button>
             </form>
             <p class="avert" sec:authorize="!hasAnyRole('ADMIN','OPERATEUR')">
                 Lecture seule : votre rôle ne permet pas de lancer une simulation.

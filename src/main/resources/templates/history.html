@@ -6,7 +6,7 @@
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1>Historique des runs</h1>
+    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-clock"/></svg>Historique des runs</h1>
     <div id="retour" aria-live="polite"></div>
     <p class="discret" th:if="${#lists.isEmpty(runs)}">Aucun run pour l'instant.</p>
     <div class="carte defilement" th:unless="${#lists.isEmpty(runs)}">

@@ -5,7 +5,7 @@
 </head>
 <body>
 <main id="contenu" class="page">
-    <h1>Rapport qualité</h1>
+    <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-shield"/></svg>Rapport qualité</h1>
     <p class="discret" th:if="${#lists.isEmpty(runs)}">Aucun run pour l'instant.</p>
 
     <form th:unless="${#lists.isEmpty(runs)}" method="get" th:action="@{/qualite}" class="carte">
