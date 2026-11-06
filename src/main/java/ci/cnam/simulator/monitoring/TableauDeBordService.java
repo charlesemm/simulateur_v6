@@ -35,7 +35,7 @@ public class TableauDeBordService {
     private volatile EtatTableauDeBord dernier;
 
     // Echantillon precedent (touche par le seul fil d'echantillonnage).
-    private long precedentNanos;
+    private java.time.Instant precedentInstant;
     private UUID precedentRun;
     private long precedentParcours;
     private long precedentEmis;
@@ -65,8 +65,9 @@ public class TableauDeBordService {
     }
 
     public synchronized EtatTableauDeBord echantillonner() {
-        long maintenant = System.nanoTime();
-        double secondes = aUnPrecedent ? Math.max((maintenant - precedentNanos) / 1e9, 1e-3) : 0;
+        java.time.Instant maintenant = horloge.instant();
+        double secondes = aUnPrecedent
+                ? Math.max(java.time.Duration.between(precedentInstant, maintenant).toNanos() / 1e9, 1e-3) : 0;
 
         Optional<RunInfo> actif = runs.actif();
         long parcours = actif.map(RunInfo::parcoursGeneres).orElse(0L);
@@ -105,7 +106,7 @@ public class TableauDeBordService {
                 latenceMs, lots == null ? 0 : lots.max(TimeUnit.MILLISECONDS),
                 infra.base(), infra.proxy());
 
-        precedentNanos = maintenant;
+        precedentInstant = maintenant;
         precedentRun = actif.map(RunInfo::id).orElse(null);
         precedentParcours = parcours;
         precedentEmis = emis;
