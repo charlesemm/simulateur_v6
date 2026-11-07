@@ -2,17 +2,18 @@ package ci.cnam.simulator.core.scenario;
 
 import ci.cnam.simulator.SimulateurProperties;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -64,22 +65,41 @@ public class ScenarioService {
                 .orElseThrow(() -> new ScenarioInconnuException(nom));
     }
 
-    /** Scenarios du dossier, indexes sous leur nom YAML ET sous le nom du fichier. Un fichier illisible est ignore. */
+    /**
+     * Scenarios du dossier, indexes sous leur nom YAML ET sous le nom du fichier.
+     *
+     * <p>Un fichier ou un sous-dossier illisible est <b>signale puis ignore</b>, jamais remonte en erreur. Le
+     * dossier est monte depuis l'hote en production : ses droits echappent a l'application, et une permission
+     * manquante sur un seul sous-dossier rendait sinon tout l'ecran de lancement inaccessible (500).
+     */
     private List<ScenarioEnregistre> fichiers() {
         if (!Files.isDirectory(dossier)) {
             return List.of();
         }
-        List<ScenarioEnregistre> resultat = new ArrayList<>();
-        try (Stream<Path> chemins = Files.walk(dossier)) {
-            for (Path fichier : chemins.filter(Files::isRegularFile)
-                    .filter(f -> f.toString().endsWith(".yaml") || f.toString().endsWith(".yml"))
-                    .sorted()
-                    .toList()) {
-                lireFichier(fichier, resultat);
-            }
+        List<Path> trouves = new ArrayList<>();
+        try {
+            Files.walkFileTree(dossier, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path fichier, BasicFileAttributes attributs) {
+                    String nom = fichier.getFileName().toString();
+                    if (attributs.isRegularFile() && (nom.endsWith(".yaml") || nom.endsWith(".yml"))) {
+                        trouves.add(fichier);
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFileFailed(Path chemin, IOException e) {
+                    LOG.warn("Scenario ou dossier illisible, ignore : {} ({})", chemin, e.getMessage());
+                    return FileVisitResult.CONTINUE;
+                }
+            });
         } catch (IOException e) {
-            throw new UncheckedIOException("Dossier des scenarios illisible : " + dossier, e);
+            LOG.warn("Dossier des scenarios illisible, aucun scenario de fichier : {} ({})", dossier, e.getMessage());
+            return List.of();
         }
+        List<ScenarioEnregistre> resultat = new ArrayList<>();
+        trouves.stream().sorted().forEach(fichier -> lireFichier(fichier, resultat));
         return resultat;
     }
 
