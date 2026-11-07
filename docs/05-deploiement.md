@@ -136,6 +136,24 @@ scp docker/toxiproxy.json          adm-mnguessan@10.10.4.165:/opt/echo6/docker/
 scp -r scenarios/prestations       adm-mnguessan@10.10.4.165:/opt/echo6/scenarios/
 ```
 
+### Rendre `scenarios/` lisible par le conteneur
+
+**À faire après le `scp -r`, sinon l'écran de lancement répond 500.** Le conteneur ne tourne pas sous votre
+compte : le `Containerfile` crée l'utilisateur `simulateur` (**uid 10001**) et l'application s'exécute sous lui.
+Or `scp` recrée `prestations/` avec les droits du poste d'origine, souvent `rwx------` : l'uid 10001 ne peut
+alors pas ouvrir le dossier.
+
+```bash
+# Les dossiers doivent être traversables, les fichiers lisibles, par « autrui ».
+sudo chmod -R a+rX /opt/echo6/scenarios
+ls -lR /opt/echo6/scenarios        # « r-x » et « r--  » en dernière position
+```
+
+> Panne du 07/11/2026 : sans ce `chmod`, `/simulateur/lancement` répondait **500**
+> (`AccessDeniedException: /app/scenarios/prestations`). L'application ne tombe plus pour autant — elle signale
+> le dossier dans ses journaux et l'ignore — mais **aucun scénario de fichier n'apparaît** tant que les droits
+> ne sont pas posés.
+
 Le vhost nginx se copie séparément, et seulement au moment de la bascule (section 7).
 
 ### Le `.env`
