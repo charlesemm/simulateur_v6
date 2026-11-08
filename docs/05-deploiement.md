@@ -6,6 +6,9 @@
 
 La bascule se résume, au moment décisif, à **changer un numéro de port dans le vhost nginx**.
 
+> **Une fois la v6 en service, ce document ne resservira plus.** Le cycle de tous les jours — relancer en local,
+> publier une version, mettre à jour le serveur — est dans [`06-cycle-de-travail.md`](06-cycle-de-travail.md).
+
 ---
 
 ## 1. État des lieux : ce qui tourne déjà
