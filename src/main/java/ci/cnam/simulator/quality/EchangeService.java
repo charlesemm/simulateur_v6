@@ -34,11 +34,14 @@ public class EchangeService {
     private final EchangeStore store;
     private final Clock horloge;
     private final Duration delaiRapport;
+    private final Optional<SuiviEcheances> suivi;
 
-    public EchangeService(EchangeStore store, Clock horloge, SimulateurProperties proprietes) {
+    public EchangeService(EchangeStore store, Clock horloge, SimulateurProperties proprietes,
+                          Optional<SuiviEcheances> suivi) {
         this.store = store;
         this.horloge = horloge;
         this.delaiRapport = Duration.ofMinutes(proprietes.qualite().delaiRapportMinutes());
+        this.suivi = suivi;
     }
 
     /** Delai au-dela duquel un export retire sans rapport devient un SILENCE. */
@@ -52,11 +55,13 @@ public class EchangeService {
      */
     public void tracerRetrait(UUID runId, String detail) {
         tracer(runId, SensEchange.ENVOI, null, StatutEchange.EXPORT_RETIRE, detail);
+        reporter(runId, s -> s.retraitConstate(runId, detail));
     }
 
     /** Le script a pousse un rapport exploitable. */
     public void tracerRapport(UUID runId, String versionOutil, String detail) {
         tracer(runId, SensEchange.RECEPTION, versionOutil, StatutEchange.RAPPORT_RECU, detail);
+        reporter(runId, s -> s.rapportConstate(runId, detail));
     }
 
     /**
@@ -65,6 +70,7 @@ public class EchangeService {
      */
     public void tracerRapportSansDetail(UUID runId, String versionOutil, String detail) {
         tracer(runId, SensEchange.RECEPTION, versionOutil, StatutEchange.RAPPORT_SANS_DETAIL, detail);
+        reporter(runId, s -> s.refusConstate(runId, detail));
     }
 
     /**
@@ -74,6 +80,22 @@ public class EchangeService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void tracerRapportMalforme(UUID runId, String versionOutil, String detail) {
         tracer(runId, SensEchange.RECEPTION, versionOutil, StatutEchange.RAPPORT_MALFORME, detail);
+        reporter(runId, s -> s.refusConstate(runId, detail));
+    }
+
+    /**
+     * Reporte le meme fait sur le calendrier des analyses, s'il y en a un (prompt 15). Le journal
+     * des echanges reste la trace de reference : un report qui echoue ne doit pas faire echouer
+     * l'appel du script, exactement comme la trace elle-meme.
+     */
+    private void reporter(UUID runId, java.util.function.Consumer<SuiviEcheances> report) {
+        suivi.ifPresent(s -> {
+            try {
+                report.accept(s);
+            } catch (RuntimeException e) {
+                LOG.warn("Echeance non mise a jour pour le run {} : {}", runId, e.getMessage());
+            }
+        });
     }
 
     /** Le journal complet d'un run, du plus ancien au plus recent. */

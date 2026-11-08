@@ -91,6 +91,9 @@ simulateur:
     # Au-dela de ce delai, un jeu retire par le script sans rapport pousse devient un SILENCE
     # (echec d'echange). Jamais un taux de detection de 0 % : ce ne sont pas les memes faits.
     delai-rapport-minutes: ${QUALITE_DELAI_RAPPORT_MINUTES:60}
+    # Fuseau dans lequel l'heure d'une analyse planifiee est comprise. C'est l'HEURE DU SERVEUR :
+    # « chaque jour a 03:00 » veut dire 03:00 ici, pas chez le navigateur qui a saisi la regle.
+    fuseau: ${QUALITE_FUSEAU:Africa/Abidjan}
   toxiproxy:
     url: ${TOXIPROXY_URL:http://localhost:8474}
     proxy: postgres

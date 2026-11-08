@@ -49,7 +49,9 @@ class EchangeServiceTest {
     private EchangeService service(Instant maintenant) {
         return new EchangeService(journal, Clock.fixed(maintenant, ZoneOffset.UTC),
                 new SimulateurProperties(42, "scenarios", null, null, null, null,
-                        new SimulateurProperties.Qualite(DELAI)));
+                        new SimulateurProperties.Qualite(DELAI, "UTC")),
+                // Pas de planification branchee ici : le journal des echanges se suffit a lui-meme.
+                java.util.Optional.empty());
     }
 
     @Test

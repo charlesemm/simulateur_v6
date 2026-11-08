@@ -54,7 +54,7 @@ class ChaosInjectorTest {
             return new RunInfo(run, "s", 1, etatDuRun, 0, 0, Instant.now(), null, null);
         });
         SimulateurProperties proprietes = new SimulateurProperties(42, "scenarios", null, null,
-                new SimulateurProperties.Ecriture(10, 10, 10, 1, 1000), new SimulateurProperties.Chaos(60, 2000), new SimulateurProperties.Qualite(60));
+                new SimulateurProperties.Ecriture(10, 10, 10, 1, 1000), new SimulateurProperties.Chaos(60, 2000), new SimulateurProperties.Qualite(60, "UTC"));
         chaos = new ChaosInjector(toxiproxy, charge, troncature, store, runs, Clock.systemUTC(), proprietes);
     }
 

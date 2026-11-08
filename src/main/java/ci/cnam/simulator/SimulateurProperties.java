@@ -33,8 +33,11 @@ public record SimulateurProperties(
     /**
      * @param delaiRapportMinutes delai au-dela duquel un jeu retire sans rapport devient un SILENCE
      *                            (echec d'echange), et JAMAIS un taux de detection de 0 %
+     * @param fuseau              fuseau dans lequel l'heure d'une analyse planifiee est comprise :
+     *                            c'est l'HEURE DU SERVEUR, et l'aide du champ de saisie le dit
      */
-    public record Qualite(@DefaultValue("60") int delaiRapportMinutes) {
+    public record Qualite(@DefaultValue("60") int delaiRapportMinutes,
+                          @DefaultValue("Africa/Abidjan") String fuseau) {
     }
 
     /**

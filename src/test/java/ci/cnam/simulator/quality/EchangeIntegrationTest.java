@@ -269,7 +269,10 @@ class EchangeIntegrationTest {
 
         mvc.perform(get("/api/analyses/attendues").header(ApiKeyFilter.ENTETE, CLE))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.planifiee").value(false))
+                // Depuis le prompt 15, la planification est branchee : planifiee vaut true. La liste
+                // reste vide tant qu'aucune regle de calendrier n'a ouvert d'echeance, et le script
+                // travaille alors hors planification, ce qui est son droit.
+                .andExpect(jsonPath("$.planifiee").value(true))
                 .andExpect(jsonPath("$.analyses").isEmpty());
 
         assertThat(retirer(jeu.run(), "csv")).isNotEmpty();
