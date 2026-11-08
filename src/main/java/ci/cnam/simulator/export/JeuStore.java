@@ -1,5 +1,6 @@
 package ci.cnam.simulator.export;
 
+import ci.cnam.simulator.anomaly.AnomalyRecord;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +26,13 @@ public interface JeuStore {
 
     /** Trace un telechargement servi : une ligne par telechargement. */
     void tracer(UUID id, UUID runId, FormatExport format, long nombreLignes, String empreinte);
+
+    /**
+     * Inscrit au corrige les anomalies DE FICHIER posees a l'ecriture, dans la meme transaction que
+     * {@link #tracer}. Rejouer le meme export ne cree pas de seconde ligne : uq_anomaly_injected
+     * (event_id, type, champ) tient, et les lignes en double sont ignorees.
+     */
+    void tracerAnomalies(List<AnomalyRecord> anomalies);
 
     /** Les telechargements deja servis pour ce run, du plus recent au plus ancien. */
     List<Telechargement> telechargements(UUID runId);

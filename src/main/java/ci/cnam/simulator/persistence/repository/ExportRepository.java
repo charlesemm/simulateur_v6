@@ -1,5 +1,6 @@
 package ci.cnam.simulator.persistence.repository;
 
+import ci.cnam.simulator.anomaly.AnomalyRecord;
 import ci.cnam.simulator.export.FormatExport;
 import ci.cnam.simulator.export.JeuStore;
 import ci.cnam.simulator.export.TableExport;
@@ -113,6 +114,29 @@ public class ExportRepository implements JeuStore {
     public void tracer(UUID id, UUID runId, FormatExport format, long nombreLignes, String empreinte) {
         jdbc.update("insert into export_fichier (id, run_id, format, nombre_lignes, empreinte) values (?, ?, ?, ?, ?)",
                 id, runId, format.name(), nombreLignes, empreinte);
+    }
+
+    @Override
+    public void tracerAnomalies(List<AnomalyRecord> anomalies) {
+        if (anomalies.isEmpty()) {
+            return;
+        }
+        // ON CONFLICT DO NOTHING : retelecharger le meme export rejoue les memes pieges (meme alea, derive de
+        // event_id), donc les memes lignes de corrige. On les ecrit une fois, pas une par telechargement.
+        jdbc.batchUpdate("""
+                insert into anomaly_injected
+                    (run_id, event_id, facture_id, type, champ, valeur_origine, valeur_corrompue)
+                values (?, ?, ?, ?, ?, ?, ?)
+                on conflict do nothing""",
+                anomalies, anomalies.size(), (ps, a) -> {
+                    ps.setObject(1, a.runId());
+                    ps.setObject(2, a.eventId());
+                    ps.setObject(3, a.factureId());
+                    ps.setString(4, a.type().name());
+                    ps.setString(5, a.champ());
+                    ps.setString(6, a.valeurOrigine());
+                    ps.setString(7, a.valeurCorrompue());
+                });
     }
 
     @Override

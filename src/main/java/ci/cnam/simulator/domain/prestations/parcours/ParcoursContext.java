@@ -33,6 +33,7 @@ public class ParcoursContext {
     private LocalDateTime temps;
     private Facture facture;
     private boolean accesRefuse;
+    private Boolean droitsOuverts;
 
     public ParcoursContext(UUID runId, Assure assure, CentreSante centre, Medecin medecin, Pharmacie pharmacie,
                            SeededRandom random, VoieParcours voie, LocalDateTime debut) {
@@ -99,6 +100,18 @@ public class ParcoursContext {
     }
 
     /**
+     * Resultat du controle des droits, une fois qu'il a eu lieu ; null avant. Porte dans les evenements qui
+     * suivent sous la cle {@code droitsOuverts} : c'est contre lui que se juge l'incoherence croisee.
+     */
+    public Boolean droitsOuverts() {
+        return droitsOuverts;
+    }
+
+    public void droitsOuverts(boolean ouverts) {
+        this.droitsOuverts = ouverts;
+    }
+
+    /**
      * Type de bon selon la voie. REGLE SIMPLIFIEE, A VALIDER avec les directions metier :
      * hospitalisation si sejour, biologie/imagerie si examens, ambulatoire sinon. Le bon dentaire n'est pas
      * encore produit par le parcours.
@@ -127,6 +140,16 @@ public class ParcoursContext {
         payload.put("numeroAssure", assure.numeroAssure());
         payload.put("nom", assure.nom());
         payload.put("prenoms", assure.prenoms());
+        // Contexte temporel du soin : la date du soin et la periode de droits contre laquelle elle se juge.
+        // Ces trois champs sont PROPRES ; ce sont eux que les anomalies de relation mettent en contradiction.
+        payload.put("dateSoin", temps.toLocalDate().toString());
+        payload.put("dateDebutDroits", assure.dateDebutDroits().toString());
+        if (assure.dateFinDroits() != null) {
+            payload.put("dateFinDroits", assure.dateFinDroits().toString());
+        }
+        if (droitsOuverts != null) {
+            payload.put("droitsOuverts", droitsOuverts);
+        }
         if (type == PrestationEventType.PATIENT_ARRIVE) {
             payload.put("dateNaissance", assure.dateNaissance().toString());
             payload.put("genre", assure.genre().name());

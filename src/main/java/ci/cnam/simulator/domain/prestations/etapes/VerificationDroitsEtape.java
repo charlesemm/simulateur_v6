@@ -37,6 +37,7 @@ public class VerificationDroitsEtape implements Etape {
     public ResultatEtape executer(ParcoursContext ctx) {
         ctx.avancer(1, 5);
         ResultatDroits resultat = controle.controler(ctx.assure(), ctx.temps().toLocalDate());
+        ctx.droitsOuverts(resultat.accorde());
         if (resultat.accorde()) {
             return new ResultatEtape(null, ctx.evenement(PrestationEventType.DROITS_VERIFIES, Map.of()));
         }

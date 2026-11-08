@@ -17,6 +17,7 @@ class AnomalyInjectorTest {
 
     private static final UUID RUN = new UUID(7, 7);
     private static final Set<String> CLES = Set.of("factureId", "assureId", "centreSanteId", "pharmacieId");
+    private static final Set<String> CLES_REFERENCE = Set.of("medecinId", "centreSanteId", "pharmacieId");
 
     private final AnomalyInjector injecteur = EvenementsDeTest.injecteur();
 
@@ -99,13 +100,22 @@ class AnomalyInjectorTest {
             assertThat(e.anomalies().size()).as("au plus une anomalie par evenement").isLessThanOrEqualTo(1);
             for (AnomalieTracee t : e.anomalies()) {
                 verifiees++;
-                if (t.type().equals("DOUBLON_EXACT")) {
+                if (AnomalyType.valueOf(t.type()).doublon()) {
                     SimEvent original = parId.get(t.doublonDe());
                     assertThat(original).isNotNull();
                     assertThat(e.eventId()).isNotEqualTo(original.eventId());
-                    assertThat(e.payload()).isEqualTo(original.payload());
                     assertThat(e.type()).isEqualTo(original.type());
                     assertThat(sortie).contains(original);
+                    if (t.champ() == null) {
+                        // Doublon exact : la ligne de trop est identique a l'originale.
+                        assertThat(e.payload()).isEqualTo(original.payload());
+                    } else {
+                        // Doublon approximatif : un seul champ varie, et la trace dit lequel.
+                        Map<String, Object> attenduDoublon = new java.util.LinkedHashMap<>(original.payload());
+                        attenduDoublon.put(t.champ(), t.valeurCorrompue());
+                        assertThat(e.payload()).isEqualTo(attenduDoublon);
+                        assertThat(t.valeurOrigine()).isEqualTo(String.valueOf(original.payload().get(t.champ())));
+                    }
                     continue;
                 }
                 SimEvent propre = parId.get(e.eventId());
@@ -116,21 +126,127 @@ class AnomalyInjectorTest {
                 Map<String, Object> attendu = new java.util.LinkedHashMap<>(propre.payload());
                 attendu.put(t.champ(), e.payload().get(t.champ()));
                 assertThat(e.payload()).isEqualTo(attendu);
-                CLES.forEach(cle -> assertThat(e.payload().get(cle)).isEqualTo(propre.payload().get(cle)));
+                // Les cles de rattachement sont intactes -- sauf pour REFERENCE_BRISEE, dont c'est l'objet.
+                if (!t.type().equals(AnomalyType.REFERENCE_BRISEE.name())) {
+                    CLES.forEach(cle -> assertThat(e.payload().get(cle)).isEqualTo(propre.payload().get(cle)));
+                }
             }
         }
         assertThat(verifiees).isGreaterThan(500);
     }
 
     @Test
-    void lesOnzeTypesSontInjectes() {
+    void tousLesTypesDeGenerationSontInjectesEtAucunTypeDeFichier() {
         List<SimEvent> sortie = injecter(EvenementsDeTest.propres(RUN, 8, 20_000), pourcent("global", 50));
 
         Set<String> vus = new java.util.TreeSet<>();
         traces(sortie).forEach(t -> vus.add(t.type()));
-        Set<String> tous = new java.util.TreeSet<>();
-        EnumSet.allOf(AnomalyType.class).forEach(t -> tous.add(t.name()));
-        assertThat(vus).isEqualTo(tous);
+        Set<String> attendus = new java.util.TreeSet<>();
+        // Les 15 types poses a la generation. Les deux anomalies de fichier n'arrivent qu'a l'export : si
+        // elles apparaissaient ici, c'est que la base serait abimee, ce qui est exactement ce qu'on evite.
+        EnumSet.allOf(AnomalyType.class).stream().filter(t -> !t.fichier()).forEach(t -> attendus.add(t.name()));
+        assertThat(vus).isEqualTo(attendus);
+    }
+
+    @Test
+    void leDoublonApproximatifAjouteUneLigneQuiPointeVersLOriginale() {
+        List<SimEvent> propres = EvenementsDeTest.propres(RUN, 3, 2_000);
+
+        List<SimEvent> sortie = injecter(propres, pourcent("doublonApproximatif", 100));
+
+        List<AnomalieTracee> doublons = traces(sortie);
+        assertThat(doublons).isNotEmpty();
+        // Une ligne de plus par doublon, et pas une de moins : les originales sont toutes la, intactes.
+        assertThat(sortie).hasSize(propres.size() + doublons.size()).containsAll(propres);
+        Map<UUID, SimEvent> parId = new java.util.HashMap<>();
+        propres.forEach(e -> parId.put(e.eventId(), e));
+        for (AnomalieTracee t : doublons) {
+            assertThat(t.type()).isEqualTo(AnomalyType.DOUBLON_APPROXIMATIF.name());
+            assertThat(t.doublonDe()).as("le corrige renseigne doublon_de").isNotNull();
+            assertThat(parId.get(t.doublonDe())).as("et il pointe vers l'originale").isNotNull();
+            assertThat(t.champ()).isIn("nom", "prenoms");
+            assertThat(t.valeurCorrompue()).isNotEqualTo(t.valeurOrigine());
+        }
+    }
+
+    @Test
+    void laReferenceBriseeViseUneCleAvecUnIdentifiantBienFormeEtInconnu() {
+        List<SimEvent> propres = EvenementsDeTest.propres(RUN, 4, 2_000);
+        Set<Object> referentiel = new java.util.HashSet<>();
+        propres.forEach(e -> CLES_REFERENCE.forEach(cle -> {
+            if (e.payload().get(cle) != null) {
+                referentiel.add(e.payload().get(cle));
+            }
+        }));
+
+        List<SimEvent> sortie = injecter(propres, pourcent("referenceBrisee", 100));
+
+        List<AnomalieTracee> brisees = traces(sortie);
+        assertThat(brisees).isNotEmpty();
+        for (AnomalieTracee t : brisees) {
+            assertThat(t.champ()).isIn("medecinId", "centreSanteId", "pharmacieId");
+            // Bien forme : un UUID, comme les identifiants du referentiel. Et introuvable dans celui-ci.
+            UUID invente = UUID.fromString(t.valeurCorrompue());
+            assertThat(invente.version()).isEqualTo(4);
+            assertThat(referentiel).doesNotContain(invente);
+        }
+    }
+
+    @Test
+    void memeGraineMemeProfilMemeCorrigePourLesSixNouveauxTypes() {
+        for (String cle : List.of("doublonApproximatif", "referenceBrisee", "incoherenceTemporelle",
+                "incoherenceCroisee", "caracteresCasses", "formatDateFichier")) {
+            List<SimEvent> premier = injecter(EvenementsDeTest.propres(RUN, 77, 1_000), pourcent(cle, 40));
+            List<SimEvent> second = injecter(EvenementsDeTest.propres(RUN, 77, 1_000), pourcent(cle, 40));
+
+            assertThat(second).as("deux runs de meme graine, meme profil : " + cle).isEqualTo(premier);
+        }
+    }
+
+    @Test
+    void lesDeuxAnomaliesDeFichierNeTouchentJamaisLeFluxNiLaBase() {
+        List<SimEvent> propres = EvenementsDeTest.propres(RUN, 6, 2_000);
+
+        for (String cle : List.of("caracteresCasses", "formatDateFichier")) {
+            // Taux a 100 % : si ces deux types pouvaient abimer un evenement, cela se verrait ici.
+            assertThat(injecter(propres, pourcent(cle, 100))).isEqualTo(propres);
+        }
+    }
+
+    @Test
+    void lIncoherenceTemporelleSortLaDateDeSoinDeLaPeriodeDeDroits() {
+        List<SimEvent> sortie = injecter(EvenementsDeTest.propres(RUN, 12, 1_000),
+                pourcent("incoherenceTemporelle", 100));
+
+        List<AnomalieTracee> traces = traces(sortie);
+        assertThat(traces).isNotEmpty();
+        for (AnomalieTracee t : traces) {
+            assertThat(t.champ()).isEqualTo("dateSoin");
+            java.time.LocalDate corrompue = java.time.LocalDate.parse(t.valeurCorrompue());
+            assertThat(corrompue).isNotEqualTo(java.time.LocalDate.parse(t.valeurOrigine()));
+            // Hors de la periode de droits que les evenements de test portent (2024-01-01 .. 2026-12-31),
+            // ou alors dans le futur par rapport au soin : dans les deux cas, la relation est fausse.
+            assertThat(corrompue.isBefore(java.time.LocalDate.of(2024, 1, 1))
+                    || corrompue.isAfter(java.time.LocalDate.of(2026, 3, 10))).isTrue();
+        }
+    }
+
+    @Test
+    void lIncoherenceCroiseeFermeLaPeriodeAlorsQueLesDroitsRestentActifs() {
+        List<SimEvent> sortie = injecter(EvenementsDeTest.propres(RUN, 13, 1_000),
+                pourcent("incoherenceCroisee", 100));
+
+        List<AnomalieTracee> traces = traces(sortie);
+        assertThat(traces).isNotEmpty();
+        for (SimEvent e : sortie) {
+            for (AnomalieTracee t : e.anomalies()) {
+                assertThat(t.champ()).isEqualTo("dateFinDroits");
+                // Chaque champ reste valide seul ; c'est leur conjonction qui ne tient pas.
+                assertThat(e.payload().get("droitsOuverts")).isEqualTo(true);
+                assertThat(java.time.LocalDate.parse(t.valeurCorrompue()))
+                        .isBefore(java.time.LocalDate.parse(String.valueOf(e.payload().get("dateSoin"))));
+            }
+        }
     }
 
     @Test

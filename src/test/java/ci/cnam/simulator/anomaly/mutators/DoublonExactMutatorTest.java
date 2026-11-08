@@ -21,7 +21,7 @@ class DoublonExactMutatorTest {
         SimEvent original = new SimEvent(new UUID(5, 5), run, "prestations", "FACTURE_OUVERTE",
                 LocalDateTime.of(2026, 3, 10, 8, 30), Map.of("nom", "Kouassi", "quantite", 2), List.of());
 
-        SimEvent doublon = mutator.muter(original, new SeededRandom(7));
+        SimEvent doublon = mutator.muter(original, new SeededRandom(7)).orElseThrow();
 
         assertThat(doublon.eventId()).isEqualTo(new SeededRandom(7).nextUuid()).isNotEqualTo(original.eventId());
         assertThat(doublon.runId()).isEqualTo(run);

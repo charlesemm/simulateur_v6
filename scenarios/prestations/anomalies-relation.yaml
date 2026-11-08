@@ -1,0 +1,33 @@
+# Scenario qui active les SIX anomalies de la brique Q5, celles que les 11 corruptions de champ ne savent
+# pas poser. Le script d'analyse doit maintenant trouver autre chose qu'un champ vide ou un mauvais format :
+# c'est le but, et c'est ca qui se mesure.
+#
+# Quatre anomalies DE RELATION, posees a la generation comme les 11 autres :
+#   doublonApproximatif   une SECONDE ligne proche (N'Guessan / Nguessan, prenoms permutes)
+#   referenceBrisee       un identifiant bien forme mais absent du referentiel (medecin, centre, pharmacie)
+#   incoherenceTemporelle date de soin hors periode de droits, antidatee ou dans le futur
+#   incoherenceCroisee    droits actifs alors que la periode de droits est close
+#
+# Deux anomalies DE FICHIER, qui ne peuvent pas exister dans une colonne typee et sont donc posees A
+# L'ECRITURE DE L'EXPORT. La base reste propre : seuls les octets telecharges sont pieges.
+#   caracteresCasses      N'Guessan ecrit N&#39;Guessan, N?Guessan ou Nâ€™Guessan
+#   formatDateFichier     une date ecrite autrement que les autres lignes du meme fichier
+nom: "Prestations - anomalies de relation"
+seed: 42
+accelerationTemps: 60
+domaines:
+  prestations:
+    debit: 5/s
+    parcours:
+      examens: 60%
+      hospitalisation: 10%
+      prescriptionDirecte: 30%
+    anomalies:
+      doublonApproximatif: 2%
+      referenceBrisee: 2%
+      incoherenceTemporelle: 2%
+      incoherenceCroisee: 2%
+      caracteresCasses: 1%
+      formatDateFichier: 1%
+phases:
+  - { de: 0m, a: 10m, charge: normale }

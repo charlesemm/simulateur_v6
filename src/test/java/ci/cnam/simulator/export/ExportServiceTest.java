@@ -49,6 +49,7 @@ class ExportServiceTest {
     /** Store d'essai : deux tables de deux lignes, et la trace des telechargements. */
     private static final class StoreEnMemoire implements JeuStore {
         final List<Telechargement> traces = new ArrayList<>();
+        final List<ci.cnam.simulator.anomaly.AnomalyRecord> corrige = new ArrayList<>();
 
         private static TableExport table(String nom, String prefixe) {
             return new TableExport(nom, List.of("id", "valeur"),
@@ -89,6 +90,11 @@ class ExportServiceTest {
         }
 
         @Override
+        public void tracerAnomalies(List<ci.cnam.simulator.anomaly.AnomalyRecord> anomalies) {
+            corrige.addAll(anomalies);
+        }
+
+        @Override
         public List<Telechargement> telechargements(UUID runId) {
             return List.copyOf(traces);
         }
@@ -126,7 +132,8 @@ class ExportServiceTest {
     private static Montage montage(EtatRun etat) {
         StoreEnMemoire store = new StoreEnMemoire();
         EcrivainEspion espion = new EcrivainEspion();
-        ExportService service = new ExportService(new JeuSimulation(store), store, runs(etat), List.of(espion));
+        ExportService service = new ExportService(new JeuSimulation(store), store, runs(etat),
+                new InjecteurFichier(List.of()), run -> java.util.Map.of(), List.of(espion));
         return new Montage(service, espion, store);
     }
 
@@ -167,6 +174,7 @@ class ExportServiceTest {
     void corrigeSeul() throws IOException {
         Montage m = montage(EtatRun.ARRETE);
         ExportService service = new ExportService(new JeuSimulation(m.store()), m.store(), runs(EtatRun.ARRETE),
+                new InjecteurFichier(List.of()), run -> java.util.Map.of(),
                 List.of(new EcrivainCorrigeCsv()));
         ByteArrayOutputStream sortie = new ByteArrayOutputStream();
         ResultatExport resultat = service.exporterCorrige(RUN, sortie);

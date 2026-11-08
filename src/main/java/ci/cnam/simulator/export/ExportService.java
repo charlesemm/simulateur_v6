@@ -1,5 +1,6 @@
 package ci.cnam.simulator.export;
 
+import ci.cnam.simulator.anomaly.AnomalyRecord;
 import ci.cnam.simulator.core.engine.RunInfo;
 import ci.cnam.simulator.core.engine.RunStore;
 import java.io.IOException;
@@ -16,6 +17,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Sert un export et en garde la trace. Le seul endroit ou le marquage de donnee fictive est pose,
@@ -36,12 +38,17 @@ public class ExportService {
     private final JeuSimulation jeu;
     private final JeuStore store;
     private final RunStore runs;
+    private final InjecteurFichier pieges;
+    private final ProfilsAnomalies profils;
     private final Map<FormatExport, EcrivainExport> ecrivains;
 
-    public ExportService(JeuSimulation jeu, JeuStore store, RunStore runs, List<EcrivainExport> ecrivains) {
+    public ExportService(JeuSimulation jeu, JeuStore store, RunStore runs, InjecteurFichier pieges,
+                         ProfilsAnomalies profils, List<EcrivainExport> ecrivains) {
         this.jeu = jeu;
         this.store = store;
         this.runs = runs;
+        this.pieges = pieges;
+        this.profils = profils;
         this.ecrivains = ecrivains.stream()
                 .collect(Collectors.toUnmodifiableMap(EcrivainExport::format, e -> e));
     }
@@ -53,15 +60,27 @@ public class ExportService {
      * @throws IllegalArgumentException      run inconnu
      * @throws ExportIndisponibleException   run pas encore termine
      */
+    @Transactional
     public ResultatExport exporter(UUID runId, FormatExport format, OutputStream sortie) throws IOException {
         RunInfo run = termine(runId);
-        return servir(run.id(), format, jeu.tables(run.id()), sortie);
+        // Les deux anomalies de fichier sont posees ICI, a l'ecriture, et inscrites au corrige dans la MEME
+        // transaction que la trace du telechargement. La base, elle, reste propre.
+        List<AnomalyRecord> corrige = new ArrayList<>();
+        List<TableExport> tables = jeu.tables(run.id()).stream()
+                .map(table -> "evenements".equals(table.nom())
+                        ? pieges.pieger(table, run.id(), profils.parDomaine(run), corrige::add)
+                        : table)
+                .toList();
+        ResultatExport resultat = servir(run.id(), format, tables, sortie);
+        store.tracerAnomalies(corrige);
+        return resultat;
     }
 
     /**
      * Ecrit la verite terrain. Le corrige n'entre JAMAIS dans l'export du jeu : un script qui le
      * lirait rendrait le score sans valeur. L'autorisation est posee par les controleurs.
      */
+    @Transactional
     public ResultatExport exporterCorrige(UUID runId, OutputStream sortie) throws IOException {
         RunInfo run = termine(runId);
         return servir(run.id(), FormatExport.CORRIGE, List.of(jeu.corrige(run.id())), sortie);

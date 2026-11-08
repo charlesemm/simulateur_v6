@@ -13,8 +13,12 @@ import org.springframework.stereotype.Component;
  *
  * <p>Priorite aux champs saisis a la main par l'agent (poids 4 : noms, prenoms, quantites, genre), les plus
  * exposes dans la realite ; puis ceux qu'il saisit parfois (poids 2 a 3) ; les champs renseignes par le systeme
- * ont le poids 1. Jamais eligibles : les cles (factureId, assureId, centreSanteId, medecinId, pharmacieId).
- * Le doublon vise l'evenement entier : aucun champ.
+ * ont le poids 1. Jamais eligibles : les cles (factureId, assureId, centreSanteId, medecinId, pharmacieId) --
+ * sauf pour REFERENCE_BRISEE, dont c'est l'objet meme.
+ *
+ * <p>Ne figurent pas ici, et c'est normal : les doublons visent l'evenement entier (aucun champ), les
+ * incoherences temporelle et croisee nomment elles-memes les champs qu'elles lisent et faussent (elles se
+ * jugent sur plusieurs champs a la fois), et les deux anomalies de fichier ne touchent pas la base.
  */
 @Component
 public class PrestationAnomalyProfile implements ChampsEligibles {
@@ -43,6 +47,10 @@ public class PrestationAnomalyProfile implements ChampsEligibles {
                 c("nombreExamens", SYSTEME)));
         champs.put(AnomalyType.VALEUR_HORS_LISTE, List.of(c("genre", AGENT), c("typeBon", SYSTEME),
                 c("motif", SYSTEME)));
+        // SEULE EXCEPTION a la regle « jamais une cle » : c'est l'objet meme de la reference brisee. Le
+        // referentiel n'est pas touche, c'est l'evenement qui pointe vers un identifiant qui n'existe pas.
+        champs.put(AnomalyType.REFERENCE_BRISEE, List.of(c("medecinId", SOUVENT), c("centreSanteId", PARFOIS),
+                c("pharmacieId", PARFOIS)));
     }
 
     @Override

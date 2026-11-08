@@ -3,12 +3,16 @@ package ci.cnam.simulator.anomaly;
 import ci.cnam.simulator.anomaly.mutators.CaracteresSpeciauxMutator;
 import ci.cnam.simulator.anomaly.mutators.CasseIncoherenteMutator;
 import ci.cnam.simulator.anomaly.mutators.ChampVideMutator;
+import ci.cnam.simulator.anomaly.mutators.DoublonApproximatifMutator;
 import ci.cnam.simulator.anomaly.mutators.DoublonExactMutator;
 import ci.cnam.simulator.anomaly.mutators.EspacesParasitesMutator;
 import ci.cnam.simulator.anomaly.mutators.FauteOrthographeMutator;
 import ci.cnam.simulator.anomaly.mutators.FormatDateInvalideMutator;
 import ci.cnam.simulator.anomaly.mutators.FormatIdentifiantInvalideMutator;
 import ci.cnam.simulator.anomaly.mutators.FormatNumeriqueInvalideMutator;
+import ci.cnam.simulator.anomaly.mutators.IncoherenceCroiseeMutator;
+import ci.cnam.simulator.anomaly.mutators.IncoherenceTemporelleMutator;
+import ci.cnam.simulator.anomaly.mutators.ReferenceBriseeMutator;
 import ci.cnam.simulator.anomaly.mutators.ValeurHorsListeMutator;
 import ci.cnam.simulator.anomaly.mutators.ValeurNegativeMutator;
 import ci.cnam.simulator.core.event.SimEvent;
@@ -36,8 +40,11 @@ public final class EvenementsDeTest {
         return new AnomalyInjector(List.of(new ChampVideMutator(), new FauteOrthographeMutator(),
                 new EspacesParasitesMutator(), new CasseIncoherenteMutator(), new CaracteresSpeciauxMutator(),
                 new FormatDateInvalideMutator(), new FormatNumeriqueInvalideMutator(),
-                new FormatIdentifiantInvalideMutator(), new ValeurNegativeMutator(), new ValeurHorsListeMutator()),
-                new DoublonExactMutator(), List.of(new PrestationAnomalyProfile()));
+                new FormatIdentifiantInvalideMutator(), new ValeurNegativeMutator(), new ValeurHorsListeMutator(),
+                new ReferenceBriseeMutator()),
+                List.of(new DoublonExactMutator(), new DoublonApproximatifMutator()),
+                List.of(new IncoherenceTemporelleMutator(), new IncoherenceCroiseeMutator()),
+                List.of(new PrestationAnomalyProfile()));
     }
 
     /** {@code n} evenements propres, reproductibles : meme graine, memes evenements. */
@@ -52,6 +59,13 @@ public final class EvenementsDeTest {
             payload.put("numeroAssure", "%010d".formatted(random.entre(0, 999_999_999)));
             payload.put("nom", random.choisir(NOMS));
             payload.put("prenoms", random.choisir(PRENOMS));
+            // Contexte temporel, comme le parcours le pose : c'est contre lui que se jugent les incoherences.
+            // Valeurs fixes, aucun tirage : les evenements des tests precedents ne bougent pas.
+            payload.put("dateSoin", "2026-03-10");
+            payload.put("dateDebutDroits", "2024-01-01");
+            payload.put("dateFinDroits", "2026-12-31");
+            payload.put("droitsOuverts", true);
+            payload.put("medecinId", new UUID(9, i));
             String type = TYPES.get(i % TYPES.size());
             if (type.equals("PATIENT_ARRIVE")) {
                 payload.put("dateNaissance", "19%02d-%02d-%02d".formatted(random.entre(50, 99), random.entre(1, 12),
