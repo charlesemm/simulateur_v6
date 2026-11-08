@@ -1,0 +1,220 @@
+ SIMULATEUR DE DONNEES
+Document technique de cadrage du développement du module de test de qualité de données
+Table des matières
+	 TOC \o "1-3" \h \z \u Qu'est-ce qu'une campagne de test ?	 PAGEREF _Toc238477327 \h 3
+	Chapitre 1 :  Tester l'outil de Qualité des Données : le principe du « corrigé »	 PAGEREF _Toc238477328 \h 3
+	1. Typologie exhaustive des incohérences à tester & dosage par pourcentage	 PAGEREF _Toc238477329 \h 3
+	Chapitre 2 : Mode de communication des données entre le simulateur et l’outil	 PAGEREF _Toc238477330 \h 5
+	2.1 L'envoi du jeu de données erronée	 PAGEREF _Toc238477331 \h 5
+	2.2 Le marquage : une donnée de test reste une donnée de test	 PAGEREF _Toc238477332 \h 6
+	2.3 La réception du rapport de l'outil testé	 PAGEREF _Toc238477333 \h 6
+	2.4 Le rapprochement automatique avec le corrigé	 PAGEREF _Toc238477334 \h 6
+	2.5 Robustesse de l'échange	 PAGEREF _Toc238477335 \h 7
+	Chapitre 3 : Tests de charge et rejouabilité (Test Bench / Seed)	 PAGEREF _Toc238477336 \h 7
+	3.1 Le banc d'essai (Test Bench)	 PAGEREF _Toc238477337 \h 7
+	3.2 La graine de génération (Seed)	 PAGEREF _Toc238477338 \h 8
+	3.3 Pourquoi la rejouabilité est indispensable	 PAGEREF _Toc238477339 \h 8
+	3.4 Robustesse du banc d'essai lui-même	 PAGEREF _Toc238477340 \h 8
+Qu'est-ce qu'une campagne de test ?
+Définition
+Une campagne de test est une exécution complète du cycle décrit au chapitre 1 : génération d'un jeu de données piégé, transmission à l'outil testé, réception de son rapport, et comparaison avec le corrigé. Une campagne regroupe, en une seule unité traçable : le jeu de données généré, le corrigé associé, les paramètres utilisés (dimensions testées, taux d'anomalies, volume, graine), le rapport reçu de l'outil testé, et le résultat du rapprochement. Chaque campagne porte un identifiant unique et un horodatage.
+	C'est cette notion de campagne, comme unité indivisible et traçable rend possibles plusieurs mécaniques présentées plus loin : 
+Comparer deux campagnes entre elles, 
+Rejouer une campagne à l'identique grâce à sa graine (chapitre 3), 
+Retrouver le détail exact d'une campagne réalisée plusieurs semaines auparavant (chapitre 3).
+Chapitre 1 :  Tester l'outil de Qualité des Données : le principe du « corrigé »
+L'objectif principal : répondre à une question fondamentale : « Le système chargé de repérer les erreurs dans nos données fait-il vraiment bien son travail ? »
+Pour le savoir, le simulateur fonctionne comme un banc d'essai sur le principe du « test piégé/données erronées » :
+Création du jeu de données : le simulateur fabrique un jeu de données 100 % fictif mais totalement réaliste, basé sur les tables du parcours bénéficiaire (fiches assurés /bénéficiaires, professionnels de santé, prestations/remboursements, et déclaration des cotisations/Paiement).
+Injection contrôlée d'erreurs : le simulateur piège ce jeu de données en y insérant volontairement des anomalies selon des règles et pourcentages choisis à l'avance.
+Le corrigé du test : comme le simulateur génère lui-même les erreurs, il conserve en mémoire la liste exacte et l'emplacement de chaque donnée erronée. C'est le « corrigé » du test.
+L'analyse et la comparaison : le jeu de données comportant des anomalies est transmis à l'outil de qualité des données. Une fois l'analyse terminée, le simulateur récupère le rapport de l'outil et le compare avec son corrigé pour évaluer la performance réelle.
+1. Typologie exhaustive des incohérences à tester & dosage par pourcentage
+Le concepteur du simulateur doit permettre d'activer/désactiver chaque type d'anomalie et d'en fixer le pourcentage d'injection exact (ex. 2 % de doublons, 0,5 % d'incohérences temporelles, etc.).
+Dimension Data Quality
+	Type d'incohérence à tester
+	Exemple concret (contexte CMU/CNAM)
+	Unicité
+	Doublons stricts & flous
+	Deux fiches bénéficiaires créées pour la même personne avec une variation orthographique (« N'Guessan » vs « Nguessan ») ou le même numéro d'immatriculation (13 chiffres).
+	Complétude
+	Champs obligatoires manquants
+	Absence du numéro d'immatriculation sur une fiche Bénéficiaire, ou nom de famille vide sur une ligne de décompte de prestation.
+	Validité (Format)
+	Formats hors normes / Règles syntaxiques
+	Numéro de contact téléphonique mal formé (moins de 10 chiffres), numéro RCCM ou Compte Contribuable mal structuré, ou numéro d'immatriculation ne comportant pas 13 chiffres.
+	Exactitude (Domaine)
+	Valeurs hors limites / Aberrations
+	Montant remboursé négatif sur un décompte de prestation ; ou taux de prise en charge enregistré à 100 % pour un bénéficiaire du régime contributif (RGB), alors que seuls les bénéficiaires du régime d'assistance médicale (RAM, indigents) y ont droit — le RGB plafonne à 70 %, les 30 % restants relevant du ticket modérateur à la charge du patient.
+	Cohérence temporelle
+	Séquences illogiques (Chronologie)
+	Date de liquidation antérieure à la date de la feuille de soins ; ou date de première prestation enregistrée moins d'un mois après la date d'affiliation, alors que le délai de carence CMU est d'un mois.
+	Intégrité référentielle
+	Rupture de liens inter-tables
+	Une prestation attribuée à un Professionnel de Santé dont le code n'existe dans aucun référentiel ; ou une affiliation rattachée à un OGD qui ne correspond à aucun organisme reconnu (CNPS, CGRAE, mutuelle…).
+	Cohérence croisée
+	Contradiction logique entre champs
+	Régime enregistré comme RAM (indigent, non contributif) alors qu'une cotisation employeur existe pour ce même bénéficiaire ; ou statut de droits « Actif » alors que la date de radiation est déjà passée.
+	Conformité technique
+	Altération de caractères / Encodage
+	Noms comportant des caractères spéciaux cassés lors de l'import (ex. N'Guessan transformé en N&#39;Guessan ou N?Guessan).
+	Écran : Nouvelle campagne de sélection des anomalies (à titre indicatif)
+Chaque famille d'anomalie s'active et se paramètre indépendamment. Activez les types d'anomalies souhaités et réglez leur taux indépendamment (exigences B1-B11, C1, C2). B1 à B11 (familles d'anomalies), C1 (taux réglable par type), C2 (sélection des types actifs).
+SIMULATEUR D'ANOMALIES DE DONNÉES — CNAM
+Nouvelle campagne
+	1. Paramètres de génération
+	2. Sélection des anomalies
+	3. Récapitulatif
+	ID
+	Type d'anomalie
+	Taux (%)
+	Statut
+	B1
+	☑ Doublons exacts
+	  5 %
+	Actif
+	B2
+	☑ Doublons approximatifs (fuzzy)
+	  3 %
+	Actif
+	B3
+	☑ Champs obligatoires vides
+	  4 %
+	Actif
+	B4
+	☐ Formats de date incohérents
+	  —
+	Inactif
+	B6
+	☑ Caractères spéciaux et encodages
+	  2 %
+	Actif
+	B7
+	☐ Valeurs hors liste autorisée
+	  —
+	Inactif
+	B8
+	☑ Références brisées (intégrité référentielle)
+	  1 %
+	Actif
+	B9
+	☐ Incohérences logiques inter-champs
+	  —
+	Inactif
+	B11
+	☑ Tentatives d'injection basique
+	  1 %
+	Actif
+		← Précédent
+	Suivant →
+	Chapitre 2 : Mode de communication des données entre le simulateur et l’outil
+Cette mécanique repose sur quatre étapes. Nous devons nous assurer que les données générées circulent correctement entre le simulateur et l’outil de qualité testé et que le résultat en revienne de façon exploitable pour le simulateur. 
+2.1 L'envoi du jeu de données erronée
+Le simulateur ne modifie pas le mode de fonctionnement de l'outil testé. Il lui transmet le jeu de données erronées selon les types de canaux que cet outil utilise pour recevoir de vraies données en production (fichier déposé, appel API, ou script d'insertion, etc.).
+Deux modes de transmission sont possibles, et le simulateur doit pouvoir s'adapter à celui que l'outil testé impose :
+Mode
+	Fonctionnement
+	Quand l'utiliser
+	Poussé (push)
+	Le simulateur dépose le fichier ou appelle directement l'API d'entrée de l'outil testé.
+	Quand l'outil testé expose un point d'entrée standard (dossier surveillé, API d'import).
+	À la demande (pull)
+	Le simulateur met le jeu de données à disposition dans un emplacement partagé ; c'est l'outil testé qui vient le chercher selon la fréquence définie (traitement par lots / batch).
+	Quand l'outil testé fonctionne par cycles planifiés (traitement de nuit, import périodique) plutôt qu'en temps réel.
+	Le format du fichier suit les formats retenus pour les exports du simulateur : CSV, Excel, JSON ou script d'insertion SQL — celui qui correspond au canal réel de l'outil testé, pas un format imposé arbitrairement. 
+2.2 Le marquage : une donnée de test reste une donnée de test
+Chaque enregistrement envoyé porte un marquage systématique et non désactivable identifiant qu'il s'agit d'une donnée fictive. Ce marquage suit la donnée même après son passage dans l'outil testé, pour qu'à aucun moment un enregistrement de test ne puisse être confondu avec une donnée réelle, y compris dans les journaux, les tableaux de bord ou les exports de l'outil testé lui-même.
+2.3 La réception du rapport de l'outil testé
+Une fois son analyse terminée, l'outil testé produit un rapport listant les anomalies qu'il a détectées. Le simulateur récupère ce rapport de la même façon qu'il a envoyé les données.
+Pour que la comparaison avec le corrigé soit possible, le rapport reçu doit permettre d'identifier, pour chaque anomalie signalée par l'outil testé, au minimum : 
+La ligne concernée, le champ concerné, 
+Le type d'anomalie signalé. 
+Si l'outil testé produit un rapport qui ne permet pas cette identification précise (par exemple, un simple score global sans détail ligne par ligne), le simulateur ne peut pas produire de mesure fiable. C’est une information sur l'outil testé, à documenter plutôt qu'à contourner.
+2.4 Le rapprochement automatique avec le corrigé
+Une fois le rapport reçu, le simulateur le confronte automatiquement à son corrigé, ligne par ligne :
+Une anomalie du corrigé retrouvée dans le rapport de l'outil testé compte comme une détection réussie. Vrais Positifs (Succès)
+Une anomalie du corrigé absente du rapport compte comme une anomalie manquée (faux négatif). (ex. le doublon « N'Guessan / Nguessan » est passé inaperçu).
+Une anomalie signalée par l'outil testé mais absente du corrigé compte comme une fausse alerte (faux positif) (ex. un nom composé légitime considéré à tort comme un doublon).
+C'est ce rapprochement qui produit directement les taux de détection et de faux positifs déjà présentés dans le rapport de résultats de chaque campagne.
+Indicateurs affichés dans l'interface :
+Taux de Rappel (Sensibilité) : Capacité de l'outil à ne rater aucune vraie erreur (Vrais Positifs ÷ Total des erreurs injectées).
+Taux de Précision : Capacité de l'outil à ne pas déclencher de fausses alertes (Vrais Positifs ÷ Total des alertes levées).
+Écran : Résultats d'une campagne (à titre indicatif)
+Une fois le rapprochement effectué, l'interface affiche automatiquement le score de la campagne.
+RÉSULTATS — Campagne C-2026-018
+	Taux de Rappel : 94 %
+	Taux de Précision : 97 %
+	Vrais Positifs : 470 / 500
+	Type d'anomalie
+	Injectées
+	Vrais Positifs
+	Faux Négatifs
+	Faux Positifs
+	B1 — Doublons exacts
+	100
+	100
+	0
+	0
+	B2 — Doublons approximatifs
+	60
+	51
+	9
+	3
+	B6 — Caractères spéciaux
+	40
+	35
+	5
+	2
+	2.5 Robustesse de l'échange
+Deux situations doivent être anticipées, indépendamment de la qualité de détection de l'outil testé lui-même :
+L'outil testé ne répond pas dans un délai raisonnable. Le simulateur doit détecter ce silence, l'afficher clairement comme un échec d'échange (pas comme un taux de détection de 0 %, ce qui serait trompeur), et conserver la trace de la tentative.
+Le rapport revient dans un format inattendu ou incomplet. Le simulateur doit signaler l'anomalie d'échange elle-même plutôt que de tenter une comparaison partielle qui produirait une mesure faussée.
+Chaque échange, envoi et réception, est horodaté et conservé, pour que la campagne de test reste entièrement traçable, pour permettre d’avoir une historisation valide en cas de litige sur la performance réelle de l'outil testé.
+Chapitre 3 : Tests de charge et rejouabilité (Test Bench / Seed)
+Les chapitres précédents répondent à la question « l'outil testé détecte-t-il bien les erreurs ? ». Ce chapitre répond à une question différente, tout aussi essentielle : « l'outil testé tient-il la charge, et peut-on rejouer exactement le même test pour comparer deux résultats de façon fiable ? »
+3.1 Le banc d'essai (Test Bench)
+Le simulateur ne se limite pas à produire un seul jeu de données de taille fixe. Il fonctionne comme un véritable banc d'essai, capable de générer des volumes variables à la demande ; d'un petit échantillon de quelques centaines de lignes jusqu'à plusieurs millions d'enregistrements, pour observer comment l'outil testé se comporte à différentes échelles, pas seulement sur un cas de démonstration confortable.
+Palier de charge
+	Volume généré
+	Ce qu'il permet de vérifier
+	Échantillon
+	Quelques centaines de lignes
+	Vérification rapide après une modification, sans attendre un cycle complet.
+	Volume courant
+	Volume représentatif de l'activité réelle (ex. 100 000 bénéficiaires)
+	Performance dans les conditions d'usage normales.
+	Volume élevé
+	Plusieurs centaines de milliers à un million d'enregistrements
+	Tenue en charge à l'échelle de la base CMU complète, pas d'un échantillon.
+	Afflux soudain
+	Un très gros volume généré et transmis d'un seul bloc
+	Comportement de l'outil testé face à un pic brutal, comme une campagne d'enrôlement massive.
+	À chaque palier, le simulateur mesure et conserve : le temps pris par l'outil testé pour rendre son rapport, et si la qualité de détection observée au chapitre 1 se maintient ou se dégrade quand le volume augmente. Un outil qui détecte 96 % des anomalies sur 1 000 lignes mais seulement 80 % sur 500 000 lignes n'est pas fiable à l'échelle réelle, même s'il a réussi le test initial.
+Écran : Lancer un test de charge (à titre indicatif)
+Le banc d'essai se lance en choisissant un palier et, si besoin, une graine précise pour rejouer un test à l'identique.
+LANCER UN TEST DE CHARGE
+	Palier à tester
+	☐ Échantillon   ☑ Volume courant   ☐ Volume élevé   ☐ Afflux soudain
+	Graine (seed)
+	☑ Aléatoire   ☐ Spécifique : _______
+	Lancer le banc d'essai
+3.2 La graine de génération (Seed)
+Chaque campagne de génération peut être lancée avec une valeur de départ appelée graine ou jeton (seed). Cette graine détermine entièrement le jeu de données produit : mêmes enregistrements, mêmes anomalies, aux mêmes emplacements exacts. Réutiliser la même graine reproduit un jeu de données strictement identique, à l'octet près.
+Sans cette graine, chaque campagne générerait un jeu de données différent, rendant impossible toute comparaison rigoureuse entre deux résultats.
+3.3 Pourquoi la rejouabilité est indispensable
+Situation
+	Ce que permet la graine
+	Comparer deux versions d'un même outil
+	Rejouer exactement le même jeu de données piégé sur l'ancienne et la nouvelle version, pour savoir si un correctif a vraiment amélioré la détection — ou l'a dégradée sur un autre point.
+	Reproduire un problème signalé
+	Si un cas précis a mis l'outil testé en défaut, rejouer la même graine permet de retrouver exactement ce cas pour l'analyser, sans devoir espérer qu'il réapparaisse par hasard.
+	Auditer une campagne passée
+	Regénérer à l'identique le jeu de données d'une campagne déjà réalisée, pour vérifier ou contester un résultat obtenu plusieurs semaines auparavant.
+	Test de non-régression
+	Vérifier qu'une nouvelle version de l'outil testé continue de réussir tous les cas qu'une version précédente réussissait déjà, sans repasser par une nouvelle campagne aléatoire à chaque fois.
+	3.4 Robustesse du banc d'essai lui-même
+Deux situations doivent être anticipées, propres au test de charge :
+Une interruption pendant la génération d'un très gros volume. Le simulateur doit pouvoir reprendre proprement là où il s'était arrêté, sans produire un jeu de données à moitié généré et silencieusement incomplet.
+Une saturation de l'outil testé sous forte charge. Si l'outil testé cesse de répondre ou ralentit au point de ne plus produire de rapport exploitable, le simulateur doit le signaler comme une limite de charge atteinte, une information en soi, pas un échec du test à corriger.
+Point de cohérence avec les chapitres précédents
+La graine (3.2) est ce qui rend fiable la mesure de faux positifs et faux négatifs du chapitre 1 dès qu'on veut comparer deux campagnes entre elles, sans elle, une différence de résultat pourrait venir d'un jeu de données différent plutôt que d'une vraie différence de performance de l'outil testé.
