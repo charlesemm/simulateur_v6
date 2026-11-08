@@ -46,6 +46,7 @@ class QualiteIntegrationTest {
 
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
+    @Autowired QualityReportService qualite;
 
     /** Un run avec 100 anomalies injectees : 40 CHAMP_VIDE, 30 FORMAT_DATE_INVALIDE, 30 FAUTE_ORTHOGRAPHE. */
     private record Jeu(UUID run, List<UUID> evenements) {
@@ -240,5 +241,48 @@ class QualiteIntegrationTest {
                         .with(user("obs").roles("OBSERVATEUR")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("TOTAL,TOTAL,100,80,20,10,0.8,0.8889")));
+    }
+
+    @Test
+    @DisplayName("Les lignes a aller voir : 20 ratees et 10 faux positifs, lus dans les tables metier, pagines")
+    void lignesAAllerVoir() throws Exception {
+        Jeu jeu = jeuDe100();
+        // Une anomalie dont on connait la valeur d'origine, et qui ne sera jamais signalee.
+        UUID oublie = evenement(jeu.run());
+        jdbc.update("""
+                insert into anomaly_injected (run_id, event_id, type, champ, valeur_origine, valeur_corrompue)
+                values (?, ?, 'FAUTE_ORTHOGRAPHE', 'nom', 'Koné', 'Konne')""", jeu.run(), oublie);
+        envoyer(jeu.run(), "v1", detectionsDuJeu(jeu));
+        ComparaisonQualite rapport = qualite.comparer(jeu.run(), null);
+
+        PageQualite<AnomalieRatee> ratees = qualite.ratees(rapport, 0, 5);
+        assertThat(ratees.total()).isEqualTo(21);          // les 20 du jeu, plus celle qu'on vient d'ajouter
+        assertThat(ratees.totalPages()).isEqualTo(5);
+        assertThat(ratees.contenu()).hasSize(5);
+        assertThat(qualite.ratees(rapport, 4, 5).contenu()).hasSize(1);
+        assertThat(qualite.ratees(rapport, 4, 5).contenu().getFirst())
+                .isEqualTo(new AnomalieRatee(oublie, null, "FAUTE_ORTHOGRAPHE", "nom", "Koné", "Konne"));
+
+        PageQualite<FauxPositifSignale> faux = qualite.fauxPositifs(rapport, 0, 50);
+        assertThat(faux.total()).isEqualTo(10);
+        assertThat(faux.contenu()).hasSize(10);
+        assertThat(faux.contenu()).allSatisfy(f -> assertThat(f.champ()).isNotBlank());
+
+        // Et le lien de la ligne ouvre bien UN SEUL evenement dans le flux de donnees.
+        mvc.perform(get("/evenements").param("run", jeu.run().toString()).param("evenement", oublie.toString())
+                        .with(user("obs").roles("OBSERVATEUR")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Une seule ligne")))
+                .andExpect(content().string(containsString("<strong>1</strong>")));
+    }
+
+    @Test
+    @DisplayName("Echange qui n'a pas abouti : aucune ligne a aller voir, et surtout aucun chiffre")
+    void sansMesurePasDeLignes() {
+        ComparaisonQualite sansMesure = ComparaisonQualite.sansMesure(UUID.randomUUID(), null,
+                new EtatEchange(StatutEchange.SILENCE, java.time.Instant.now(), "silence"));
+
+        assertThat(qualite.ratees(sansMesure, 0, 25).total()).isZero();
+        assertThat(qualite.fauxPositifs(sansMesure, 0, 25).contenu()).isEmpty();
     }
 }

@@ -196,6 +196,10 @@ class EchangeServiceTest {
             @Override public Map<AnomalyType, Long> injectees(UUID runId) { return cent; }
             @Override public Map<AnomalyType, Long> detectees(UUID runId, String v) { return Map.of(); }
             @Override public Map<AnomalyType, Long> fauxPositifs(UUID runId, String v) { return Map.of(); }
+            @Override public List<AnomalieRatee> ratees(UUID r, String v, int l, int d) { return List.of(); }
+            @Override public List<FauxPositifSignale> fauxPositifsSignales(UUID r, String v, int l, int d) {
+                return List.of();
+            }
         };
         return new QualityReportService(store, mock(RunManager.class), echanges).comparer(run, null);
     }

@@ -34,6 +34,8 @@ public class EventController {
     @Operation(summary = "Evenements d'un run : filtres domaine, type, statut ; pagination bornee")
     public PageResponse<EvenementResponse> lister(
             @PathVariable UUID runId,
+            @Parameter(description = "Un seul evenement, par son identifiant")
+            @RequestParam(required = false) UUID evenement,
             @Parameter(description = "Domaine emetteur, ex. prestations")
             @RequestParam(required = false) String domaine,
             @Parameter(description = "Type d'evenement, ex. FACTURE_OUVERTE")
@@ -46,7 +48,7 @@ public class EventController {
             @Min(value = 1, message = "taille : au moins 1")
             @Max(value = EventQueryService.TAILLE_PAGE_MAX, message = "taille : 500 au maximum") int taille) {
 
-        PageEvenements resultat = evenements.rechercher(runId, domaine, type, statut, page, taille);
+        PageEvenements resultat = evenements.rechercher(runId, evenement, domaine, type, statut, page, taille);
         return new PageResponse<>(
                 resultat.contenu().stream().map(EvenementResponse::de).toList(),
                 resultat.page(), resultat.taille(), resultat.total(), resultat.totalPages());

@@ -24,4 +24,13 @@ public interface QualityStore {
 
     /** Detections distinctes sans anomalie injectee correspondante, par type detecte. */
     Map<AnomalyType, Long> fauxPositifs(UUID runId, String versionOutil);
+
+    /**
+     * Les anomalies semees qu'aucune detection ne retrouve, pour les montrer ligne a ligne.
+     * Meme definition que {@link #detectees}, prise a l'envers : le CALCUL n'est pas touche.
+     */
+    List<AnomalieRatee> ratees(UUID runId, String versionOutil, int limite, int decalage);
+
+    /** Les detections auxquelles aucune anomalie semee ne correspond, ligne a ligne. */
+    List<FauxPositifSignale> fauxPositifsSignales(UUID runId, String versionOutil, int limite, int decalage);
 }

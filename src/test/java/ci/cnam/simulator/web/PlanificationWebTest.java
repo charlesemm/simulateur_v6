@@ -9,7 +9,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import ci.cnam.simulator.quality.planification.CibleAnalyse;
@@ -55,6 +55,7 @@ class PlanificationWebTest {
 
     @Autowired MockMvc mvc;
     @MockitoBean PlanificationService planification;
+    @MockitoBean AnalyseWebService ecran;
     @MockitoBean AuditService audit;
 
     private static final UUID ID = UUID.randomUUID();
@@ -101,8 +102,8 @@ class PlanificationWebTest {
 
         mvc.perform(post("/qualite/planifications").with(csrf())
                         .param("libelle", "Analyse de nuit").param("heure", "03:00").param("jours", "TOUS"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/qualite"));
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("programmée")));
 
         verify(planification).creer("Analyse de nuit", LocalTime.of(3, 0), "TOUS",
                 CibleAnalyse.DERNIERE_SIMULATION_TERMINEE);
@@ -117,8 +118,7 @@ class PlanificationWebTest {
         when(planification.supprimer(ID)).thenReturn(true);
 
         mvc.perform(post("/qualite/planifications/{id}/supprimer", ID).with(csrf()))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/qualite"));
+                .andExpect(status().isOk());
 
         verify(audit).enregistrer(anyString(), org.mockito.ArgumentMatchers.eq("PLANIFICATION_SUPPRIMEE"),
                 org.mockito.ArgumentMatchers.eq(ID.toString()), anyString());
@@ -131,7 +131,7 @@ class PlanificationWebTest {
         when(planification.supprimer(ID)).thenReturn(false);
 
         mvc.perform(post("/qualite/planifications/{id}/supprimer", ID).with(csrf()))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnprocessableEntity());
 
         verifyNoInteractions(audit);
     }

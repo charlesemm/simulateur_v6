@@ -128,7 +128,7 @@ class InterfaceWebTest {
                         null, null));
         when(scenarios.lister()).thenReturn(catalogue);
         when(chaos.dureeMax()).thenReturn(Duration.ofSeconds(300));
-        when(evenements.rechercher(any(), any(), any(), any(), any(), any())).thenReturn(new PageEvenements(
+        when(evenements.rechercher(any(), any(), any(), any(), any(), any(), any())).thenReturn(new PageEvenements(
                 List.of(evenement(EVT, "FACTURE_OUVERTE", "ECRIT"),
                         evenement(UUID.randomUUID(), "=FORMULE", "ECHEC")), 0, 50, 2));
         when(editeur.lister()).thenReturn(catalogue);
@@ -389,13 +389,13 @@ class InterfaceWebTest {
                 .andExpect(header().string("Vary", containsString("HX-Request")))
                 .andExpect(content().string(containsString("id=\"tableau\"")))
                 .andExpect(content().string(not(containsString("Navigation principale"))));
-        verify(evenements).rechercher(RUN, "", "FACTURE_OUVERTE", "ECHEC", 1, 20);
+        verify(evenements).rechercher(RUN, null, "", "FACTURE_OUVERTE", "ECHEC", 1, 20);
     }
 
     @Test
     @DisplayName("Export CSV : en-tete, BOM, evenements, formules neutralisees ; ouvert a l'OBSERVATEUR (lecture)")
     void exportCsv() throws Exception {
-        when(evenements.rechercher(eq(RUN), any(), any(), any(), eq(1), any()))
+        when(evenements.rechercher(eq(RUN), any(), any(), any(), any(), eq(1), any()))
                 .thenReturn(new PageEvenements(List.of(), 1, 500, 2));
 
         MvcResult debut = mvc.perform(get("/evenements/export.csv").param("run", RUN.toString())

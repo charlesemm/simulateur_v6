@@ -42,6 +42,10 @@ public class EvenementRepository implements EventQueryStore {
         StringBuilder ou = new StringBuilder(" where run_id = ?");
         List<Object> parametres = new ArrayList<>();
         parametres.add(r.runId());
+        if (r.eventId() != null) {
+            ou.append(" and event_id = ?");
+            parametres.add(r.eventId());
+        }
         ajouter(ou, parametres, "domaine", r.domaine());
         ajouter(ou, parametres, "type", r.type());
         ajouter(ou, parametres, "statut", r.statut());

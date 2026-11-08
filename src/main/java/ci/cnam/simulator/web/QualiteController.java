@@ -1,12 +1,9 @@
 package ci.cnam.simulator.web;
 
-import ci.cnam.simulator.core.engine.RunInfo;
-import ci.cnam.simulator.core.engine.RunManager;
 import ci.cnam.simulator.quality.ComparaisonQualite;
 import ci.cnam.simulator.quality.LigneQualite;
 import ci.cnam.simulator.quality.QualityReportService;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -17,36 +14,34 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-/** Rapport qualite : injectees contre detectees pour un run, ou pour deux runs cote a cote. Lecture seule. */
+/**
+ * L'onglet Analyse : d'ou l'on programme les analyses, suit les echanges, lit le rappel et la
+ * precision, et ouvre d'un clic la ligne exacte que le script a manquee.
+ *
+ * <p>Lecture seule : les ecritures du calendrier sont dans {@link PlanificationController}. Aucune
+ * logique ici, {@link AnalyseWebService} assemble le modele.
+ */
 @Controller
 public class QualiteController {
 
     private final QualityReportService qualite;
-    private final RunManager runs;
+    private final AnalyseWebService ecran;
 
-    public QualiteController(QualityReportService qualite, RunManager runs) {
+    public QualiteController(QualityReportService qualite, AnalyseWebService ecran) {
         this.qualite = qualite;
-        this.runs = runs;
+        this.ecran = ecran;
     }
 
+    /**
+     * @param pageRatees       page du volet « anomalies ratees »
+     * @param pageFauxPositifs page du volet « faux positifs »
+     */
     @GetMapping("/qualite")
     public String page(@RequestParam(required = false) UUID run, @RequestParam(required = false) UUID comparer,
-                       @RequestParam(defaultValue = "") String version, Model modele) {
-        List<RunInfo> tous = runs.lister();
-        UUID choisi = run != null ? run : tous.stream().findFirst().map(RunInfo::id).orElse(null);
-        modele.addAttribute("runs", tous);
-        modele.addAttribute("run", choisi);
-        modele.addAttribute("comparer", comparer);
-        modele.addAttribute("version", version);
-        if (choisi != null) {
-            modele.addAttribute("rapport", qualite.comparer(choisi, version));
-            if (comparer != null) {
-                // Une simulation dont l'echange a echoue n'a AUCUN chiffre : elle ne peut pas servir
-                // de colonne de comparaison, on dit pourquoi au lieu d'afficher des cases vides.
-                ComparaisonQualite autre = qualite.comparer(comparer, version);
-                modele.addAttribute(autre.mesure() ? "rapportB" : "comparerSansMesure", autre);
-            }
-        }
+                       @RequestParam(defaultValue = "") String version,
+                       @RequestParam(defaultValue = "0") int pageRatees,
+                       @RequestParam(defaultValue = "0") int pageFauxPositifs, Model modele) {
+        ecran.preparerEcran(run, comparer, version, pageRatees, pageFauxPositifs, modele);
         return "quality-report";
     }
 

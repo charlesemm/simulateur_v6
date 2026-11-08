@@ -1,7 +1,9 @@
 package ci.cnam.simulator.persistence.repository;
 
 import ci.cnam.simulator.anomaly.AnomalyType;
+import ci.cnam.simulator.quality.AnomalieRatee;
 import ci.cnam.simulator.quality.Detection;
+import ci.cnam.simulator.quality.FauxPositifSignale;
 import ci.cnam.simulator.quality.QualityStore;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -88,6 +90,37 @@ public class QualiteRepository implements QualityStore {
                     select 1 from anomaly_injected a where a.run_id = ? and a.event_id = d.event_id
                     and a.type = d.type and a.champ is not distinct from d.champ)
                 group by d.type""", runId, versionOutil, versionOutil, runId);
+    }
+
+    /**
+     * Les anomalies ratees, ligne a ligne. La condition est l'exacte negation de celle de
+     * {@link #detectees} : rien n'est recompte autrement, seule la projection change.
+     *
+     * <p>Tri sur {@code a.id} (ordre d'ecriture) : stable, donc une page ne saute ni ne repete.
+     */
+    @Override
+    public List<AnomalieRatee> ratees(UUID runId, String versionOutil, int limite, int decalage) {
+        return jdbc.query("""
+                select a.event_id, a.facture_id, a.type, a.champ, a.valeur_origine, a.valeur_corrompue
+                from anomaly_injected a
+                where a.run_id = ? and not exists (select 1 from (""" + DETECTIONS + """
+                ) d where d.event_id = a.event_id and d.type = a.type and d.champ is not distinct from a.champ)
+                order by a.id limit ? offset ?""",
+                (rs, n) -> new AnomalieRatee(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class),
+                        rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6)),
+                runId, runId, versionOutil, versionOutil, limite, decalage);
+    }
+
+    @Override
+    public List<FauxPositifSignale> fauxPositifsSignales(UUID runId, String versionOutil, int limite,
+                                                         int decalage) {
+        return jdbc.query("select d.event_id, d.type, d.champ from (" + DETECTIONS + """
+                ) d where not exists (
+                    select 1 from anomaly_injected a where a.run_id = ? and a.event_id = d.event_id
+                    and a.type = d.type and a.champ is not distinct from d.champ)
+                order by d.event_id, d.type, d.champ limit ? offset ?""",
+                (rs, n) -> new FauxPositifSignale(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3)),
+                runId, versionOutil, versionOutil, runId, limite, decalage);
     }
 
     private Map<AnomalyType, Long> compter(String sql, Object... parametres) {

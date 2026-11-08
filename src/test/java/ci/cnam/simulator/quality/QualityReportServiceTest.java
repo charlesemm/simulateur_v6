@@ -85,6 +85,10 @@ class QualityReportServiceTest {
             @Override public Map<AnomalyType, Long> injectees(UUID runId) { return map(); }
             @Override public Map<AnomalyType, Long> detectees(UUID runId, String v) { return map(); }
             @Override public Map<AnomalyType, Long> fauxPositifs(UUID runId, String v) { return map(); }
+            @Override public List<AnomalieRatee> ratees(UUID r, String v, int l, int d) { return List.of(); }
+            @Override public List<FauxPositifSignale> fauxPositifsSignales(UUID r, String v, int l, int d) {
+                return List.of();
+            }
         };
         var service = new QualityReportService(store, mock(RunManager.class), mock(EchangeService.class));
 
@@ -107,6 +111,10 @@ class QualityReportServiceTest {
             @Override public Map<AnomalyType, Long> injectees(UUID runId) { return map(); }
             @Override public Map<AnomalyType, Long> detectees(UUID runId, String v) { return map(); }
             @Override public Map<AnomalyType, Long> fauxPositifs(UUID runId, String v) { return map(); }
+            @Override public List<AnomalieRatee> ratees(UUID r, String v, int l, int d) { return List.of(); }
+            @Override public List<FauxPositifSignale> fauxPositifsSignales(UUID r, String v, int l, int d) {
+                return List.of();
+            }
         };
         var service = new QualityReportService(store, mock(RunManager.class), mock(EchangeService.class));
 

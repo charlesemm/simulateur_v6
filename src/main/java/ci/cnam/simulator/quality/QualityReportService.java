@@ -99,6 +99,47 @@ public class QualityReportService {
                 store.fauxPositifs(runId, version));
     }
 
+    /** Nombre de lignes montrees par page dans les volets « ratées » et « faux positifs ». */
+    public static final int LIGNES_PAR_PAGE = 25;
+
+    /** Plafond dur : aucun ecran ne demande plus que cela d'un coup. */
+    public static final int LIGNES_PAR_PAGE_MAX = 200;
+
+    /**
+     * Les anomalies ratees de ce run, ligne a ligne, pour aller voir la ligne exacte.
+     *
+     * <p>Le TOTAL n'est pas recompte : c'est celui que {@link LigneQualite} a deja calcule
+     * ({@code ratees}). Le calcul du rapport n'est touche d'aucune maniere.
+     *
+     * @param page   numero de page, a partir de 0
+     * @param taille taille de page, bornee a {@value #LIGNES_PAR_PAGE_MAX}
+     */
+    public PageQualite<AnomalieRatee> ratees(ComparaisonQualite rapport, int page, int taille) {
+        if (!rapport.mesure() || rapport.total().ratees() == 0) {
+            return PageQualite.vide(borner(taille));
+        }
+        int bornee = borner(taille);
+        int numero = Math.max(0, page);
+        return new PageQualite<>(store.ratees(rapport.runId(), rapport.versionOutil(), bornee, numero * bornee),
+                numero, bornee, rapport.total().ratees());
+    }
+
+    /** Les faux positifs de ce run, ligne a ligne. Meme principe, meme total deja calcule. */
+    public PageQualite<FauxPositifSignale> fauxPositifs(ComparaisonQualite rapport, int page, int taille) {
+        if (!rapport.mesure() || rapport.total().fauxPositifs() == 0) {
+            return PageQualite.vide(borner(taille));
+        }
+        int bornee = borner(taille);
+        int numero = Math.max(0, page);
+        return new PageQualite<>(
+                store.fauxPositifsSignales(rapport.runId(), rapport.versionOutil(), bornee, numero * bornee),
+                numero, bornee, rapport.total().fauxPositifs());
+    }
+
+    private static int borner(int taille) {
+        return Math.min(LIGNES_PAR_PAGE_MAX, Math.max(1, taille));
+    }
+
     static ComparaisonQualite construire(UUID runId, String version, EtatEchange echange,
                                          Map<AnomalyType, Long> injectees,
                                          Map<AnomalyType, Long> detectees, Map<AnomalyType, Long> fauxPositifs) {

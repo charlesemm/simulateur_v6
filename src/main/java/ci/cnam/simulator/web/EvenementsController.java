@@ -52,9 +52,14 @@ public class EvenementsController {
      * Sans parametre {@code run} : la liste des simulations, dont la reference ouvre le detail.
      * Avec un {@code run} : les evenements de cette simulation (ou seulement le tableau quand la requete
      * vient de htmx, en-tete HX-Request).
+     *
+     * @param evenement un seul evenement : c'est le lien que l'ecran Qualite pose sur chaque anomalie
+     *                  ratee et sur chaque faux positif, pour ouvrir la ligne exacte sans passer par la base
      */
     @GetMapping("/evenements")
-    public String page(@RequestParam(required = false) UUID run, @RequestParam(defaultValue = "") String domaine,
+    public String page(@RequestParam(required = false) UUID run,
+                       @RequestParam(required = false) UUID evenement,
+                       @RequestParam(defaultValue = "") String domaine,
                        @RequestParam(defaultValue = "") String type, @RequestParam(defaultValue = "") String statut,
                        @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int taille,
                        @RequestHeader(value = "HX-Request", required = false) String htmx, Model modele,
@@ -65,9 +70,10 @@ public class EvenementsController {
             return "evenements-choix";
         }
         RunInfo courant = runs.lister().stream().filter(r -> r.id().equals(run)).findFirst().orElse(null);
-        PageEvenements resultat = evenements.rechercher(run, domaine, type, statut, page, taille);
+        PageEvenements resultat = evenements.rechercher(run, evenement, domaine, type, statut, page, taille);
         modele.addAttribute("courant", courant);
         modele.addAttribute("run", run);
+        modele.addAttribute("evenement", evenement);
         modele.addAttribute("domaine", domaine);
         modele.addAttribute("type", type);
         modele.addAttribute("statut", statut);
@@ -79,6 +85,7 @@ public class EvenementsController {
 
     @GetMapping("/evenements/export.csv")
     public ResponseEntity<StreamingResponseBody> exporter(@RequestParam UUID run,
+                                                          @RequestParam(required = false) UUID evenement,
                                                           @RequestParam(defaultValue = "") String domaine,
                                                           @RequestParam(defaultValue = "") String type,
                                                           @RequestParam(defaultValue = "") String statut) {
@@ -88,7 +95,7 @@ public class EvenementsController {
             EvenementsCsv.entete(ecrivain);
             int ecrites = 0;
             for (int p = 0; ecrites < LIMITE_EXPORT; p++) {
-                PageEvenements tranche = evenements.rechercher(run, domaine, type, statut, p,
+                PageEvenements tranche = evenements.rechercher(run, evenement, domaine, type, statut, p,
                         EventQueryService.TAILLE_PAGE_MAX);
                 if (tranche.contenu().isEmpty()) {
                     break;

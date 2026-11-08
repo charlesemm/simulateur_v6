@@ -177,7 +177,7 @@ class ApiMockMvcTest {
         EvenementLu evenement = new EvenementLu(UUID.randomUUID(), id, UUID.randomUUID(), "prestations",
                 "FACTURE_OUVERTE", LocalDateTime.parse("2026-01-01T08:05:00"),
                 Instant.parse("2026-01-01T08:00:01Z"), "ECRIT", Map.of("montant", 1500));
-        when(evenements.rechercher(eq(id), eq("prestations"), eq("FACTURE_OUVERTE"), eq("ECRIT"), eq(2), eq(10)))
+        when(evenements.rechercher(eq(id), eq(null), eq("prestations"), eq("FACTURE_OUVERTE"), eq("ECRIT"), eq(2), eq(10)))
                 .thenReturn(new PageEvenements(List.of(evenement), 2, 10, 45L));
 
         mvc.perform(get("/api/runs/" + id + "/events").header(ApiKeyFilter.ENTETE, CLE)

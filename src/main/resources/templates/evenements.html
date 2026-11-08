@@ -25,10 +25,13 @@
         <label>Domaine <input type="text" name="domaine" th:value="${domaine}" placeholder="prestations"></label>
         <label>Étape <input type="text" name="type" th:value="${type}" placeholder="FACTURE_OUVERTE"></label>
         <label>Statut d'écriture <input type="text" name="statut" th:value="${statut}" placeholder="ECRIT"></label>
+        <!--/* Filtre sur un seul événement : c'est par là que l'écran Qualité ouvre la ligne exacte. */-->
+        <label>Événement <input type="text" name="evenement" th:value="${evenement}"
+                                placeholder="identifiant complet"></label>
         <div class="actions">
             <button type="submit"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg>Filtrer</button>
             <a class="bouton secondaire" th:href="@{/evenements(run=${run})}"
-               th:if="${domaine != null or type != null or statut != null}">Retirer les filtres</a>
+               th:if="${domaine != null or type != null or statut != null or evenement != null}">Retirer les filtres</a>
         </div>
     </form>
 
@@ -41,10 +44,17 @@
                       th:text="'— page ' + ${resultat.page + 1} + ' sur ' + ${resultat.totalPages}">page 1 sur 1</span>
             </p>
             <a class="bouton secondaire" th:if="${run}"
-               th:href="@{/evenements/export.csv(run=${run},domaine=${domaine},type=${type},statut=${statut})}">
+               th:href="@{/evenements/export.csv(run=${run},evenement=${evenement},domaine=${domaine},type=${type},statut=${statut})}">
                 <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Exporter en CSV
             </a>
         </div>
+
+        <!--/* Filtre sur un seul événement : c'est par là que l'écran Qualité ouvre la ligne exacte. */-->
+        <p class="avert" th:if="${evenement != null}">
+            <svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg>
+            Une seule ligne, celle que l'écran Qualité a désignée : l'événement
+            <code th:text="${evenement}">id</code>. Son contenu est déplié en entier plus bas.
+        </p>
 
         <div class="vide" th:if="${#lists.isEmpty(resultat.contenu)}">
             <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg>
@@ -87,16 +97,33 @@
             </table>
         </div>
 
+        <!--/* Un seul événement demandé : son contenu est montré champ par champ, pas abrégé. */-->
+        <th:block th:if="${evenement != null}">
+            <section class="carte" th:each="e : ${resultat.contenu}">
+                <h2>Contenu de l'événement <code th:text="${e.eventId}">id</code></h2>
+                <dl class="paires">
+                    <dt>Étape</dt><dd th:text="${e.type}">FACTURE_OUVERTE</dd>
+                    <dt>Dossier</dt>
+                    <dd><code th:if="${e.factureId}" th:text="${e.factureId}">id</code><span
+                            th:unless="${e.factureId}">—</span></dd>
+                    <th:block th:each="p : ${e.payload}">
+                        <dt th:text="${p.key}">champ</dt>
+                        <dd th:text="${p.value}">valeur</dd>
+                    </th:block>
+                </dl>
+            </section>
+        </th:block>
+
         <nav class="pagination" aria-label="Pagination" th:if="${resultat.totalPages > 1}">
             <a class="bouton secondaire" th:if="${resultat.page > 0}"
-               th:href="@{/evenements(run=${run},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page - 1},taille=${resultat.taille})}"
-               th:hx-get="@{/evenements(run=${run},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page - 1},taille=${resultat.taille})}"
+               th:href="@{/evenements(run=${run},evenement=${evenement},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page - 1},taille=${resultat.taille})}"
+               th:hx-get="@{/evenements(run=${run},evenement=${evenement},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page - 1},taille=${resultat.taille})}"
                hx-target="#tableau" hx-swap="outerHTML" hx-push-url="true">
                 <svg class="ico" aria-hidden="true"><use href="#i-chevron-gauche"/></svg>Précédente</a>
             <span class="position" th:text="'Page ' + ${resultat.page + 1} + ' sur ' + ${resultat.totalPages}">Page 1 sur 1</span>
             <a class="bouton secondaire" th:if="${resultat.page + 1 < resultat.totalPages}"
-               th:href="@{/evenements(run=${run},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page + 1},taille=${resultat.taille})}"
-               th:hx-get="@{/evenements(run=${run},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page + 1},taille=${resultat.taille})}"
+               th:href="@{/evenements(run=${run},evenement=${evenement},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page + 1},taille=${resultat.taille})}"
+               th:hx-get="@{/evenements(run=${run},evenement=${evenement},domaine=${domaine},type=${type},statut=${statut},page=${resultat.page + 1},taille=${resultat.taille})}"
                hx-target="#tableau" hx-swap="outerHTML" hx-push-url="true">Suivante</a>
         </nav>
     </section>

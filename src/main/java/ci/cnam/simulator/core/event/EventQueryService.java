@@ -19,13 +19,18 @@ public class EventQueryService {
         this.store = store;
     }
 
-    /** Les filtres nuls ou vides ne filtrent pas ; {@code taille} est ramene a {@value #TAILLE_PAGE_MAX} au plus. */
-    public PageEvenements rechercher(UUID runId, String domaine, String type, String statut,
+    /**
+     * Les filtres nuls ou vides ne filtrent pas ; {@code taille} est ramene a {@value #TAILLE_PAGE_MAX} au plus.
+     *
+     * @param eventId un evenement precis, nul pour ne pas filtrer : c'est ce filtre que l'ecran
+     *                Qualite utilise pour ouvrir la ligne exacte d'une anomalie ratee
+     */
+    public PageEvenements rechercher(UUID runId, UUID eventId, String domaine, String type, String statut,
                                      Integer page, Integer taille) {
         int numero = Math.max(0, page == null ? 0 : page);
         int demandee = taille == null ? TAILLE_PAGE_PAR_DEFAUT : taille;
         int bornee = Math.min(TAILLE_PAGE_MAX, Math.max(1, demandee));
-        return store.rechercher(new RechercheEvenements(runId, vide(domaine), vide(type), vide(statut),
+        return store.rechercher(new RechercheEvenements(runId, eventId, vide(domaine), vide(type), vide(statut),
                 numero, bornee));
     }
 
