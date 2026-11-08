@@ -2,6 +2,8 @@ package ci.cnam.simulator.api;
 
 import ci.cnam.simulator.export.ExportService;
 import ci.cnam.simulator.export.FormatExport;
+import ci.cnam.simulator.export.ResultatExport;
+import ci.cnam.simulator.quality.EchangeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.UUID;
@@ -23,6 +25,10 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
  * <p>Le corrige ({@code anomaly_injected}) N'EST PAS servi ici : il se telecharge depuis l'interface,
  * sous un compte ADMIN ou OPERATEUR. Un script qui lirait les reponses rendrait son score sans valeur.
  *
+ * <p>Un retrait reussi par ce canal est inscrit comme un ENVOI dans le journal des echanges : c'est
+ * le script qui vient chercher, et Echo attend ensuite son rapport. Un telechargement depuis
+ * l'interface (un humain, une session) n'est pas un envoi et n'y figure pas.
+ *
  * <p>Aucune logique : le controleur ouvre la reponse et laisse le service ecrire dedans.
  */
 @RestController
@@ -31,9 +37,11 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 public class ExportController {
 
     private final ExportService export;
+    private final EchangeService echanges;
 
-    public ExportController(ExportService export) {
+    public ExportController(ExportService export, EchangeService echanges) {
         this.export = export;
+        this.echanges = echanges;
     }
 
     @GetMapping("/export.csv")
@@ -60,6 +68,12 @@ public class ExportController {
                 .contentType(MediaType.parseMediaType(format.typeMime()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
                         .filename(format.nomFichier(runId)).build().toString())
-                .body(sortie -> export.exporter(runId, format, sortie));
+                .body(sortie -> {
+                    ResultatExport resultat = export.exporter(runId, format, sortie);
+                    // L'ENVOI n'est inscrit qu'une fois les octets partis : un telechargement
+                    // interrompu n'est pas un envoi, et ne doit donc pas faire attendre un rapport.
+                    echanges.tracerRetrait(runId, "Jeu retire au format " + format + " : "
+                            + resultat.lignes() + " ligne(s), empreinte " + resultat.empreinte());
+                });
     }
 }

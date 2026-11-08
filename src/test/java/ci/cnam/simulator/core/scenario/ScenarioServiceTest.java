@@ -56,7 +56,7 @@ class ScenarioServiceTest {
     };
 
     private ScenarioService service(Path dossier) {
-        SimulateurProperties proprietes = new SimulateurProperties(0L, dossier.toString(), null, null, null, null);
+        SimulateurProperties proprietes = new SimulateurProperties(0L, dossier.toString(), null, null, null, null, null);
         return new ScenarioService(new ScenarioLoader(), STORE_VIDE, proprietes);
     }
 

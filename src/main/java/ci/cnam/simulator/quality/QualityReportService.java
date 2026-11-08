@@ -21,10 +21,25 @@ public class QualityReportService {
 
     private final QualityStore store;
     private final RunManager runs;
+    private final EchangeService echanges;
 
-    public QualityReportService(QualityStore store, RunManager runs) {
+    public QualityReportService(QualityStore store, RunManager runs, EchangeService echanges) {
         this.store = store;
         this.runs = runs;
+        this.echanges = echanges;
+    }
+
+    /**
+     * Une detection est exploitable si elle designe a la fois un type et un champ (cahier 4.3 : la
+     * ligne, le champ, le type). Un rapport dont AUCUNE detection ne l'est ne permet aucune mesure
+     * fiable : c'est une information sur l'outil, a documenter, pas a contourner.
+     *
+     * <p>Consequence assumee : un rapport qui ne contiendrait que des doublons signales sans champ
+     * est accepte et conserve, mais compte comme « sans detail ». Un rapport mixte, lui, est mesure
+     * normalement.
+     */
+    public static boolean exploitable(Detection detection) {
+        return detection.type() != null && detection.champ() != null && !detection.champ().isBlank();
     }
 
     /** @param nouvelles detections reellement enregistrees (les autres repetaient une detection du meme envoi) */
@@ -66,15 +81,26 @@ public class QualityReportService {
         return new Recu(rapportId, detections.size(), nouvelles);
     }
 
-    /** @param versionOutil nul pour prendre tous les rapports du run ensemble */
+    /**
+     * @param versionOutil nul pour prendre tous les rapports du run ensemble
+     *
+     *                     <p>Si l'echange n'a pas abouti (silence du script, rapport refuse, rapport
+     *                     sans detail), AUCUN taux n'est rendu : la comparaison porte l'echec
+     *                     d'echange et rien d'autre.
+     */
     public ComparaisonQualite comparer(UUID runId, String versionOutil) {
         runs.info(runId);
         String version = versionOutil == null || versionOutil.isBlank() ? null : versionOutil.strip();
-        return construire(runId, version, store.injectees(runId), store.detectees(runId, version),
+        EtatEchange echange = echanges.etat(runId).orElse(null);
+        if (echange != null && !echange.mesurable()) {
+            return ComparaisonQualite.sansMesure(runId, version, echange);
+        }
+        return construire(runId, version, echange, store.injectees(runId), store.detectees(runId, version),
                 store.fauxPositifs(runId, version));
     }
 
-    static ComparaisonQualite construire(UUID runId, String version, Map<AnomalyType, Long> injectees,
+    static ComparaisonQualite construire(UUID runId, String version, EtatEchange echange,
+                                         Map<AnomalyType, Long> injectees,
                                          Map<AnomalyType, Long> detectees, Map<AnomalyType, Long> fauxPositifs) {
         List<LigneQualite> types = new ArrayList<>();
         Map<CategorieAnomalie, long[]> cumuls = new EnumMap<>(CategorieAnomalie.class);
@@ -93,7 +119,7 @@ public class QualityReportService {
             long[] v = cumuls.getOrDefault(c, new long[3]);
             return LigneQualite.de(c.name(), v[0], v[1], v[2]);
         }).toList();
-        return new ComparaisonQualite(runId, version, somme[0] == 0,
+        return new ComparaisonQualite(runId, version, somme[0] == 0, echange,
                 LigneQualite.de("TOTAL", somme[0], somme[1], somme[2]), categories, types);
     }
 }

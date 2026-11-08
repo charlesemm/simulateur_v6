@@ -67,6 +67,53 @@
         </section>
 
         <section class="carte">
+            <h2>Échanges avec l'outil d'analyse</h2>
+            <p class="sous-titre">Echo n'appelle jamais l'outil : il expose, le script extérieur vient chercher
+                le jeu puis pousse son rapport. Chaque échange est horodaté et conservé. Un échange qui échoue
+                est affiché comme <b>échec d'échange</b> — jamais comme un taux de détection de 0 %.</p>
+
+            <p class="avert" th:if="${etatEchange != null and etatEchange.echec()}">
+                <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+                <b th:text="${etatEchange.libelle()}">Échec d'échange</b> —
+                <span th:text="${etatEchange.detail()}">détail</span>
+            </p>
+            <p class="avert" th:if="${etatEchange != null and !etatEchange.echec() and !etatEchange.mesurable()}">
+                <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
+                <b>En attente du script</b> — le jeu a été retiré, le rapport est attendu
+                (délai : <span class="chiffre" th:text="${delaiRapportMinutes}">60</span> minutes).
+            </p>
+
+            <div class="vide" th:if="${#lists.isEmpty(echanges)}">
+                <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
+                <b>Aucun échange pour cette simulation</b>
+                <p>Un envoi s'inscrit ici dès qu'un script retire le jeu sous clé d'API, une réception dès
+                    qu'il pousse son rapport.</p>
+            </div>
+            <div class="defilement" th:unless="${#lists.isEmpty(echanges)}">
+                <table data-triable>
+                    <thead>
+                    <tr>
+                        <th scope="col">Sens</th>
+                        <th scope="col">Horodatage</th>
+                        <th scope="col">État</th>
+                        <th scope="col">Version de l'outil</th>
+                        <th scope="col">Détail</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="e : ${echanges}">
+                        <td th:text="${e.sens().libelle()}">Envoi</td>
+                        <td class="chiffre" th:text="${#temporals.format(e.date(), 'dd/MM/yyyy à HH:mm:ss')}">date</td>
+                        <td th:text="${e.statut().libelle()}">état</td>
+                        <td th:text="${e.versionOutil() != null} ? ${e.versionOutil()} : '—'">—</td>
+                        <td th:text="${e.detail()}">détail</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="carte">
             <h2>Téléchargements déjà servis</h2>
             <p class="sous-titre">Deux téléchargements de la même simulation dans le même format donnent la
                 <b>même empreinte</b> : c'est la preuve que le fichier est reproductible.</p>

@@ -15,7 +15,8 @@ public record SimulateurProperties(
         Securite securite,
         Toxiproxy toxiproxy,
         Ecriture ecriture,
-        @DefaultValue Chaos chaos) {
+        @DefaultValue Chaos chaos,
+        @DefaultValue Qualite qualite) {
 
     /**
      * @param echecsAvantVerrouillage echecs de connexion consecutifs avant verrouillage du compte
@@ -27,6 +28,13 @@ public record SimulateurProperties(
     }
 
     public record Toxiproxy(String url, String proxy) {
+    }
+
+    /**
+     * @param delaiRapportMinutes delai au-dela duquel un jeu retire sans rapport devient un SILENCE
+     *                            (echec d'echange), et JAMAIS un taux de detection de 0 %
+     */
+    public record Qualite(@DefaultValue("60") int delaiRapportMinutes) {
     }
 
     /**

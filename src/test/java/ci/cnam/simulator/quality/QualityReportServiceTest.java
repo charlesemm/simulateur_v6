@@ -32,7 +32,7 @@ class QualityReportServiceTest {
                 AnomalyType.FAUTE_ORTHOGRAPHE, 20);
         var fp = map(AnomalyType.CHAMP_VIDE, 4, AnomalyType.FORMAT_DATE_INVALIDE, 3, AnomalyType.FAUTE_ORTHOGRAPHE, 3);
 
-        ComparaisonQualite c = QualityReportService.construire(UUID.randomUUID(), null, injectees, detectees, fp);
+        ComparaisonQualite c = QualityReportService.construire(UUID.randomUUID(), null, null, injectees, detectees, fp);
 
         assertThat(c.total()).isEqualTo(new LigneQualite("TOTAL", 100, 80, 20, 10, 0.8, 0.8889));
         assertThat(c.reference()).isFalse();
@@ -49,7 +49,7 @@ class QualityReportServiceTest {
         var injectees = map(AnomalyType.CHAMP_VIDE, 10, AnomalyType.CASSE_INCOHERENTE, 10);
         var detectees = map(AnomalyType.CHAMP_VIDE, 10, AnomalyType.CASSE_INCOHERENTE, 4);
 
-        ComparaisonQualite c = QualityReportService.construire(UUID.randomUUID(), null, injectees, detectees, map());
+        ComparaisonQualite c = QualityReportService.construire(UUID.randomUUID(), null, null, injectees, detectees, map());
 
         LigneQualite structurelles = c.categories().get(0);
         LigneQualite semantiques = c.categories().get(1);
@@ -63,7 +63,7 @@ class QualityReportServiceTest {
     void runDeReference_toutCeQuiEstDetecteEstUnFauxPositif() {
         var fp = map(AnomalyType.CHAMP_VIDE, 7);
 
-        ComparaisonQualite c = QualityReportService.construire(UUID.randomUUID(), null, map(), map(), fp);
+        ComparaisonQualite c = QualityReportService.construire(UUID.randomUUID(), null, null, map(), map(), fp);
 
         assertThat(c.reference()).isTrue();
         assertThat(c.total().fauxPositifs()).isEqualTo(7);
@@ -86,7 +86,7 @@ class QualityReportServiceTest {
             @Override public Map<AnomalyType, Long> detectees(UUID runId, String v) { return map(); }
             @Override public Map<AnomalyType, Long> fauxPositifs(UUID runId, String v) { return map(); }
         };
-        var service = new QualityReportService(store, mock(RunManager.class));
+        var service = new QualityReportService(store, mock(RunManager.class), mock(EchangeService.class));
 
         assertThatThrownBy(() -> service.recevoir(UUID.randomUUID(), "v1", List.of(
                 new Detection(connu, AnomalyType.CHAMP_VIDE, "nom", null, null),
@@ -108,7 +108,7 @@ class QualityReportServiceTest {
             @Override public Map<AnomalyType, Long> detectees(UUID runId, String v) { return map(); }
             @Override public Map<AnomalyType, Long> fauxPositifs(UUID runId, String v) { return map(); }
         };
-        var service = new QualityReportService(store, mock(RunManager.class));
+        var service = new QualityReportService(store, mock(RunManager.class), mock(EchangeService.class));
 
         assertThat(service.recevoir(UUID.randomUUID(), "v1",
                 List.of(new Detection(e, AnomalyType.DOUBLON_EXACT, null, null, null))).nouvelles()).isEqualTo(1);

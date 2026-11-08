@@ -48,12 +48,37 @@
         </div>
     </form>
 
+    <!-- Échec ou attente d'échange : surtout pas « 0 % détecté ». Ce ne sont pas les mêmes faits. -->
+    <section class="carte" th:if="${rapport != null and !rapport.mesure()}">
+        <div class="vide">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+            <b th:text="${rapport.echange.libelle()}">Échec d'échange</b>
+            <p th:text="${rapport.echange.detail()}">détail</p>
+            <p class="aide-champ" th:if="${rapport.echange.echec()}">
+                <b>Échec d'échange</b>, et non un taux de détection de 0 % : aucune mesure n'est possible
+                tant que le rapport n'est pas arrivé exploitable. La trace de la tentative est conservée.
+            </p>
+            <p class="aide-champ" th:unless="${rapport.echange.echec()}">
+                En attente du script : aucun chiffre n'est affiché avant son rapport.
+            </p>
+            <p class="aide-champ">Dernier échange le
+                <b th:text="${#temporals.format(rapport.echange.date(), 'dd/MM/yyyy à HH:mm:ss')}">date</b>.</p>
+        </div>
+    </section>
+
+    <p class="avert" th:if="${comparerSansMesure != null}">
+        <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+        La simulation comparée ne rend aucun chiffre :
+        <b th:text="${comparerSansMesure.echange.libelle()}">échec d'échange</b>. Elle n'est donc pas
+        affichée en seconde colonne.
+    </p>
+
     <p class="avert" th:if="${rapport != null and rapport.reference}">
         <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
         Cette simulation n'a reçu aucune anomalie : tout ce que l'outil signale ici est un faux positif.
     </p>
 
-    <th:block th:if="${rapport != null}">
+    <th:block th:if="${rapport != null and rapport.mesure()}">
         <div class="kpis">
             <div class="kpi">
                 <span class="kpi-titre">Anomalies semées</span>

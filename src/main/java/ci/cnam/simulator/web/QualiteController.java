@@ -41,7 +41,10 @@ public class QualiteController {
         if (choisi != null) {
             modele.addAttribute("rapport", qualite.comparer(choisi, version));
             if (comparer != null) {
-                modele.addAttribute("rapportB", qualite.comparer(comparer, version));
+                // Une simulation dont l'echange a echoue n'a AUCUN chiffre : elle ne peut pas servir
+                // de colonne de comparaison, on dit pourquoi au lieu d'afficher des cases vides.
+                ComparaisonQualite autre = qualite.comparer(comparer, version);
+                modele.addAttribute(autre.mesure() ? "rapportB" : "comparerSansMesure", autre);
             }
         }
         return "quality-report";
@@ -51,15 +54,27 @@ public class QualiteController {
     public ResponseEntity<byte[]> exporter(@RequestParam UUID run, @RequestParam(defaultValue = "") String version) {
         ComparaisonQualite c = qualite.comparer(run, version);
         StringBuilder csv = new StringBuilder("﻿");
+        if (!c.mesure()) {
+            // Echec ou attente d'echange : aucun chiffre, pas meme un 0 %. Le fichier dit pourquoi.
+            csv.append("echange,statut,detail\n")
+                    .append(EvenementsCsv.cellule("ECHEC_ECHANGE")).append(',')
+                    .append(EvenementsCsv.cellule(c.echange().statut().name())).append(',')
+                    .append(EvenementsCsv.cellule(String.valueOf(c.echange().detail()))).append('\n');
+            return reponse(run, csv.toString());
+        }
         csv.append("categorie,type,injectees,detectees,ratees,faux_positifs,taux_detection,precision\n");
         c.types().forEach(l -> ligne(csv, CategorieLibelle.de(l.libelle()), l));
         c.categories().forEach(l -> ligne(csv, "CATEGORIE", l));
         ligne(csv, "TOTAL", c.total());
+        return reponse(run, csv.toString());
+    }
+
+    private static ResponseEntity<byte[]> reponse(UUID run, String csv) {
         return ResponseEntity.ok()
                 .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
                         .filename("qualite-" + run.toString().substring(0, 8) + ".csv").build().toString())
-                .body(csv.toString().getBytes(StandardCharsets.UTF_8));
+                .body(csv.getBytes(StandardCharsets.UTF_8));
     }
 
     private static void ligne(StringBuilder csv, String categorie, LigneQualite l) {

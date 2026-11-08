@@ -5,6 +5,7 @@ import ci.cnam.simulator.core.engine.RunManager;
 import ci.cnam.simulator.export.ExportIndisponibleException;
 import ci.cnam.simulator.export.ExportService;
 import ci.cnam.simulator.export.FormatExport;
+import ci.cnam.simulator.quality.EchangeService;
 import ci.cnam.simulator.security.AuditService;
 import java.util.List;
 import java.util.UUID;
@@ -38,11 +39,14 @@ public class TelechargementController {
     private final ExportService export;
     private final AuditService audit;
     private final RunManager runs;
+    private final EchangeService echanges;
 
-    public TelechargementController(ExportService export, AuditService audit, RunManager runs) {
+    public TelechargementController(ExportService export, AuditService audit, RunManager runs,
+                                    EchangeService echanges) {
         this.export = export;
         this.audit = audit;
         this.runs = runs;
+        this.echanges = echanges;
     }
 
     /**
@@ -58,6 +62,9 @@ public class TelechargementController {
         modele.addAttribute("courant", courant);
         modele.addAttribute("telechargements",
                 courant == null ? List.of() : export.telechargements(courant.id()));
+        modele.addAttribute("echanges", courant == null ? List.of() : echanges.journal(courant.id()));
+        modele.addAttribute("etatEchange", courant == null ? null : echanges.etat(courant.id()).orElse(null));
+        modele.addAttribute("delaiRapportMinutes", echanges.delaiRapport().toMinutes());
         return "export";
     }
 

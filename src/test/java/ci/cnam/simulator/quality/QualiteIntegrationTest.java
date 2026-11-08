@@ -164,9 +164,13 @@ class QualiteIntegrationTest {
                 double_.run())).isEqualTo(2);
     }
 
-    /** Les chiffres seuls : l'identifiant du run differe forcement. */
+    /**
+     * Les chiffres seuls : l'identifiant du run differe forcement, et le dernier echange porte son
+     * propre horodatage et son propre decompte de detections poussees.
+     */
     private static String chiffres(String json) {
-        return json.replaceAll("\"runId\":\"[^\"]*\",?", "");
+        return json.replaceAll("\"runId\":\"[^\"]*\",?", "")
+                .replaceAll("\"echange\":\\{[^}]*},?", "");
     }
 
     @Test

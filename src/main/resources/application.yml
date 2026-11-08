@@ -87,6 +87,10 @@ simulateur:
     cle-api: ${API_KEY}                # stockee hachee en base des le prompt 'securite'
     mot-de-passe-admin-initial: ${ADMIN_INITIAL_PASSWORD}
     echecs-avant-verrouillage: 5
+  qualite:
+    # Au-dela de ce delai, un jeu retire par le script sans rapport pousse devient un SILENCE
+    # (echec d'echange). Jamais un taux de detection de 0 % : ce ne sont pas les memes faits.
+    delai-rapport-minutes: ${QUALITE_DELAI_RAPPORT_MINUTES:60}
   toxiproxy:
     url: ${TOXIPROXY_URL:http://localhost:8474}
     proxy: postgres

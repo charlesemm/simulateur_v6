@@ -32,7 +32,7 @@ class LoginAttemptServiceTest {
     @BeforeEach
     void preparer() {
         SimulateurProperties proprietes = new SimulateurProperties(42, "scenarios",
-                new SimulateurProperties.Securite("cle", "mdp", 5, 15), null, null, null);
+                new SimulateurProperties.Securite("cle", "mdp", 5, 15), null, null, null, null);
         service = new LoginAttemptService(utilisateurs, audit, Clock.fixed(T0, ZoneOffset.UTC), proprietes);
         alice = new AppUser("alice", "hash", Role.OPERATEUR);
         when(utilisateurs.findByNomUtilisateur("alice")).thenReturn(Optional.of(alice));

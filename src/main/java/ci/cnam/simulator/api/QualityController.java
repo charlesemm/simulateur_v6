@@ -4,6 +4,7 @@ import ci.cnam.simulator.anomaly.AnomalyType;
 import ci.cnam.simulator.api.dto.DetectionsRequest;
 import ci.cnam.simulator.quality.ComparaisonQualite;
 import ci.cnam.simulator.quality.Detection;
+import ci.cnam.simulator.quality.EchangeService;
 import ci.cnam.simulator.quality.QualityReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,9 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class QualityController {
 
     private final QualityReportService qualite;
+    private final EchangeService echanges;
 
-    public QualityController(QualityReportService qualite) {
+    public QualityController(QualityReportService qualite, EchangeService echanges) {
         this.qualite = qualite;
+        this.echanges = echanges;
     }
 
     /** @param nouvelles detections reellement enregistrees (une repetition d'une detection deja envoyee n'en compte pas) */
@@ -43,6 +46,24 @@ public class QualityController {
     @Operation(summary = "Envoyer des detections. Plusieurs envois par run sont acceptes ; "
             + "un evenement inconnu du run fait refuser tout l'envoi (422)")
     public RapportRecu envoyer(@PathVariable UUID runId, @Valid @RequestBody DetectionsRequest corps) {
+        try {
+            return enregistrer(runId, corps);
+        } catch (RuntimeException e) {
+            // Le contrat ne change pas : l'exception repart telle quelle. On l'enveloppe seulement
+            // pour tracer l'echange, dans une transaction propre (celle de l'envoi a ete annulee).
+            if (tracable(e)) {
+                echanges.tracerRapportMalforme(runId, corps.versionOutil(), String.valueOf(e.getMessage()));
+            }
+            throw e;
+        }
+    }
+
+    /** Un run inconnu n'est pas un echange : il n'y a rien a quoi rattacher la trace. */
+    private static boolean tracable(RuntimeException e) {
+        return !String.valueOf(e.getMessage()).startsWith("Run inconnu");
+    }
+
+    private RapportRecu enregistrer(UUID runId, DetectionsRequest corps) {
         List<String> erreurs = new java.util.ArrayList<>();
         List<Detection> detections = new java.util.ArrayList<>();
         for (int i = 0; i < corps.detections().size(); i++) {
@@ -60,6 +81,19 @@ public class QualityController {
                     + (erreurs.size() > 1 ? " (+" + (erreurs.size() - 1) + " autre(s))" : ""));
         }
         var recu = qualite.recevoir(runId, corps.versionOutil().strip(), detections);
+        String version = corps.versionOutil().strip();
+        long exploitables = detections.stream().filter(QualityReportService::exploitable).count();
+        String detail = recu.recues() + " detection(s) poussee(s), " + recu.nouvelles() + " nouvelle(s), "
+                + exploitables + " exploitable(s)";
+        if (exploitables == 0) {
+            // Rapport accepte, mais rien n'y porte a la fois un type et un champ exploitables :
+            // aucune mesure fiable n'est possible (cahier 2.3). Le contrat ne change pas pour autant :
+            // la reponse reste un 201 avec le meme corps.
+            echanges.tracerRapportSansDetail(runId, version,
+                    detail + " : aucune mesure possible, voir cahier 4.3 (ligne, champ, type)");
+        } else {
+            echanges.tracerRapport(runId, version, detail);
+        }
         return new RapportRecu(recu.rapportId(), recu.recues(), recu.nouvelles());
     }
 

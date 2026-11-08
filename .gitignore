@@ -12,3 +12,7 @@ target/
 
 # Donnees locales
 data/
+
+# Outil temoin d analyse (Python) : artefacts locaux, jamais versionnes
+__pycache__/
+*.pyc

@@ -18,7 +18,7 @@ class ApiKeyServiceTest {
 
     private ApiKeyService service(String cleEnvironnement) {
         return new ApiKeyService(cles, new SimulateurProperties(42, "scenarios",
-                new SimulateurProperties.Securite(cleEnvironnement, "mdp", 5, 15), null, null, null));
+                new SimulateurProperties.Securite(cleEnvironnement, "mdp", 5, 15), null, null, null, null));
     }
 
     @Test

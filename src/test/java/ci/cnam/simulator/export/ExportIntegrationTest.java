@@ -327,8 +327,11 @@ class ExportIntegrationTest {
         String empreinte = jdbc.queryForList("""
                 select empreinte from export_fichier where run_id = ? and format = 'CSV'""",
                 String.class, jeu.run()).get(0).strip();
-        assertThat(page.split(empreinte, -1)).as("l'empreinte est affichee pour les deux telechargements")
-                .hasSize(3);
+        // Deux fois dans le tableau des telechargements, et deux fois dans le journal des echanges :
+        // un retrait sous cle d'API y inscrit un ENVOI, qui porte l'empreinte des octets retires.
+        assertThat(page.split(empreinte, -1))
+                .as("l'empreinte est affichee pour les deux telechargements et pour les deux envois")
+                .hasSize(5);
 
         // un observateur voit le jeu, jamais le corrige
         assertThat(mvc.perform(get("/export").param("run", jeu.run().toString())
