@@ -17,6 +17,45 @@
         <p class="info" th:if="${message}" role="status">
             <svg class="ico" aria-hidden="true"><use href="#i-cercle-check"/></svg><span th:text="${message}"></span></p>
 
+        <!--/* Remise des identifiants : affichee UNE fois, juste apres la creation ou la reinitialisation.
+               Le mot de passe en clair n'existe que dans cette reponse ; recharger la page le fait disparaitre. */-->
+        <section class="carte large flottante" th:if="${identifiants}">
+            <header>
+                <h2><svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Identifiants à remettre</h2>
+                <span class="badge charge">Affiché une seule fois</span>
+            </header>
+            <p class="discret">Echo n'envoie aucun courriel lui-même : copiez ces identifiants, ou ouvrez le message
+                pré-rempli dans votre messagerie. Dès que vous quittez cette page, le mot de passe n'est plus
+                consultable nulle part — il faudrait en poser un nouveau.</p>
+            <dl>
+                <dt>Adresse de connexion</dt>
+                <dd><code th:text="${adresseConnexion}">https://echo.ipscnam.ci/simulateur/login</code></dd>
+                <dt>Nom d'utilisateur</dt>
+                <dd><code th:text="${identifiants.compte.nomUtilisateur}">marie</code></dd>
+                <dt>Mot de passe temporaire</dt>
+                <dd><code class="secret" th:text="${identifiants.motDePasseTemporaire}">abcd-efgh-ijkl-mnop</code></dd>
+                <dt>Rôle</dt>
+                <dd th:text="${identifiants.compte.role}">OBSERVATEUR</dd>
+                <dt>Adresse de messagerie</dt>
+                <dd th:text="${identifiants.compte.email} ?: 'non renseignée'">marie@cnam.ci</dd>
+            </dl>
+            <div class="actions">
+                <button type="button" class="secondaire" data-copier
+                        th:data-texte="|Adresse : ${adresseConnexion}&#10;Nom d'utilisateur : ${identifiants.compte.nomUtilisateur}&#10;Mot de passe temporaire : ${identifiants.motDePasseTemporaire}&#10;&#10;Ce mot de passe est à changer à la première connexion.|">
+                    <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg>Copier les identifiants
+                </button>
+                <a class="bouton" th:if="${identifiants.compte.email}"
+                   th:href="|mailto:${identifiants.compte.email}?subject=${#uris.escapeQueryParam('Vos acces a Echo (simulateur de flux CNAM)')}&amp;body=${#uris.escapeQueryParam('Bonjour,')}%0D%0A%0D%0A${#uris.escapeQueryParam('Voici vos acces a Echo, le simulateur de flux de donnees.')}%0D%0A%0D%0A${#uris.escapeQueryParam('Adresse : ' + adresseConnexion)}%0D%0A${#uris.escapeQueryParam('Nom d utilisateur : ' + identifiants.compte.nomUtilisateur)}%0D%0A${#uris.escapeQueryParam('Mot de passe temporaire : ' + identifiants.motDePasseTemporaire)}%0D%0A%0D%0A${#uris.escapeQueryParam('Ce mot de passe vous sera demande a la premiere connexion, puis vous devrez le remplacer par le votre.')}%0D%0A%0D%0A${#uris.escapeQueryParam('Bonne journee.')}|">
+                    <svg class="ico" aria-hidden="true"><use href="#i-users"/></svg>Préparer le courriel
+                </a>
+            </div>
+            <p class="avert" th:unless="${identifiants.compte.email}">
+                <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+                Aucune adresse enregistrée pour ce compte : renseignez-la dans le tableau ci-dessous pour obtenir
+                le message pré-rempli la prochaine fois.
+            </p>
+        </section>
+
         <div class="grille">
             <form class="carte" th:hx-post="@{/admin/utilisateurs}" hx-target="#zone" hx-swap="outerHTML">
                 <header><h2>Créer un compte</h2></header>
@@ -26,10 +65,18 @@
                     <span class="aide-champ">Entre 3 et 50 caractères : minuscules, chiffres, point, tiret
                         ou tiret bas.</span>
                 </label>
+                <label>Adresse de messagerie
+                    <input type="email" name="email" maxlength="255" autocomplete="off"
+                           placeholder="prenom.nom@cnam.ci">
+                    <span class="aide-champ">Facultative. Elle sert uniquement à préparer le message de remise des
+                        identifiants : Echo n.envoie jamais de courriel lui-même.</span>
+                </label>
                 <label>Mot de passe temporaire
-                    <input type="password" name="motDePasse" required minlength="12" autocomplete="new-password">
-                    <span class="aide-champ">12 caractères au minimum. La personne devra le changer à sa
-                        première connexion.</span>
+                    <input type="text" name="motDePasse" minlength="12" maxlength="100" autocomplete="off"
+                           placeholder="laisser vide : Echo en tire un">
+                    <span class="aide-champ">Laissé vide, un mot de passe est tiré au hasard et affiché une seule
+                        fois après la création. Sinon, 12 caractères au minimum. Dans les deux cas, la personne
+                        devra le changer à sa première connexion.</span>
                 </label>
                 <label>Rôle
                     <select name="role">
@@ -50,7 +97,7 @@
                     <table>
                         <thead>
                         <tr>
-                            <th scope="col">Utilisateur</th><th scope="col">Rôle</th><th scope="col">État</th>
+                            <th scope="col">Utilisateur</th><th scope="col">Rôle</th><th scope="col">Adresse</th><th scope="col">État</th>
                             <th scope="col">Dernière connexion</th><th scope="col">Actions</th>
                         </tr>
                         </thead>
@@ -66,6 +113,15 @@
                                                 th:selected="${r == u.role}">ADMIN</option>
                                     </select>
                                     <button type="submit" class="secondaire">Appliquer</button>
+                                </form>
+                            </td>
+                            <td>
+                                <form class="en-ligne" th:hx-post="@{/admin/utilisateurs/{id}/email(id=${u.id})}"
+                                      hx-target="#zone" hx-swap="outerHTML">
+                                    <input type="email" name="email" maxlength="255" th:value="${u.email}"
+                                           placeholder="aucune adresse" autocomplete="off"
+                                           th:aria-label="|Adresse de ${u.nomUtilisateur}|">
+                                    <button type="submit" class="secondaire">Enregistrer</button>
                                 </form>
                             </td>
                             <td class="actions">
@@ -86,9 +142,9 @@
                                         hx-swap="outerHTML">Déverrouiller</button>
                                 <form class="en-ligne" th:hx-post="@{/admin/utilisateurs/{id}/mot-de-passe(id=${u.id})}"
                                       hx-target="#zone" hx-swap="outerHTML"
-                                      hx-confirm="Remplacer le mot de passe par ce mot de passe temporaire ?">
-                                    <input type="password" name="motDePasse" minlength="12" required
-                                           placeholder="Nouveau mot de passe"
+                                      hx-confirm="Poser un nouveau mot de passe temporaire pour ce compte ?">
+                                    <input type="text" name="motDePasse" minlength="12" maxlength="100"
+                                           placeholder="vide : mot de passe tiré au hasard"
                                            th:aria-label="'Mot de passe temporaire de ' + ${u.nomUtilisateur}"
                                            autocomplete="new-password">
                                     <button type="submit" class="secondaire">Réinitialiser</button>
@@ -134,6 +190,7 @@
     </section>
 
     <script th:src="@{/js/tri.js}" defer></script>
+    <script th:src="@{/js/copier.js}" defer></script>
 </main>
 </body>
 </html>

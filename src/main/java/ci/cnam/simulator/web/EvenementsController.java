@@ -48,20 +48,26 @@ public class EvenementsController {
         this.json = json;
     }
 
-    /** Page complete, ou seulement le tableau quand la requete vient de htmx (en-tete HX-Request). */
+    /**
+     * Sans parametre {@code run} : la liste des simulations, dont la reference ouvre le detail.
+     * Avec un {@code run} : les evenements de cette simulation (ou seulement le tableau quand la requete
+     * vient de htmx, en-tete HX-Request).
+     */
     @GetMapping("/evenements")
     public String page(@RequestParam(required = false) UUID run, @RequestParam(defaultValue = "") String domaine,
                        @RequestParam(defaultValue = "") String type, @RequestParam(defaultValue = "") String statut,
                        @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "50") int taille,
                        @RequestHeader(value = "HX-Request", required = false) String htmx, Model modele,
                        HttpServletResponse reponse) {
-        List<RunInfo> tous = runs.lister();
-        UUID choisi = run != null ? run : tous.stream().findFirst().map(RunInfo::id).orElse(null);
-        PageEvenements resultat = choisi == null
-                ? new PageEvenements(List.of(), 0, EventQueryService.TAILLE_PAGE_PAR_DEFAUT, 0)
-                : evenements.rechercher(choisi, domaine, type, statut, page, taille);
-        modele.addAttribute("runs", tous);
-        modele.addAttribute("run", choisi);
+        if (run == null) {
+            modele.addAttribute("runs", runs.lister());
+            reponse.setHeader(HttpHeaders.VARY, "HX-Request");
+            return "evenements-choix";
+        }
+        RunInfo courant = runs.lister().stream().filter(r -> r.id().equals(run)).findFirst().orElse(null);
+        PageEvenements resultat = evenements.rechercher(run, domaine, type, statut, page, taille);
+        modele.addAttribute("courant", courant);
+        modele.addAttribute("run", run);
         modele.addAttribute("domaine", domaine);
         modele.addAttribute("type", type);
         modele.addAttribute("statut", statut);

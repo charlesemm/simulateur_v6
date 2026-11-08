@@ -81,7 +81,7 @@
             </p>
         </div>
 
-        <div class="carte" th:classappend="${actif} ? 'large'">
+        <div class="carte large">
             <header>
                 <h2>Dernières simulations</h2>
                 <a class="bouton secondaire" th:href="@{/historique}" th:unless="${#lists.isEmpty(recents)}">Tout l'historique</a>
@@ -104,7 +104,8 @@
                     </thead>
                     <tbody>
                     <tr th:each="r : ${recents}">
-                        <td><code th:text="${#strings.substring(r.id.toString(), 0, 8)}" th:title="${r.id}">abcd1234</code></td>
+                        <td><a th:href="@{/evenements(run=${r.id})}" th:title="${r.id}">
+                            <code th:text="${#strings.substring(r.id.toString(), 0, 8)}">abcd1234</code></a></td>
                         <td th:text="${r.scenario}">scénario</td>
                         <td class="chiffre" th:text="${r.seed}">42</td>
                         <td><span th:replace="~{fragments/etat :: badge(${r.etat})}"></span></td>

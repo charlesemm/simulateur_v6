@@ -49,6 +49,46 @@ public class ChaosPanelController {
         return ZONE;
     }
 
+    /** Rafraichi par htmx toutes les 2 s : l etat de la simulation, pour piloter sans quitter l ecran. */
+    @GetMapping("/chaos/pilote")
+    public String pilote(Model modele) {
+        preparer(modele);
+        return "chaos-panel :: pilote";
+    }
+
+    @PostMapping("/chaos/pilote/{id}/pause")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATEUR')")
+    public String pause(@PathVariable UUID id, Authentication auth, Model modele, HttpServletResponse reponse) {
+        ActionWeb.executer(modele, reponse, () -> {
+            pilotage.pause(id, auth.getName());
+            return "Simulation mise en pause";
+        });
+        preparer(modele);
+        return ZONE;
+    }
+
+    @PostMapping("/chaos/pilote/{id}/reprendre")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATEUR')")
+    public String reprendre(@PathVariable UUID id, Authentication auth, Model modele, HttpServletResponse reponse) {
+        ActionWeb.executer(modele, reponse, () -> {
+            pilotage.reprendre(id, auth.getName());
+            return "Simulation reprise";
+        });
+        preparer(modele);
+        return ZONE;
+    }
+
+    @PostMapping("/chaos/pilote/{id}/arreter")
+    @PreAuthorize("hasAnyRole('ADMIN','OPERATEUR')")
+    public String arreter(@PathVariable UUID id, Authentication auth, Model modele, HttpServletResponse reponse) {
+        ActionWeb.executer(modele, reponse, () -> {
+            pilotage.arreter(id, auth.getName());
+            return "Simulation arretee : les evenements en attente ont ete enregistres";
+        });
+        preparer(modele);
+        return ZONE;
+    }
+
     /** Rafraichi par htmx toutes les 3 s : seulement la liste des actions, pour ne pas effacer un formulaire en cours. */
     @GetMapping("/chaos/actions")
     public String actions(Model modele) {

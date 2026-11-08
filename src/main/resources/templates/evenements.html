@@ -8,21 +8,20 @@
 <main id="contenu" class="page">
     <div class="titre-ecran">
         <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-activity"/></svg>Flux de données</h1>
+        <a class="bouton secondaire" th:href="@{/evenements}">
+            <svg class="ico" aria-hidden="true"><use href="#i-chevron-gauche"/></svg>Toutes les simulations</a>
     </div>
-    <p class="sous-titre">Chaque ligne est une étape franchie par un dossier. En prestations : arrivée du patient,
+    <p class="sous-titre">Événements de la simulation
+        <code th:text="${#strings.substring(run.toString(), 0, 8)}" th:title="${run}">abcd1234</code><th:block
+            th:if="${courant}"> — <span th:text="${courant.scenario}">scénario</span>,
+        graine <span class="chiffre" th:text="${courant.seed}">42</span></th:block>.
+        Chaque ligne est une étape franchie par un dossier. En prestations : arrivée du patient,
         vérification des droits, consultation, examens, délivrance, clôture.</p>
 
     <form class="carte filtres" th:action="@{/evenements}" method="get"
           th:hx-get="@{/evenements}" hx-target="#tableau" hx-swap="outerHTML" hx-push-url="true"
           hx-trigger="submit, change">
-        <label>Simulation
-            <select name="run">
-                <option th:each="r : ${runs}" th:value="${r.id}" th:selected="${r.id == run}"
-                        th:text="${#strings.substring(r.id.toString(), 0, 8) + ' — ' + r.scenario}">
-                    run
-                </option>
-            </select>
-        </label>
+        <input type="hidden" name="run" th:value="${run}">
         <label>Domaine <input type="text" name="domaine" th:value="${domaine}" placeholder="prestations"></label>
         <label>Étape <input type="text" name="type" th:value="${type}" placeholder="FACTURE_OUVERTE"></label>
         <label>Statut d'écriture <input type="text" name="statut" th:value="${statut}" placeholder="ECRIT"></label>

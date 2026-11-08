@@ -39,6 +39,7 @@ import ci.cnam.simulator.monitoring.TableauDeBordService;
 import ci.cnam.simulator.persistence.entity.AppUser;
 import ci.cnam.simulator.security.ApiKeyFilter;
 import ci.cnam.simulator.security.AuditService;
+import ci.cnam.simulator.security.CompteCree;
 import ci.cnam.simulator.security.ComptesService;
 import ci.cnam.simulator.security.ComptesService.ComptesException;
 import ci.cnam.simulator.security.Role;
@@ -166,7 +167,7 @@ class InterfaceWebTest {
         mvc.perform(post("/admin/utilisateurs").with(csrf()).with(user("u").roles(role))
                         .param("nom", "x").param("motDePasse", "un-mot-de-passe-long").param("role", "ADMIN"))
                 .andExpect(status().isForbidden());
-        verify(comptes, never()).creer(any(), any(), any(), any());
+        verify(comptes, never()).creer(any(), any(), any(), any(), any());
     }
 
     @ParameterizedTest
@@ -527,13 +528,18 @@ class InterfaceWebTest {
                 .andExpect(content().string(containsString("marie")))
                 .andExpect(content().string(containsString("Mot de passe à changer")));
 
-        when(comptes.creer("admin", "paul", "un-mot-de-passe-long", Role.OPERATEUR))
-                .thenReturn(new AppUser("paul", "h", Role.OPERATEUR));
+        when(comptes.creer("admin", "paul", "paul@cnam.ci", "un-mot-de-passe-long", Role.OPERATEUR))
+                .thenReturn(new CompteCree(new AppUser("paul", "h", Role.OPERATEUR), "tire-au-hasard-1234"));
         mvc.perform(post("/admin/utilisateurs").with(csrf()).with(user("admin").roles("ADMIN"))
-                        .param("nom", "paul").param("motDePasse", "un-mot-de-passe-long").param("role", "OPERATEUR"))
-                .andExpect(status().isOk()).andExpect(content().string(containsString("paul&#39; créé")));
+                        .param("nom", "paul").param("email", "paul@cnam.ci")
+                        .param("motDePasse", "un-mot-de-passe-long").param("role", "OPERATEUR"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("paul")))
+                // Le mot de passe temporaire est rendu une fois, dans cette reponse et nulle part ailleurs.
+                .andExpect(content().string(containsString("tire-au-hasard-1234")));
 
-        when(comptes.creer(any(), any(), any(), any())).thenThrow(new ComptesException("Ce nom d'utilisateur existe deja"));
+        when(comptes.creer(any(), any(), any(), any(), any()))
+                .thenThrow(new ComptesException("Ce nom d utilisateur existe deja"));
         mvc.perform(post("/admin/utilisateurs").with(csrf()).with(user("admin").roles("ADMIN"))
                         .param("nom", "paul").param("motDePasse", "un-mot-de-passe-long").param("role", "OPERATEUR"))
                 .andExpect(status().isUnprocessableEntity())
@@ -551,13 +557,18 @@ class InterfaceWebTest {
         mvc.perform(post("/admin/utilisateurs/{id}/actif", id).with(csrf()).with(admin)).andExpect(status().isOk());
         mvc.perform(post("/admin/utilisateurs/{id}/deverrouiller", id).with(csrf()).with(admin))
                 .andExpect(status().isOk());
+        when(comptes.reinitialiserMotDePasse("admin", id, "temporaire-12345"))
+                .thenReturn(new CompteCree(new AppUser("marie", "h", Role.OBSERVATEUR), "temporaire-12345"));
         mvc.perform(post("/admin/utilisateurs/{id}/mot-de-passe", id).with(csrf()).with(admin)
                 .param("motDePasse", "temporaire-12345")).andExpect(status().isOk());
+        mvc.perform(post("/admin/utilisateurs/{id}/email", id).with(csrf()).with(admin)
+                .param("email", "marie@cnam.ci")).andExpect(status().isOk());
 
         verify(comptes).changerRole("admin", id, Role.OPERATEUR);
         verify(comptes).basculerActif("admin", id);
         verify(comptes).deverrouiller("admin", id);
         verify(comptes).reinitialiserMotDePasse("admin", id, "temporaire-12345");
+        verify(comptes).changerEmail("admin", id, "marie@cnam.ci");
     }
 
     // ---- Connexion --------------------------------------------------------------------------------------

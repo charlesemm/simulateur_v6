@@ -18,11 +18,56 @@
         <p class="info" th:if="${message}" role="status">
             <svg class="ico" aria-hidden="true"><use href="#i-cercle-check"/></svg><span th:text="${message}"></span></p>
 
-        <p class="avert" th:unless="${actif}">
-            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
-            Aucune simulation ne tourne. Les pannes ne peuvent être provoquées que pendant une simulation :
-            lancez-en une, puis revenez ici.
-        </p>
+        <!--/* Pilotage de la simulation, sur le meme ecran que les pannes : on casse et on observe sans naviguer.
+               Le fragment se rafraichit tout seul et ne touche pas aux formulaires voisins. */-->
+        <div id="pilote" class="carte" th:fragment="pilote"
+             th:hx-get="@{/chaos/pilote}" hx-trigger="every 2s" hx-swap="outerHTML">
+            <header>
+                <h2><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Simulation en cours</h2>
+                <th:block th:if="${actif}">
+                    <span th:replace="~{fragments/etat :: badge(${actif.etat})}"></span>
+                </th:block>
+                <span class="legende">Rafraîchi toutes les deux secondes</span>
+            </header>
+
+            <div class="vide" th:unless="${actif}">
+                <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+                <b>Aucune simulation ne tourne</b>
+                <p>Les pannes ne peuvent être provoquées que pendant une simulation.</p>
+                <a class="bouton" th:href="@{/lancement}">
+                    <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Lancer une simulation</a>
+            </div>
+
+            <th:block th:if="${actif}">
+                <dl>
+                    <dt>Scénario</dt><dd th:text="${actif.scenario}">scénario</dd>
+                    <dt>Graine</dt><dd class="chiffre" th:text="${actif.seed}">42</dd>
+                    <dt>Parcours créés</dt>
+                    <dd class="chiffre" th:text="${#numbers.formatInteger(actif.parcoursGeneres, 1, 'WHITESPACE')}">0</dd>
+                    <dt>Événements produits</dt>
+                    <dd class="chiffre" th:text="${#numbers.formatInteger(actif.evenementsEmis, 1, 'WHITESPACE')}">0</dd>
+                    <dt>Référence</dt>
+                    <dd><a th:href="@{/evenements(run=${actif.id})}"><code th:text="${actif.id}">id</code></a></dd>
+                </dl>
+                <div class="actions" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
+                    <button type="button" th:if="${actif.etat.name() == 'EN_COURS'}"
+                            th:hx-post="@{/chaos/pilote/{id}/pause(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML">
+                        <svg class="ico" aria-hidden="true"><use href="#i-pause"/></svg>Mettre en pause
+                    </button>
+                    <button type="button" class="succes" th:if="${actif.etat.name() == 'EN_PAUSE'}"
+                            th:hx-post="@{/chaos/pilote/{id}/reprendre(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML">
+                        <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Reprendre
+                    </button>
+                    <button type="button" class="danger"
+                            th:hx-post="@{/chaos/pilote/{id}/arreter(id=${actif.id})}" hx-target="#zone" hx-swap="outerHTML"
+                            hx-confirm="Arrêter la simulation en cours ? Les événements en attente seront enregistrés avant l'arrêt.">
+                        <svg class="ico" aria-hidden="true"><use href="#i-stop"/></svg>Arrêter
+                    </button>
+                    <a class="bouton secondaire" th:href="@{/dashboard}">
+                        <svg class="ico" aria-hidden="true"><use href="#i-dashboard"/></svg>Suivre en direct</a>
+                </div>
+            </th:block>
+        </div>
 
         <div class="grille" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
             <form class="carte" th:hx-post="@{/chaos/declencher}" hx-target="#zone" hx-swap="outerHTML"

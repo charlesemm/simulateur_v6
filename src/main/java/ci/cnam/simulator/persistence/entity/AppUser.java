@@ -24,6 +24,10 @@ public class AppUser {
     @Column(name = "mot_de_passe_hash", nullable = false)
     private String motDePasseHash;
 
+    /** Facultative : sert seulement a preparer le message de remise des identifiants. */
+    @Column(name = "email")
+    private String email;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
@@ -75,6 +79,14 @@ public class AppUser {
 
     public void setMotDePasseHash(String motDePasseHash) {
         this.motDePasseHash = motDePasseHash;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public Role getRole() {

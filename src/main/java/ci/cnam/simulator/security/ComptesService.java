@@ -25,6 +25,8 @@ public class ComptesService {
 
     static final int LONGUEUR_MIN = 12;
     private static final Pattern NOM_VALIDE = Pattern.compile("[a-z0-9._-]{3,50}");
+    /** Controle volontairement large : on verifie la forme, pas l existence de la boite. */
+    private static final Pattern EMAIL_VALIDE = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}");
 
     private final AppUserRepository utilisateurs;
     private final PasswordEncoder encodeur;
@@ -40,8 +42,14 @@ public class ComptesService {
         return utilisateurs.findAllByOrderByNomUtilisateurAsc();
     }
 
+    /**
+     * Cree un compte et rend le mot de passe temporaire EN CLAIR, pour qu'il soit affiche une seule fois.
+     *
+     * @param email            facultatif : sert uniquement a preparer le message de remise des identifiants
+     * @param motDePasseChoisi laisse vide, un mot de passe temporaire est tire au hasard
+     */
     @Transactional
-    public AppUser creer(String acteur, String nom, String motDePasseTemporaire, Role role) {
+    public CompteCree creer(String acteur, String nom, String email, String motDePasseChoisi, Role role) {
         String nomPropre = nom == null ? "" : nom.strip().toLowerCase(java.util.Locale.ROOT);
         if (!NOM_VALIDE.matcher(nomPropre).matches()) {
             throw new ComptesException("Nom d'utilisateur : 3 a 50 caracteres parmi minuscules, chiffres, . _ -");
@@ -49,13 +57,45 @@ public class ComptesService {
         if (role == null) {
             throw new ComptesException("Role obligatoire");
         }
-        verifierMotDePasse(nomPropre, motDePasseTemporaire);
+        String emailPropre = nettoyerEmail(email);
+        String motDePasse = ouGenere(motDePasseChoisi);
+        verifierMotDePasse(nomPropre, motDePasse);
         if (utilisateurs.findByNomUtilisateur(nomPropre).isPresent()) {
             throw new ComptesException("Ce nom d'utilisateur existe deja");
         }
-        AppUser cree = utilisateurs.save(new AppUser(nomPropre, encodeur.encode(motDePasseTemporaire), role));
-        audit.enregistrer(acteur, "UTILISATEUR_CREE", nomPropre, "role " + role);
-        return cree;
+        AppUser compte = new AppUser(nomPropre, encodeur.encode(motDePasse), role);
+        compte.setEmail(emailPropre);
+        AppUser cree = utilisateurs.save(compte);
+        audit.enregistrer(acteur, "UTILISATEUR_CREE", nomPropre,
+                "role " + role + (emailPropre == null ? "" : ", email " + emailPropre));
+        return new CompteCree(cree, motDePasse);
+    }
+
+    /** Un mot de passe vide signifie : « tire-le pour moi ». */
+    private static String ouGenere(String choisi) {
+        return choisi == null || choisi.isBlank() ? MotDePasseTemporaire.generer() : choisi;
+    }
+
+    /** Rend null pour une saisie vide, sinon l'adresse en minuscules apres controle de forme. */
+    private static String nettoyerEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        String propre = email.strip().toLowerCase(java.util.Locale.ROOT);
+        if (propre.length() > 255 || !EMAIL_VALIDE.matcher(propre).matches()) {
+            throw new ComptesException("Adresse de messagerie invalide");
+        }
+        return propre;
+    }
+
+    /** Renseigne ou corrige l'adresse d'un compte (laisser vide l'efface). */
+    @Transactional
+    public void changerEmail(String acteur, UUID id, String email) {
+        AppUser u = trouver(id);
+        String propre = nettoyerEmail(email);
+        u.setEmail(propre);
+        utilisateurs.save(u);
+        audit.enregistrer(acteur, "EMAIL_MODIFIE", u.getNomUtilisateur(), propre == null ? "efface" : propre);
     }
 
     @Transactional
@@ -100,17 +140,22 @@ public class ComptesService {
         audit.enregistrer(acteur, "COMPTE_DEVERROUILLE", u.getNomUtilisateur(), null);
     }
 
-    /** Pose un mot de passe temporaire : le titulaire devra le changer a sa prochaine connexion. */
+    /**
+     * Pose un mot de passe temporaire : le titulaire devra le changer a sa prochaine connexion.
+     * Rend le mot de passe EN CLAIR pour qu il soit affiche une seule fois (laisse vide, il est tire au hasard).
+     */
     @Transactional
-    public void reinitialiserMotDePasse(String acteur, UUID id, String motDePasseTemporaire) {
+    public CompteCree reinitialiserMotDePasse(String acteur, UUID id, String motDePasseChoisi) {
         AppUser u = trouver(id);
-        verifierMotDePasse(u.getNomUtilisateur(), motDePasseTemporaire);
-        u.setMotDePasseHash(encodeur.encode(motDePasseTemporaire));
+        String motDePasse = ouGenere(motDePasseChoisi);
+        verifierMotDePasse(u.getNomUtilisateur(), motDePasse);
+        u.setMotDePasseHash(encodeur.encode(motDePasse));
         u.setMotDePasseAChanger(true);
         u.setVerrouilleJusqua(null);
         u.setEchecsConsecutifs(0);
         utilisateurs.save(u);
         audit.enregistrer(acteur, "MOT_DE_PASSE_REINITIALISE", u.getNomUtilisateur(), null);
+        return new CompteCree(u, motDePasse);
     }
 
     /** Changement par le titulaire. Rend le nouveau hash (pour rafraichir la session). */
