@@ -58,6 +58,8 @@
                             <svg class="ico" aria-hidden="true"><use href="#i-activity"/></svg>Flux</a>
                         <a class="bouton secondaire" th:href="@{/qualite(run=${r.id})}">
                             <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Qualité</a>
+                        <a class="bouton secondaire" th:if="${r.etat.terminal()}" th:href="@{/export(run=${r.id})}">
+                            <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Télécharger</a>
                         <button type="button" class="secondaire" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')"
                                 th:hx-post="@{/lancement/{id}/rejouer(id=${r.id})}" hx-target="#retour"
                                 hx-swap="innerHTML"

@@ -7,8 +7,8 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * Ecriture CSV (RFC 4180) des evenements. Une cellule qui commence par {@code = + - @} (ou une tabulation) est
- * precedee d'une apostrophe : ouverte dans un tableur, elle ne sera jamais interpretee comme une formule.
+ * Ecriture CSV (RFC 4180) des evenements de l'ecran Flux de donnees. L'echappement lui-meme vient de
+ * {@link ci.cnam.simulator.export.CsvCellule}, seule regle CSV du projet.
  */
 final class EvenementsCsv {
 
@@ -29,15 +29,9 @@ final class EvenementsCsv {
                 e.payload() == null ? "" : enJson.apply(e.payload())));
     }
 
+    /** La regle d'echappement est unique dans le projet : {@link ci.cnam.simulator.export.CsvCellule}. */
     static String cellule(String valeur) {
-        String v = valeur == null ? "" : valeur;
-        if (!v.isEmpty() && "=+-@\t\r".indexOf(v.charAt(0)) >= 0) {
-            v = "'" + v;
-        }
-        if (v.contains(",") || v.contains("\"") || v.contains("\n") || v.contains("\r")) {
-            v = "\"" + v.replace("\"", "\"\"") + "\"";
-        }
-        return v;
+        return ci.cnam.simulator.export.CsvCellule.de(valeur);
     }
 
     private static void ligne(Writer sortie, List<String> cellules) throws IOException {

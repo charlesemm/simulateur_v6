@@ -46,6 +46,16 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         this.verificateur = verificateur;
     }
 
+    /**
+     * Les exports partent en flux ({@code StreamingResponseBody}) : la requete repasse par la chaine
+     * apres le traitement asynchrone. Sans cette autorisation, le contexte de securite serait vide a
+     * ce second passage et l'appel serait refuse alors que les octets sont deja partis.
+     */
+    @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest requete, HttpServletResponse reponse, FilterChain suite)
             throws ServletException, IOException {

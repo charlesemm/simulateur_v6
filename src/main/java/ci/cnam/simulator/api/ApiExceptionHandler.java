@@ -90,6 +90,21 @@ public class ApiExceptionHandler {
                 .body(new ErreurResponse("DETECTION_INVALIDE", e.getMessage(), e.erreurs()));
     }
 
+    /** Export d'une simulation qui n'est pas terminee : elle ecrit encore, le fichier changerait. */
+    @ExceptionHandler(ci.cnam.simulator.export.ExportIndisponibleException.class)
+    public ResponseEntity<ErreurResponse> exportIndisponible(ci.cnam.simulator.export.ExportIndisponibleException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErreurResponse.de("RUN_NON_TERMINE", e.getMessage()));
+    }
+
+    /** Une table depasse la capacite d'un onglet xlsx : csv ou json restent possibles. */
+    @ExceptionHandler(ci.cnam.simulator.export.ExportTropVolumineuxException.class)
+    public ResponseEntity<ErreurResponse> exportTropVolumineux(
+            ci.cnam.simulator.export.ExportTropVolumineuxException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErreurResponse.de("EXPORT_TROP_VOLUMINEUX", e.getMessage()));
+    }
+
     /** Toxiproxy injoignable ou qui refuse la commande : le chaos n'a pas ete applique (ou pas retire). */
     @ExceptionHandler(ChaosIndisponibleException.class)
     public ResponseEntity<ErreurResponse> chaosIndisponible(ChaosIndisponibleException e) {

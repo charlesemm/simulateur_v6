@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title>Télécharger une simulation — Echo</title>
+</head>
+<body>
+<main id="contenu" class="page">
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-download"/></svg>Télécharger une simulation</h1>
+        <span class="badge" th:if="${courant != null}"
+              th:replace="~{fragments/etat :: badge(${courant.etat})}"></span>
+    </div>
+    <p class="sous-titre">Tout ce que la simulation a produit : les assurés concernés, les feuilles de soins,
+        leurs lignes et les événements. Chaque ligne porte <code>donnee_fictive = OUI</code> et la référence de la
+        simulation — ce marquage n'est pas désactivable.</p>
+
+    <section class="carte" th:if="${courant == null}">
+        <div class="vide">
+            <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
+            <b>Aucune simulation terminée</b>
+            <p>Un téléchargement n'est possible qu'une fois la simulation terminée : tant qu'elle écrit,
+                le fichier serait différent à chaque appel.</p>
+            <a class="bouton" th:href="@{/historique}">
+                <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>Voir les simulations</a>
+        </div>
+    </section>
+
+    <th:block th:if="${courant != null}">
+        <section class="carte">
+            <h2>Simulation <code th:text="${courant.id}">id</code></h2>
+            <dl class="paires">
+                <dt>Scénario</dt><dd th:text="${courant.scenario}">scénario</dd>
+                <dt>Graine</dt><dd class="chiffre" th:text="${courant.seed}">42</dd>
+                <dt>Événements</dt>
+                <dd class="chiffre" th:text="${#numbers.formatInteger(courant.evenementsEmis, 1, 'WHITESPACE')}">0</dd>
+                <dt>Terminée le</dt>
+                <dd class="chiffre"
+                    th:text="${courant.fin != null} ? ${#temporals.format(courant.fin, 'dd/MM/yyyy à HH:mm')} : '—'">—
+                </dd>
+            </dl>
+
+            <p th:unless="${courant.etat.terminal()}" class="avert">
+                Cette simulation n'est pas terminée : son téléchargement est refusé.
+            </p>
+
+            <div class="actions" th:if="${courant.etat.terminal()}">
+                <a class="bouton" th:href="@{/export/jeu.xlsx(run=${courant.id})}">
+                    <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Classeur xlsx</a>
+                <a class="bouton secondaire" th:href="@{/export/jeu.csv(run=${courant.id})}">
+                    <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Archive csv (zip)</a>
+                <a class="bouton secondaire" th:href="@{/export/jeu.json(run=${courant.id})}">
+                    <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Fichier json</a>
+            </div>
+        </section>
+
+        <section class="carte" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')"
+                 th:if="${courant.etat.terminal()}">
+            <h2>Corrigé (vérité terrain)</h2>
+            <p class="sous-titre">La liste des anomalies semées, avec la valeur d'origine. Elle ne part
+                <b>jamais</b> dans les trois fichiers ci-dessus : un outil d'analyse qui la lirait rendrait son
+                score sans valeur. Réservé aux rôles Administrateur et Opérateur, et inscrit au journal.</p>
+            <div class="actions">
+                <a class="bouton secondaire" th:href="@{/export/corrige.csv(run=${courant.id})}">
+                    <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Corrigé csv</a>
+            </div>
+        </section>
+
+        <section class="carte">
+            <h2>Téléchargements déjà servis</h2>
+            <p class="sous-titre">Deux téléchargements de la même simulation dans le même format donnent la
+                <b>même empreinte</b> : c'est la preuve que le fichier est reproductible.</p>
+            <div class="vide" th:if="${#lists.isEmpty(telechargements)}">
+                <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>
+                <b>Rien n'a encore été téléchargé</b>
+                <p>L'empreinte s'affichera ici dès le premier fichier servi.</p>
+            </div>
+            <div class="defilement" th:unless="${#lists.isEmpty(telechargements)}">
+                <table data-triable>
+                    <thead>
+                    <tr>
+                        <th scope="col">Format</th>
+                        <th scope="col">Servi le</th>
+                        <th scope="col" data-type="nombre">Lignes</th>
+                        <th scope="col">Empreinte SHA-256</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="t : ${telechargements}">
+                        <td th:text="${t.format}">XLSX</td>
+                        <td class="chiffre" th:text="${#temporals.format(t.date, 'dd/MM/yyyy à HH:mm:ss')}">date</td>
+                        <td class="chiffre" th:text="${#numbers.formatInteger(t.lignes, 1, 'WHITESPACE')}">0</td>
+                        <td><code class="empreinte" th:text="${t.empreinte}">empreinte</code></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </th:block>
+
+    <script th:src="@{/js/tri.js}" defer></script>
+</main>
+</body>
+</html>

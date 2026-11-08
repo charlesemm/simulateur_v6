@@ -26,6 +26,7 @@
         <jackson-bom.version>2.21.7</jackson-bom.version>
         <tomcat.version>10.1.61</tomcat.version>
         <postgresql.version>42.7.14</postgresql.version>
+        <poi.version>5.4.1</poi.version>
         <htmx.version>2.0.4</htmx.version>
         <chartjs.version>4.4.7</chartjs.version>
     </properties>
@@ -110,6 +111,18 @@
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-yaml</artifactId>
+        </dependency>
+
+        <!--
+            Export xlsx en flux (SXSSF). Dependance LOURDE : poi, xmlbeans, commons-compress,
+            commons-io, commons-codec, commons-collections4, commons-math3, curvesapi, SparseBitSet,
+            log4j-api (facade seule, sans implementation : SLF4J reste le journal de l'application).
+            Le csv et le json n'en ont pas besoin. Version figee, a suivre avec Trivy.
+        -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${poi.version}</version>
         </dependency>
 
         <!-- Metriques : Actuator, Micrometer, Prometheus -->
