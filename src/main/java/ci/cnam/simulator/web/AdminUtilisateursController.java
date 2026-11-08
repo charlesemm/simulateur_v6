@@ -1,7 +1,7 @@
 package ci.cnam.simulator.web;
 
-import ci.cnam.simulator.persistence.entity.AppUser;
 import ci.cnam.simulator.security.AuditService;
+import ci.cnam.simulator.security.CompteCree;
 import ci.cnam.simulator.security.ComptesService;
 import ci.cnam.simulator.security.Role;
 import jakarta.servlet.http.HttpServletResponse;
@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 /** Administration des comptes et lecture du journal d'audit : ADMIN seulement (verifie cote serveur). */
 @Controller
@@ -39,11 +40,13 @@ public class AdminUtilisateursController {
     }
 
     @PostMapping("/admin/utilisateurs")
-    public String creer(@RequestParam String nom, @RequestParam String motDePasse, @RequestParam Role role,
+    public String creer(@RequestParam String nom, @RequestParam(required = false) String email,
+                        @RequestParam(required = false) String motDePasse, @RequestParam Role role,
                         Authentication auth, Model modele, HttpServletResponse reponse) {
         ActionWeb.executer(modele, reponse, () -> {
-            AppUser cree = comptes.creer(auth.getName(), nom, motDePasse, role);
-            return "Compte '" + cree.getNomUtilisateur() + "' créé : mot de passe à changer à la première connexion";
+            CompteCree cree = comptes.creer(auth.getName(), nom, email, motDePasse, role);
+            remettre(modele, cree);
+            return "Compte « " + cree.compte().getNomUtilisateur() + " » créé.";
         });
         preparer(modele);
         return ZONE;
@@ -55,6 +58,17 @@ public class AdminUtilisateursController {
         ActionWeb.executer(modele, reponse, () -> {
             comptes.changerRole(auth.getName(), id, role);
             return "Rôle modifié";
+        });
+        preparer(modele);
+        return ZONE;
+    }
+
+    @PostMapping("/admin/utilisateurs/{id}/email")
+    public String changerEmail(@PathVariable UUID id, @RequestParam(required = false) String email,
+                               Authentication auth, Model modele, HttpServletResponse reponse) {
+        ActionWeb.executer(modele, reponse, () -> {
+            comptes.changerEmail(auth.getName(), id, email);
+            return "Adresse enregistrée";
         });
         preparer(modele);
         return ZONE;
@@ -83,14 +97,28 @@ public class AdminUtilisateursController {
     }
 
     @PostMapping("/admin/utilisateurs/{id}/mot-de-passe")
-    public String reinitialiser(@PathVariable UUID id, @RequestParam String motDePasse, Authentication auth,
-                                Model modele, HttpServletResponse reponse) {
+    public String reinitialiser(@PathVariable UUID id, @RequestParam(required = false) String motDePasse,
+                                Authentication auth, Model modele, HttpServletResponse reponse) {
         ActionWeb.executer(modele, reponse, () -> {
-            comptes.reinitialiserMotDePasse(auth.getName(), id, motDePasse);
-            return "Mot de passe temporaire posé : le titulaire devra le changer";
+            CompteCree remis = comptes.reinitialiserMotDePasse(auth.getName(), id, motDePasse);
+            remettre(modele, remis);
+            return "Nouveau mot de passe temporaire posé.";
         });
         preparer(modele);
         return ZONE;
+    }
+
+    /**
+     * Prepare le bloc « remise des identifiants » affiche UNE seule fois.
+     *
+     * <p>Le mot de passe en clair ne sort que dans cette reponse HTML : il n'est ni enregistre, ni journalise,
+     * ni renvoye par aucun autre ecran. L'adresse du simulateur est deduite de la requete courante pour que le
+     * message prepare contienne un lien cliquable, meme derriere le reverse proxy.</p>
+     */
+    private void remettre(Model modele, CompteCree cree) {
+        modele.addAttribute("identifiants", cree);
+        modele.addAttribute("adresseConnexion", ServletUriComponentsBuilder.fromCurrentContextPath()
+                .path("/login").build().toUriString());
     }
 
     private void preparer(Model modele) {

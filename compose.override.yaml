@@ -6,3 +6,12 @@ services:
   postgres:
     ports:
       - "127.0.0.1:55432:5432"   # 55432 : 5432 et 5433 sont pris par des PostgreSQL locaux sous Windows
+
+  simulator:
+    environment:
+      # DEV UNIQUEMENT : la page d'erreur et la reponse JSON portent l'exception et la pile,
+      # sinon un 500 passe par /error et ne laisse aucune trace dans les journaux.
+      SERVER_ERROR_INCLUDE_EXCEPTION: "true"
+      SERVER_ERROR_INCLUDE_MESSAGE: "always"
+      SERVER_ERROR_INCLUDE_STACKTRACE: "always"
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: "DEBUG"

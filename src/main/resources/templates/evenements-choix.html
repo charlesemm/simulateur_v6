@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title>Flux de données — Echo</title>
+</head>
+<body>
+<main id="contenu" class="page">
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-activity"/></svg>Flux de données</h1>
+        <span class="badge" th:unless="${#lists.isEmpty(runs)}"
+              th:text="${#lists.size(runs)} + (${#lists.size(runs)} > 1 ? ' simulations' : ' simulation')">0 simulation</span>
+    </div>
+    <p class="sous-titre">Choisissez une simulation : sa référence ouvre le détail de tous les événements
+        qu'elle a produits.</p>
+
+    <section class="carte">
+        <div class="vide" th:if="${#lists.isEmpty(runs)}">
+            <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg>
+            <b>Aucune simulation n'a encore tourné</b>
+            <p>Les événements apparaissent dès la première simulation lancée.</p>
+            <a class="bouton" th:href="@{/lancement}">
+                <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Lancer une simulation</a>
+        </div>
+
+        <div class="defilement" th:unless="${#lists.isEmpty(runs)}">
+            <table data-triable>
+                <thead>
+                <tr>
+                    <th scope="col">Référence</th>
+                    <th scope="col">Scénario</th>
+                    <th scope="col">Graine</th>
+                    <th scope="col">État</th>
+                    <th scope="col" data-type="nombre">Parcours</th>
+                    <th scope="col" data-type="nombre">Événements</th>
+                    <th scope="col">Démarrée le</th>
+                    <th scope="col">Terminée le</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${runs}">
+                    <td>
+                        <a th:href="@{/evenements(run=${r.id})}" th:title="'Voir les événements de ' + ${r.id}">
+                            <code th:text="${#strings.substring(r.id.toString(), 0, 8)}">abcd1234</code>
+                        </a>
+                    </td>
+                    <td th:text="${r.scenario}">scénario</td>
+                    <td class="chiffre" th:text="${r.seed}">42</td>
+                    <td><span th:replace="~{fragments/etat :: badge(${r.etat})}"></span></td>
+                    <td class="chiffre" th:text="${#numbers.formatInteger(r.parcoursGeneres, 1, 'WHITESPACE')}">0</td>
+                    <td class="chiffre" th:text="${#numbers.formatInteger(r.evenementsEmis, 1, 'WHITESPACE')}">0</td>
+                    <td class="chiffre" th:text="${#temporals.format(r.debut, 'dd/MM/yyyy à HH:mm')}">date</td>
+                    <td class="chiffre" th:text="${r.fin != null} ? ${#temporals.format(r.fin, 'dd/MM/yyyy à HH:mm')} : '—'">date</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <script th:src="@{/js/tri.js}" defer></script>
+</main>
+</body>
+</html>
