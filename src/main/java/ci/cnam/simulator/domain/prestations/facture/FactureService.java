@@ -14,6 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class FactureService implements GestionFacture {
 
+    /** Le code lu en base est garanti present dans TB_TV_TYPES_FACTURES, mais pas forcement connu ici. */
+    private static TypeBon typeBon(String code) {
+        return TypeBon.depuisCode(code).orElseThrow(() -> new IllegalStateException(
+                "Type de bon inconnu du simulateur : " + code));
+    }
+
     private static final RowMapper<Facture> FACTURE = (rs, i) -> new Facture(
             rs.getObject("id", UUID.class),
             rs.getObject("run_id", UUID.class),
@@ -21,7 +27,7 @@ public class FactureService implements GestionFacture {
             rs.getObject("assure_id", UUID.class),
             rs.getObject("beneficiaire_id", UUID.class),
             rs.getObject("centre_sante_id", UUID.class),
-            TypeBon.valueOf(rs.getString("type_bon")),
+            typeBon(rs.getString("type_facture_code")),
             FactureStatut.valueOf(rs.getString("statut")),
             rs.getObject("date_ouverture", LocalDateTime.class),
             rs.getObject("date_finalisation", LocalDateTime.class),
@@ -82,10 +88,10 @@ public class FactureService implements GestionFacture {
         UUID id = identifiant("facture", d.runId(), numero);
         jdbc.update("""
                 insert into "TB_ECHO_FACTURE" (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
-                                     type_bon, statut, date_ouverture)
+                                     type_facture_code, statut, date_ouverture)
                 values (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 id, d.runId(), numero, d.assureId(), d.beneficiaireId(), d.centreSanteId(),
-                d.typeBon().name(), statut.name(), Timestamp.valueOf(d.dateOuverture()));
+                d.typeBon().code(), statut.name(), Timestamp.valueOf(d.dateOuverture()));
         historiser(id, d.runId(), null, statut, d.dateOuverture());
         return trouver(id);
     }

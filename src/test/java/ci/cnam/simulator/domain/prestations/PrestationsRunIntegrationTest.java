@@ -113,8 +113,8 @@ class PrestationsRunIntegrationTest {
 
         assertThatThrownBy(() -> jdbc.update("""
                 insert into "TB_ECHO_FACTURE" (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
-                                     type_bon, statut, date_ouverture)
-                values (?, ?, 'FAC-2026-999999', ?, ?, ?, 'AMBULATOIRE', 'OUVERTE', now())""",
+                                     type_facture_code, statut, date_ouverture)
+                values (?, ?, 'FAC-2026-999999', ?, ?, ?, 'ER-01-GPR', 'OUVERTE', now())""",
                 UUID.randomUUID(), UUID.randomUUID(), assure, assure, centre))
                 .hasMessageContaining("fk_facture_run");
     }

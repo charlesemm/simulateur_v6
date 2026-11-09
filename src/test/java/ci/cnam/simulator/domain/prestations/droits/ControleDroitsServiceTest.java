@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import ci.cnam.simulator.domain.prestations.droits.ResultatDroits.MotifRefus;
 import ci.cnam.simulator.domain.reference.model.Assure;
 import ci.cnam.simulator.domain.reference.model.Genre;
+import ci.cnam.simulator.domain.reference.model.Regime;
 import ci.cnam.simulator.domain.reference.model.StatutCotisation;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -16,7 +17,7 @@ class ControleDroitsServiceTest {
     private final ControleDroitsService service = new ControleDroitsService();
 
     private static Assure assure(StatutCotisation cotisation, LocalDate debut, LocalDate fin) {
-        return new Assure(UUID.randomUUID(), "A1", "Nom", "Prenoms", LocalDate.of(1990, 1, 1), Genre.F, cotisation,
+        return new Assure(UUID.randomUUID(), "A1", "Nom", "Prenoms", LocalDate.of(1990, 1, 1), Genre.F, Regime.GENERAL_DE_BASE, cotisation,
                 debut, fin);
     }
 

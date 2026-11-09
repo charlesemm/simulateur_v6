@@ -61,11 +61,11 @@ public class ExportRepository implements JeuStore {
     @Override
     public TableExport factures(UUID runId) {
         return table("factures",
-                List.of("id", "numero_facture", "assure_id", "beneficiaire_id", "centre_sante_id", "type_bon",
+                List.of("id", "numero_facture", "assure_id", "beneficiaire_id", "centre_sante_id", "type_facture_code",
                         "statut", "date_ouverture", "date_finalisation", "montant_total", "part_cnam",
                         "part_assurance_complementaire", "part_assure"),
                 "select f.id::text, f.numero_facture, f.assure_id::text, f.beneficiaire_id::text,"
-                        + " f.centre_sante_id::text, f.type_bon, f.statut,"
+                        + " f.centre_sante_id::text, f.type_facture_code, f.statut,"
                         + " to_char(f.date_ouverture, " + SIMULE + "), to_char(f.date_finalisation, " + SIMULE + "),"
                         + " f.montant_total::text, f.part_cnam::text,"
                         + " f.part_assurance_complementaire::text, f.part_assure::text"

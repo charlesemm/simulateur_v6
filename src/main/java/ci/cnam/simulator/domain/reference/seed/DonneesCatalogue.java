@@ -60,13 +60,44 @@ final class DonneesCatalogue {
             "Diazepam 5 mg comprime", "Chlorhexidine solution antiseptique", "Collyre antibiotique",
             "Pommade a l'oxyde de zinc", "Sirop antitussif");
 
-    static final List<String> SPECIALITES = List.of(
-            "Medecine generale", "Pediatrie", "Gynecologie-obstetrique", "Chirurgie generale", "Cardiologie",
-            "Chirurgie dentaire", "Ophtalmologie", "Radiologie", "Biologie medicale", "Medecine interne");
+    /**
+     * Codes des tables de valeurs, avec leur libelle pour composer un nom d'etablissement lisible.
+     * C'est le code qui est ecrit en base ; le libelle n'est la que pour la mise en forme du nom.
+     */
+    record LigneDepartement(String code, String libelle) {
+    }
 
-    static final List<String> VILLES = List.of(
-            "Abidjan", "Bouake", "Daloa", "Yamoussoukro", "San-Pedro", "Korhogo", "Man", "Abengourou", "Gagnoa",
-            "Divo", "Odienne", "Bondoukou", "Ferkessedougou", "Sassandra", "Dimbokro");
+    record LigneSpecialite(String code, String libelle) {
+    }
+
+    static final List<LigneSpecialite> SPECIALITES = List.of(
+            new LigneSpecialite("MG", "Medecine generale"),
+            new LigneSpecialite("PED", "Pediatrie"),
+            new LigneSpecialite("GYN", "Gynecologie-obstetrique"),
+            new LigneSpecialite("CHG", "Chirurgie generale"),
+            new LigneSpecialite("CAR", "Cardiologie"),
+            new LigneSpecialite("CHD", "Chirurgie dentaire"),
+            new LigneSpecialite("OPH", "Ophtalmologie"),
+            new LigneSpecialite("RAD", "Radiologie et imagerie medicale"),
+            new LigneSpecialite("BIO", "Biologie medicale"),
+            new LigneSpecialite("MIN", "Medecine interne"));
+
+    static final List<LigneDepartement> DEPARTEMENTS = List.of(
+            new LigneDepartement("D109", "Abidjan"),
+            new LigneDepartement("D030", "Bouake"),
+            new LigneDepartement("D051", "Daloa"),
+            new LigneDepartement("D111", "Yamoussoukro"),
+            new LigneDepartement("D093", "San-Pedro"),
+            new LigneDepartement("D090", "Korhogo"),
+            new LigneDepartement("D104", "Man"),
+            new LigneDepartement("D059", "Abengourou"),
+            new LigneDepartement("D034", "Gagnoa"),
+            new LigneDepartement("D071", "Divo"),
+            new LigneDepartement("D064", "Odienne"),
+            new LigneDepartement("D036", "Bondoukou"),
+            new LigneDepartement("D099", "Ferkessedougou"),
+            new LigneDepartement("D033", "Sassandra"),
+            new LigneDepartement("D087", "Dimbokro"));
 
     private DonneesCatalogue() {
     }

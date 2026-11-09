@@ -84,9 +84,9 @@ class ExportIntegrationTest {
             UUID assure = assures.get(i % assures.size());
             jdbc.update("""
                     insert into "TB_ECHO_FACTURE" (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
-                                         type_bon, statut, date_ouverture, montant_total, part_cnam, part_assure)
+                                         type_facture_code, statut, date_ouverture, montant_total, part_cnam, part_assure)
                     values (?, ?, 'FAC-2026-' || lpad(nextval('seq_numero_facture')::text, 6, '0'),
-                            ?, ?, ?, 'AMBULATOIRE', 'FINALISEE', timestamp '2026-01-02 08:00:00',
+                            ?, ?, ?, 'ER-01-GPR', 'FINALISEE', timestamp '2026-01-02 08:00:00',
                             1000.00, 800.00, 200.00)""",
                     facture, run, assure, assure, centre);
             factures.add(facture);

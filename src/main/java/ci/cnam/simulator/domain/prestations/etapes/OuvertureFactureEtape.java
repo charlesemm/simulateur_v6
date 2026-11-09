@@ -31,6 +31,6 @@ public class OuvertureFactureEtape implements Etape {
                 ctx.centre().id(), ctx.typeBon(), ctx.temps()));
         ctx.facture(facture);
         return new ResultatEtape(facture, ctx.evenement(PrestationEventType.FACTURE_OUVERTE,
-                Map.of("numeroFacture", facture.numeroFacture(), "typeBon", facture.typeBon().name())));
+                Map.of("numeroFacture", facture.numeroFacture(), "typeBon", facture.typeBon().code())));
     }
 }

@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class FactureEcrivain implements EcrivainAnnexe<FactureEcrite> {
 
     private static final String FACTURE = """
-            insert into "TB_ECHO_FACTURE" (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id, type_bon,
+            insert into "TB_ECHO_FACTURE" (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id, type_facture_code,
                                  statut, date_ouverture, date_finalisation, montant_total, part_cnam,
                                  part_assurance_complementaire, part_assure)
             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -71,7 +71,7 @@ public class FactureEcrivain implements EcrivainAnnexe<FactureEcrite> {
             ps.setObject(4, f.assureId());
             ps.setObject(5, f.beneficiaireId());
             ps.setObject(6, f.centreSanteId());
-            ps.setString(7, f.typeBon().name());
+            ps.setString(7, f.typeBon().code());
             ps.setString(8, f.statut().name());
             ps.setTimestamp(9, Timestamp.valueOf(f.dateOuverture()));
             ps.setTimestamp(10, f.dateFinalisation() == null ? null : Timestamp.valueOf(f.dateFinalisation()));

@@ -73,7 +73,7 @@ public final class EvenementsDeTest {
                 payload.put("genre", random.chance(0.5) ? "M" : "F");
             } else if (type.equals("FACTURE_OUVERTE")) {
                 payload.put("numeroFacture", "FS-2026-%06d".formatted(i));
-                payload.put("typeBon", "AMBULATOIRE");
+                payload.put("typeBon", "ER-01-GPR");
             } else if (type.equals("MEDICAMENTS_DELIVRES")) {
                 payload.put("pharmacieId", random.nextUuid());
                 payload.put("quantite", random.entre(1, 6));

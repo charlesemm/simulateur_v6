@@ -18,6 +18,7 @@ import ci.cnam.simulator.domain.reference.catalog.Catalogue;
 import ci.cnam.simulator.domain.reference.model.Assure;
 import ci.cnam.simulator.domain.reference.model.CentreSante;
 import ci.cnam.simulator.domain.reference.model.Genre;
+import ci.cnam.simulator.domain.reference.model.Regime;
 import ci.cnam.simulator.domain.reference.model.Medecin;
 import ci.cnam.simulator.domain.reference.model.Pharmacie;
 import ci.cnam.simulator.domain.reference.model.StatutCotisation;
@@ -53,7 +54,7 @@ final class ParcoursFixtures {
     }
 
     static Assure assure(StatutCotisation cotisation, LocalDate debut, LocalDate fin) {
-        return new Assure(new UUID(4, 4), "A-0001", "Traore", "Moussa", LocalDate.of(1990, 5, 17), Genre.M,
+        return new Assure(new UUID(4, 4), "A-0001", "Traore", "Moussa", LocalDate.of(1990, 5, 17), Genre.M, Regime.GENERAL_DE_BASE,
                 cotisation, debut, fin);
     }
 

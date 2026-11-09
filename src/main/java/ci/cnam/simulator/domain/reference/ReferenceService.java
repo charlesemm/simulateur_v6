@@ -13,6 +13,7 @@ import ci.cnam.simulator.domain.reference.model.Genre;
 import ci.cnam.simulator.domain.reference.model.Medecin;
 import ci.cnam.simulator.domain.reference.model.Pharmacie;
 import ci.cnam.simulator.domain.reference.model.StatutCotisation;
+import ci.cnam.simulator.domain.reference.model.Regime;
 import ci.cnam.simulator.domain.reference.model.TypeCentreSante;
 import java.util.HashMap;
 import java.util.List;
@@ -100,27 +101,46 @@ public class ReferenceService implements Catalogue {
         return courant;
     }
 
+    /**
+     * Un code lu en base qui ne correspond a aucune valeur connue est une incoherence de schema, pas
+     * une donnee a ignorer : les cles etrangeres de V19 garantissent qu'il appartient bien a la table
+     * de valeurs, mais rien ne garantit que le simulateur sache le representer.
+     */
+    private static TypeCentreSante typeCentre(String code) {
+        return TypeCentreSante.depuisCode(code).orElseThrow(() -> new IllegalStateException(
+                "Type d'etablissement inconnu du simulateur : " + code));
+    }
+
+    private static Regime regime(String code) {
+        return Regime.depuisCode(code).orElseThrow(() -> new IllegalStateException(
+                "Regime inconnu du simulateur : " + code));
+    }
+
     private Instantane charger() {
         List<Assure> assures = jdbc.query("""
-                select id, numero_assure, nom, prenoms, date_naissance, genre, statut_cotisation,
+                select id, numero_assure, nom, prenoms, date_naissance, genre, regime_code, statut_cotisation,
                        date_debut_droits, date_fin_droits
                 from "TB_ECHO_ASSURE" order by numero_assure""",
                 (rs, i) -> new Assure(rs.getObject("id", UUID.class), rs.getString("numero_assure"),
                         rs.getString("nom"), rs.getString("prenoms"),
                         rs.getObject("date_naissance", java.time.LocalDate.class),
-                        Genre.valueOf(rs.getString("genre")), StatutCotisation.valueOf(rs.getString("statut_cotisation")),
+                        Genre.valueOf(rs.getString("genre")), regime(rs.getString("regime_code")),
+                        StatutCotisation.valueOf(rs.getString("statut_cotisation")),
                         rs.getObject("date_debut_droits", java.time.LocalDate.class),
                         rs.getObject("date_fin_droits", java.time.LocalDate.class)));
-        List<CentreSante> centres = jdbc.query("select id, code, nom, type, ville from \"TB_ECHO_CENTRE_SANTE\" order by code",
+        List<CentreSante> centres = jdbc.query(
+                "select id, code, nom, type_etablissement_code, departement_code from \"TB_ECHO_CENTRE_SANTE\" order by code",
                 (rs, i) -> new CentreSante(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("nom"),
-                        TypeCentreSante.valueOf(rs.getString("type")), rs.getString("ville")));
+                        typeCentre(rs.getString("type_etablissement_code")), rs.getString("departement_code")));
         List<Medecin> medecins = jdbc.query(
-                "select id, code, nom, prenoms, specialite, centre_sante_id from \"TB_ECHO_MEDECIN\" order by code",
+                "select id, code, nom, prenoms, specialite_medicale_code, centre_sante_id from \"TB_ECHO_MEDECIN\" order by code",
                 (rs, i) -> new Medecin(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("nom"),
-                        rs.getString("prenoms"), rs.getString("specialite"), rs.getObject("centre_sante_id", UUID.class)));
-        List<Pharmacie> pharmacies = jdbc.query("select id, code, nom, ville from \"TB_ECHO_PHARMACIE\" order by code",
+                        rs.getString("prenoms"), rs.getString("specialite_medicale_code"),
+                        rs.getObject("centre_sante_id", UUID.class)));
+        List<Pharmacie> pharmacies = jdbc.query(
+                "select id, code, nom, departement_code from \"TB_ECHO_PHARMACIE\" order by code",
                 (rs, i) -> new Pharmacie(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("nom"),
-                        rs.getString("ville")));
+                        rs.getString("departement_code")));
         if (assures.isEmpty() || centres.isEmpty() || medecins.isEmpty() || pharmacies.isEmpty()) {
             throw new IllegalStateException("Referentiel vide : le remplissage au demarrage n'a pas eu lieu");
         }

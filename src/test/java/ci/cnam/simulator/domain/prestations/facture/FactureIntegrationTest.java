@@ -121,11 +121,13 @@ class FactureIntegrationTest {
     }
 
     @Test
-    void lesContraintesCheckRefusentUnStatutOuUnTypeInconnu() {
+    // Depuis V19 ce ne sont plus des CHECK mais des cles etrangeres vers les tables de valeurs :
+    // la liste des valeurs admises n'est plus repetee dans la contrainte, elle vit dans la table.
+    void lesClesEtrangeresRefusentUnStatutOuUnTypeInconnu() {
         Facture f = service.ouvrir(demande());
         assertThatThrownBy(() -> jdbc.update("update \"TB_ECHO_FACTURE\" set statut = 'INCONNU' where id = ?", f.id()))
                 .isInstanceOf(DataIntegrityViolationException.class);
-        assertThatThrownBy(() -> jdbc.update("update \"TB_ECHO_FACTURE\" set type_bon = 'AUTRE' where id = ?", f.id()))
+        assertThatThrownBy(() -> jdbc.update("update \"TB_ECHO_FACTURE\" set type_facture_code = 'AUTRE' where id = ?", f.id()))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 

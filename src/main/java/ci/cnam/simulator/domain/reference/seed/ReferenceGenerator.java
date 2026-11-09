@@ -12,6 +12,7 @@ import ci.cnam.simulator.domain.reference.model.LienParente;
 import ci.cnam.simulator.domain.reference.model.Medecin;
 import ci.cnam.simulator.domain.reference.model.NumeroAssure;
 import ci.cnam.simulator.domain.reference.model.Pharmacie;
+import ci.cnam.simulator.domain.reference.model.Regime;
 import ci.cnam.simulator.domain.reference.model.StatutCotisation;
 import ci.cnam.simulator.domain.reference.model.TypeCentreSante;
 import java.math.BigDecimal;
@@ -35,6 +36,12 @@ public class ReferenceGenerator {
 
     private static final double PART_EN_RETARD = 0.08;
     private static final double PART_DROITS_EXPIRES = 0.10;
+    /**
+     * Part des assures relevant du regime d'assistance medicale, non contributif, reserve aux
+     * personnes economiquement faibles. Valeur de simulation : la repartition reelle est connue des
+     * directions metier, pas de ce generateur.
+     */
+    private static final double PART_ASSISTANCE_MEDICALE = 0.25;
 
     private final SeededRandom random;
     private final Faker faker;
@@ -69,15 +76,16 @@ public class ReferenceGenerator {
     public List<CentreSante> centres(int nb) {
         List<CentreSante> liste = new ArrayList<>(nb);
         for (int i = 1; i <= nb; i++) {
-            String ville = random.choisir(DonneesCatalogue.VILLES);
+            DonneesCatalogue.LigneDepartement dep = random.choisir(DonneesCatalogue.DEPARTEMENTS);
             TypeCentreSante type = typeCentre();
+            // Le libelle du departement ne sert qu'a composer un nom lisible ; c'est le code qui est stocke.
             String nom = switch (type) {
-                case HOPITAL -> "Hopital general de " + ville + " " + i;
+                case HOPITAL -> "Hopital general de " + dep.libelle() + " " + i;
                 case CLINIQUE -> "Clinique " + faker.name().lastName() + " " + i;
-                case CENTRE_SANTE -> "Centre de sante de " + ville + " " + i;
-                case CMR -> "CMR de " + ville + " " + i;
+                case CENTRE_SANTE -> "Centre de sante de " + dep.libelle() + " " + i;
+                case CMR -> "CMR de " + dep.libelle() + " " + i;
             };
-            liste.add(new CentreSante(random.nextUuid(), "CS-%05d".formatted(i), nom, type, ville));
+            liste.add(new CentreSante(random.nextUuid(), "CS-%05d".formatted(i), nom, type, dep.code()));
         }
         return liste;
     }
@@ -89,7 +97,7 @@ public class ReferenceGenerator {
             int nb = random.entre(3, 8);
             for (int k = 0; k < nb; k++) {
                 liste.add(new Medecin(random.nextUuid(), "DR-%06d".formatted(i++), nom(), prenoms(),
-                        random.choisir(DonneesCatalogue.SPECIALITES), centre.id()));
+                        random.choisir(DonneesCatalogue.SPECIALITES).code(), centre.id()));
             }
         }
         return liste;
@@ -99,7 +107,8 @@ public class ReferenceGenerator {
         List<Pharmacie> liste = new ArrayList<>(nb);
         for (int i = 1; i <= nb; i++) {
             liste.add(new Pharmacie(random.nextUuid(), "PH-%05d".formatted(i),
-                    "Pharmacie " + faker.name().lastName() + " " + i, random.choisir(DonneesCatalogue.VILLES)));
+                    "Pharmacie " + faker.name().lastName() + " " + i,
+                    random.choisir(DonneesCatalogue.DEPARTEMENTS).code()));
         }
         return liste;
     }
@@ -119,9 +128,11 @@ public class ReferenceGenerator {
                     ? debut.plusDays(random.entre(1, (int) ChronoUnit.DAYS.between(debut, DATE_REFERENCE)))
                     : null;
             StatutCotisation statut = random.chance(PART_EN_RETARD) ? StatutCotisation.EN_RETARD : StatutCotisation.A_JOUR;
+            Regime regime = random.chance(PART_ASSISTANCE_MEDICALE)
+                    ? Regime.ASSISTANCE_MEDICALE : Regime.GENERAL_DE_BASE;
             liste.add(new Assure(random.nextUuid(), numero, nom(), prenoms(),
                     DATE_REFERENCE.minusYears(random.entre(18, 70)).minusDays(random.entre(0, 364)),
-                    genre(), statut, debut, fin));
+                    genre(), regime, statut, debut, fin));
         }
         return liste;
     }
