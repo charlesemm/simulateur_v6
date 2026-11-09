@@ -55,3 +55,16 @@ et portent leur code. clean verify vert : 532 tests, 0 échec. Base recréée, F
 Reste à faire : le pg_dump de la base Alembic pour les 27 tables cibles de structure inconnue ;
 articuler le taux par défaut du régime avec TB_ECHO_TAUX (décision métier) ; faire valider
 TB_TV_PRODUITS, TB_TV_MOTIFS_REJETS et la famille LIQUIDATION des statuts.
+
+2026-11-09 | Articulation régime / taux et provenance des tables de valeurs | Le taux du régime est
+désormais appliqué par la tarification comme un PLANCHER : RGB 70 % au moins, RAM 100 % donc aucun
+reste à charge (ni ticket modérateur, ni part complémentaire). Un type de prestation fixé au-dessus
+du plancher garde son taux : l'hospitalisation reste à 90 % pour un assuré du régime général. Le
+plancher ne peut que relever la prise en charge, jamais l'abaisser. Les deux taux sont lus en base
+(TB_ECHO_TAUX par type, TB_TV_REGIMES par régime), rien en dur. V20 inscrit la provenance des 14
+tables de valeurs en COMMENT ON TABLE : 11 sourcées, et 3 explicitement marquées « A VALIDER PAR LES
+DIRECTIONS METIER » (TB_TV_PRODUITS, TB_TV_MOTIFS_REJETS, famille LIQUIDATION des statuts). La
+recherche n'a retrouvé aucune nomenclature publique de motifs de rejet de la CNAM. clean verify
+vert : 533 tests, 0 échec. Flyway à V20, /health UP.
+Reste à faire : le pg_dump de la base Alembic pour les 27 tables cibles de structure inconnue, que
+je ne peux pas obtenir moi-même.

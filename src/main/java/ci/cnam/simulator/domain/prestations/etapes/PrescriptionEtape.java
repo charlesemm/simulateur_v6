@@ -38,7 +38,7 @@ public class PrescriptionEtape implements Etape {
         ctx.avancer(10, 30);
         Acte acte = catalogue.acteAleatoire(CategorieActe.CONSULTATION, ctx.random());
         factures.ajouterLigne(ctx.facture().id(), tarification.ligne(acte.code(), acte.libelle(),
-                ctx.temps(), 1, acte.tarif(), TypePrestation.CONSULTATION));
+                ctx.temps(), 1, acte.tarif(), TypePrestation.CONSULTATION, ctx.assure().regime()));
         Facture facture = factures.changerStatut(ctx.facture().id(), FactureStatut.PRESCRITE, ctx.temps());
         ctx.facture(facture);
         return new ResultatEtape(facture, ctx.evenement(PrestationEventType.PRESCRIPTION_EMISE,

@@ -37,7 +37,7 @@ public class ExamensEtape implements Etape {
         for (TypeExamen type : TypeExamen.values()) {
             Examen examen = catalogue.examenAleatoire(type, ctx.random());
             factures.ajouterLigne(ctx.facture().id(), tarification.ligne(examen.code(), examen.libelle(),
-                    ctx.temps(), 1, examen.tarif(), TypePrestation.EXAMEN));
+                    ctx.temps(), 1, examen.tarif(), TypePrestation.EXAMEN, ctx.assure().regime()));
         }
         return new ResultatEtape(ctx.facture(),
                 ctx.evenement(PrestationEventType.EXAMEN_REALISE, Map.of("nombreExamens", 2)));

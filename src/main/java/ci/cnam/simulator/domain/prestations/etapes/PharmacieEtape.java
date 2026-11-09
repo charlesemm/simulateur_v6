@@ -38,7 +38,7 @@ public class PharmacieEtape implements Etape {
         ctx.avancer(15, 60);
         Medicament medicament = catalogue.medicamentAleatoire(ctx.random());
         factures.ajouterLigne(ctx.facture().id(), tarification.ligne(medicament.code(), medicament.libelle(),
-                ctx.temps(), boites, medicament.tarif(), TypePrestation.MEDICAMENT));
+                ctx.temps(), boites, medicament.tarif(), TypePrestation.MEDICAMENT, ctx.assure().regime()));
         Facture facture = factures.changerStatut(ctx.facture().id(), FactureStatut.MEDICAMENTS_DELIVRES, ctx.temps());
         ctx.facture(facture);
         return new ResultatEtape(facture, ctx.evenement(PrestationEventType.MEDICAMENTS_DELIVRES,

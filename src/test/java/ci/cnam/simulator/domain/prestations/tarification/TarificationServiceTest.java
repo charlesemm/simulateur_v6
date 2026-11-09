@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import ci.cnam.simulator.core.random.SeededRandom;
 import ci.cnam.simulator.domain.prestations.facture.NouvelleLigne;
+import ci.cnam.simulator.domain.reference.model.Regime;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.EnumMap;
@@ -16,12 +17,20 @@ import org.junit.jupiter.params.provider.CsvSource;
 /** Calculs chiffres. Les taux sont ceux du test (jamais ceux de la base) : la regle est construite ici. */
 class TarificationServiceTest {
 
+    /**
+     * Plancher de regime neutre : les deux regimes a 0, donc le plancher ne joue jamais. Ces tests
+     * portent sur l'axe "type de prestation" et sur les arrondis ; le plancher a son test a lui.
+     */
+    private static final Map<Regime, TauxRegime> REGIMES_NEUTRES = Map.of(
+            Regime.GENERAL_DE_BASE, new TauxRegime(BigDecimal.ZERO, true),
+            Regime.ASSISTANCE_MEDICALE, new TauxRegime(BigDecimal.ZERO, false));
+
     private static TarificationService service(String tauxCnam, String tauxComplementaire) {
         Map<TypePrestation, BigDecimal> cnam = new EnumMap<>(TypePrestation.class);
         for (TypePrestation type : TypePrestation.values()) {
             cnam.put(type, new BigDecimal(tauxCnam));
         }
-        return new TarificationService(new RegleTaux(cnam, new BigDecimal(tauxComplementaire)));
+        return new TarificationService(new RegleTaux(cnam, new BigDecimal(tauxComplementaire), REGIMES_NEUTRES));
     }
 
     @ParameterizedTest(name = "{0} FCFA, CNAM {1}, compl. {2} -> {3} / {4} / {5}")
@@ -49,7 +58,7 @@ class TarificationServiceTest {
     })
     void repartitionChiffree(String montant, String tauxCnam, String tauxCompl, String cnam, String compl,
                              String assure) {
-        Repartition r = service(tauxCnam, tauxCompl).repartir(new BigDecimal(montant), TypePrestation.CONSULTATION);
+        Repartition r = service(tauxCnam, tauxCompl).repartir(new BigDecimal(montant), TypePrestation.CONSULTATION, Regime.GENERAL_DE_BASE);
 
         assertThat(r.partCnam()).isEqualByComparingTo(cnam);
         assertThat(r.partAssuranceComplementaire()).isEqualByComparingTo(compl);
@@ -73,12 +82,43 @@ class TarificationServiceTest {
     })
     void quantiteSuperieureAUn(String tarif, int quantite, String montant, String cnam, String compl,
                                String assure) {
-        Repartition r = service("0.70", "0.50").repartir(new BigDecimal(tarif), quantite, TypePrestation.MEDICAMENT);
+        Repartition r = service("0.70", "0.50").repartir(new BigDecimal(tarif), quantite, TypePrestation.MEDICAMENT, Regime.GENERAL_DE_BASE);
 
         assertThat(r.montant()).isEqualByComparingTo(montant);
         assertThat(r.partCnam()).isEqualByComparingTo(cnam);
         assertThat(r.partAssuranceComplementaire()).isEqualByComparingTo(compl);
         assertThat(r.partAssure()).isEqualByComparingTo(assure);
+    }
+
+    @Test
+    void lePlancherDuRegimeNePeutQueReleverLaPriseEnCharge() {
+        // Les taux reels : le regime general est pris en charge a 70 %, l'assistance medicale a 100 %.
+        Map<TypePrestation, BigDecimal> parType = Map.of(
+                TypePrestation.CONSULTATION, new BigDecimal("0.70"),
+                TypePrestation.EXAMEN, new BigDecimal("0.80"),
+                TypePrestation.HOSPITALISATION, new BigDecimal("0.90"),
+                TypePrestation.MEDICAMENT, new BigDecimal("0.65"),
+                TypePrestation.DENTAIRE, new BigDecimal("0.50"));
+        TarificationService service = new TarificationService(new RegleTaux(parType, new BigDecimal("0.50"),
+                Map.of(Regime.GENERAL_DE_BASE, new TauxRegime(new BigDecimal("0.70"), true),
+                        Regime.ASSISTANCE_MEDICALE, new TauxRegime(BigDecimal.ONE, false))));
+        BigDecimal mille = new BigDecimal("1000.00");
+
+        // Regime general : les types fixes sous 70 % sont releves, ceux fixes au-dessus gardent leur taux.
+        assertThat(service.repartir(mille, TypePrestation.DENTAIRE, Regime.GENERAL_DE_BASE).partCnam())
+                .as("dentaire a 50 %, releve au plancher de 70 %").isEqualByComparingTo("700.00");
+        assertThat(service.repartir(mille, TypePrestation.MEDICAMENT, Regime.GENERAL_DE_BASE).partCnam())
+                .as("medicament a 65 %, releve au plancher de 70 %").isEqualByComparingTo("700.00");
+        assertThat(service.repartir(mille, TypePrestation.HOSPITALISATION, Regime.GENERAL_DE_BASE).partCnam())
+                .as("hospitalisation a 90 %, au-dessus du plancher : inchangee").isEqualByComparingTo("900.00");
+
+        // Assistance medicale : 100 % partout, donc plus de ticket moderateur a partager.
+        for (TypePrestation type : TypePrestation.values()) {
+            Repartition r = service.repartir(mille, type, Regime.ASSISTANCE_MEDICALE);
+            assertThat(r.partCnam()).as(type.name()).isEqualByComparingTo("1000.00");
+            assertThat(r.partAssure()).as(type.name()).isEqualByComparingTo("0.00");
+            assertThat(r.partAssuranceComplementaire()).as(type.name()).isEqualByComparingTo("0.00");
+        }
     }
 
     @Test
@@ -88,20 +128,20 @@ class TarificationServiceTest {
                 TypePrestation.EXAMEN, new BigDecimal("0.80"),
                 TypePrestation.HOSPITALISATION, new BigDecimal("0.90"),
                 TypePrestation.MEDICAMENT, new BigDecimal("0.65"),
-                TypePrestation.DENTAIRE, new BigDecimal("0.50")), new BigDecimal("0.50")));
+                TypePrestation.DENTAIRE, new BigDecimal("0.50")), new BigDecimal("0.50"), REGIMES_NEUTRES));
         BigDecimal mille = new BigDecimal("1000.00");
 
-        assertThat(service.repartir(mille, TypePrestation.CONSULTATION).partCnam()).isEqualByComparingTo("700.00");
-        assertThat(service.repartir(mille, TypePrestation.EXAMEN).partCnam()).isEqualByComparingTo("800.00");
-        assertThat(service.repartir(mille, TypePrestation.HOSPITALISATION).partCnam()).isEqualByComparingTo("900.00");
-        assertThat(service.repartir(mille, TypePrestation.MEDICAMENT).partCnam()).isEqualByComparingTo("650.00");
-        assertThat(service.repartir(mille, TypePrestation.DENTAIRE).partCnam()).isEqualByComparingTo("500.00");
+        assertThat(service.repartir(mille, TypePrestation.CONSULTATION, Regime.GENERAL_DE_BASE).partCnam()).isEqualByComparingTo("700.00");
+        assertThat(service.repartir(mille, TypePrestation.EXAMEN, Regime.GENERAL_DE_BASE).partCnam()).isEqualByComparingTo("800.00");
+        assertThat(service.repartir(mille, TypePrestation.HOSPITALISATION, Regime.GENERAL_DE_BASE).partCnam()).isEqualByComparingTo("900.00");
+        assertThat(service.repartir(mille, TypePrestation.MEDICAMENT, Regime.GENERAL_DE_BASE).partCnam()).isEqualByComparingTo("650.00");
+        assertThat(service.repartir(mille, TypePrestation.DENTAIRE, Regime.GENERAL_DE_BASE).partCnam()).isEqualByComparingTo("500.00");
     }
 
     @Test
     void laLigneConstruiteVientDuTarifDuCatalogueEtPorteSesTroisParts() {
         NouvelleLigne ligne = service("0.70", "0.50").ligne("ACT-001", "Consultation generaliste",
-                LocalDateTime.of(2026, 3, 10, 9, 0), 2, new BigDecimal("5000"), TypePrestation.CONSULTATION);
+                LocalDateTime.of(2026, 3, 10, 9, 0), 2, new BigDecimal("5000"), TypePrestation.CONSULTATION, Regime.GENERAL_DE_BASE);
 
         assertThat(ligne.quantite()).isEqualTo(2);
         assertThat(ligne.prixUnitaire()).isEqualByComparingTo("5000.00");
@@ -115,22 +155,22 @@ class TarificationServiceTest {
     void montantNegatifOuQuantiteNulleSontRefuses() {
         TarificationService service = service("0.70", "0.50");
 
-        assertThatThrownBy(() -> service.repartir(new BigDecimal("-1.00"), TypePrestation.EXAMEN))
+        assertThatThrownBy(() -> service.repartir(new BigDecimal("-1.00"), TypePrestation.EXAMEN, Regime.GENERAL_DE_BASE))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.repartir(new BigDecimal("10.00"), 0, TypePrestation.EXAMEN))
+        assertThatThrownBy(() -> service.repartir(new BigDecimal("10.00"), 0, TypePrestation.EXAMEN, Regime.GENERAL_DE_BASE))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void uneRegleIncompleteOuHorsBornesEstRefusee() {
         assertThatThrownBy(() -> new RegleTaux(Map.of(TypePrestation.CONSULTATION, new BigDecimal("0.70")),
-                new BigDecimal("0.50"))).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> RegleTaux.depuis(Map.of())).isInstanceOf(IllegalArgumentException.class);
+                new BigDecimal("0.50"), REGIMES_NEUTRES)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> RegleTaux.depuis(Map.of(), REGIMES_NEUTRES)).isInstanceOf(IllegalArgumentException.class);
         Map<TypePrestation, BigDecimal> trop = new EnumMap<>(TypePrestation.class);
         for (TypePrestation t : TypePrestation.values()) {
             trop.put(t, new BigDecimal("1.01"));
         }
-        assertThatThrownBy(() -> new RegleTaux(trop, new BigDecimal("0.50")))
+        assertThatThrownBy(() -> new RegleTaux(trop, new BigDecimal("0.50"), REGIMES_NEUTRES))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -145,7 +185,7 @@ class TarificationServiceTest {
             BigDecimal tarif = BigDecimal.valueOf(random.entre(0, 5_000_000), 2);
             int quantite = random.entre(1, 10);
 
-            Repartition r = service.repartir(tarif, quantite, type);
+            Repartition r = service.repartir(tarif, quantite, type, Regime.GENERAL_DE_BASE);
 
             assertThat(r.partCnam().add(r.partAssuranceComplementaire()).add(r.partAssure()))
                     .as("ligne %d : tarif %s x %d, taux %s / %s", i, tarif, quantite, tauxCnam, tauxCompl)

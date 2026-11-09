@@ -10,6 +10,7 @@ import ci.cnam.simulator.domain.prestations.facture.FactureService;
 import ci.cnam.simulator.domain.prestations.parcours.ParcoursOrchestrator;
 import ci.cnam.simulator.domain.reference.ReferenceService;
 import ci.cnam.simulator.domain.reference.model.CentreSante;
+import ci.cnam.simulator.domain.reference.model.Regime;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -69,8 +70,14 @@ class TarificationIntegrationTest {
             jdbc.update("update \"TB_ECHO_TAUX\" set taux = 0.1000 where code = 'CNAM_DENTAIRE'");
             tarification.recharger();
 
-            Repartition r = tarification.repartir(new BigDecimal("1000.00"), TypePrestation.DENTAIRE);
-            assertThat(r.partCnam()).isEqualByComparingTo("100.00");
+            // Le taux par type a bien change.
+            assertThat(taux.charger().tauxCnam(TypePrestation.DENTAIRE)).isEqualByComparingTo("0.1000");
+            // Mais la repartition ne descend pas sous le plancher du regime : un assure du regime
+            // general reste pris en charge a 70 %, un assure de l'assistance medicale a 100 %.
+            assertThat(tarification.repartir(new BigDecimal("1000.00"), TypePrestation.DENTAIRE,
+                    Regime.GENERAL_DE_BASE).partCnam()).isEqualByComparingTo("700.00");
+            assertThat(tarification.repartir(new BigDecimal("1000.00"), TypePrestation.DENTAIRE,
+                    Regime.ASSISTANCE_MEDICALE).partCnam()).isEqualByComparingTo("1000.00");
         } finally {
             jdbc.update("update \"TB_ECHO_TAUX\" set taux = ? where code = 'CNAM_DENTAIRE'", avant);
             tarification.recharger();

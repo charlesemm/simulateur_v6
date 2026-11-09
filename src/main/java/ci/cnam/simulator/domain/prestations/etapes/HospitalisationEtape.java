@@ -37,7 +37,7 @@ public class HospitalisationEtape implements Etape {
         ctx.avancer(60, 180);
         Acte acte = catalogue.acteAleatoire(CategorieActe.HOSPITALISATION, ctx.random());
         factures.ajouterLigne(ctx.facture().id(), tarification.ligne(acte.code(), acte.libelle(), ctx.temps(),
-                jours, acte.tarif(), TypePrestation.HOSPITALISATION));
+                jours, acte.tarif(), TypePrestation.HOSPITALISATION, ctx.assure().regime()));
         return new ResultatEtape(ctx.facture(),
                 ctx.evenement(PrestationEventType.HOSPITALISATION_REALISEE, Map.of("joursSejour", jours)));
     }

@@ -13,6 +13,7 @@ import ci.cnam.simulator.domain.prestations.etapes.VerificationDroitsEtape;
 import ci.cnam.simulator.domain.prestations.facture.GestionFacture;
 import ci.cnam.simulator.domain.prestations.tarification.RegleTaux;
 import ci.cnam.simulator.domain.prestations.tarification.TarificationService;
+import ci.cnam.simulator.domain.prestations.tarification.TauxRegime;
 import ci.cnam.simulator.domain.prestations.tarification.TypePrestation;
 import ci.cnam.simulator.domain.reference.catalog.Catalogue;
 import ci.cnam.simulator.domain.reference.model.Assure;
@@ -48,7 +49,11 @@ final class ParcoursFixtures {
             Map.of(TypePrestation.CONSULTATION, new BigDecimal("0.70"), TypePrestation.EXAMEN, new BigDecimal("0.80"),
                     TypePrestation.HOSPITALISATION, new BigDecimal("0.90"),
                     TypePrestation.MEDICAMENT, new BigDecimal("0.65"), TypePrestation.DENTAIRE, new BigDecimal("0.50")),
-            new BigDecimal("0.50")));
+            new BigDecimal("0.50"),
+            // Les deux planchers de regime aux valeurs reelles : 70 % au regime general, 100 % a
+            // l'assistance medicale. Les fixtures fabriquent des assures du regime general.
+            Map.of(Regime.GENERAL_DE_BASE, new TauxRegime(new BigDecimal("0.70"), true),
+                    Regime.ASSISTANCE_MEDICALE, new TauxRegime(BigDecimal.ONE, false))));
 
     private ParcoursFixtures() {
     }
