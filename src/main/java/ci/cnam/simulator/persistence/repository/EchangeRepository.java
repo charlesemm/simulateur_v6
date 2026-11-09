@@ -26,7 +26,7 @@ public class EchangeRepository implements EchangeStore {
     @Override
     public void tracer(Echange echange) {
         jdbc.update("""
-                insert into echange (id, run_id, sens, date_echange, version_outil, statut, detail)
+                insert into "TB_ECHO_ECHANGE" (id, run_id, sens, date_echange, version_outil, statut, detail)
                 values (?, ?, ?, ?, ?, ?, ?)""",
                 echange.id(), echange.runId(), echange.sens().name(),
                 OffsetDateTime.ofInstant(echange.date(), java.time.ZoneOffset.UTC),
@@ -37,7 +37,7 @@ public class EchangeRepository implements EchangeStore {
     public List<Echange> journal(UUID runId) {
         return jdbc.query("""
                 select id, run_id, sens, date_echange, version_outil, statut, detail
-                from echange where run_id = ? order by date_echange, id""",
+                from "TB_ECHO_ECHANGE" where run_id = ? order by date_echange, id""",
                 (rs, i) -> new Echange(
                         rs.getObject("id", UUID.class),
                         rs.getObject("run_id", UUID.class),

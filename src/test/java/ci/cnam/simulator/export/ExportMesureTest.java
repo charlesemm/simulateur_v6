@@ -106,14 +106,14 @@ class ExportMesureTest {
         jdbc.update("insert into scenario (id, nom, contenu_yaml) values (?, ?, 'nom: mesure')", scenario,
                 "mesure-" + scenario);
         jdbc.update("""
-                insert into simulation_run (id, scenario_id, seed, statut, debut_simule, parametres)
+                insert into "TB_ECHO_SIMULATION_RUN" (id, scenario_id, seed, statut, debut_simule, parametres)
                 values (?, ?, 1, 'ARRETE', timestamp '2026-01-02 00:00:00', '{}'::jsonb)""", run, scenario);
 
-        List<UUID> assures = jdbc.queryForList("select id from assure order by numero_assure limit 200", UUID.class);
-        UUID centre = jdbc.queryForObject("select id from centre_sante order by code limit 1", UUID.class);
+        List<UUID> assures = jdbc.queryForList("select id from \"TB_ECHO_ASSURE\" order by numero_assure limit 200", UUID.class);
+        UUID centre = jdbc.queryForObject("select id from \"TB_ECHO_CENTRE_SANTE\" order by code limit 1", UUID.class);
         List<UUID> factures = new ArrayList<>();
         jdbc.batchUpdate("""
-                insert into facture (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
+                insert into "TB_ECHO_FACTURE" (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
                                      type_bon, statut, date_ouverture, montant_total, part_cnam, part_assure)
                 values (?, ?, 'FAC-2026-' || lpad(nextval('seq_numero_facture')::text, 6, '0'), ?, ?, ?,
                         'AMBULATOIRE', 'FINALISEE', timestamp '2026-01-02 08:00:00', 1000.00, 800.00, 200.00)""",
@@ -124,13 +124,13 @@ class ExportMesureTest {
                     return new Object[]{facture, run, assure, assure, centre};
                 }).toList());
         jdbc.batchUpdate("""
-                insert into facture_ligne (id, run_id, facture_id, numero_ligne, code, designation, date_soin,
+                insert into "TB_ECHO_FACTURE_LIGNE" (id, run_id, facture_id, numero_ligne, code, designation, date_soin,
                                            quantite, prix_unitaire, montant, part_cnam, part_assure)
                 values (?, ?, ?, 1, 'ACT-01', 'Consultation generale', timestamp '2026-01-02 08:30:00',
                         1, 1000.00, 1000.00, 800.00, 200.00)""",
                 factures.stream().map(f -> new Object[]{UUID.randomUUID(), run, f}).toList());
         jdbc.batchUpdate("""
-                insert into evenement (event_id, run_id, facture_id, domaine, type, timestamp_simule,
+                insert into "TB_ECHO_EVENEMENT" (event_id, run_id, facture_id, domaine, type, timestamp_simule,
                                        timestamp_reel, payload)
                 values (?, ?, ?, 'prestations', 'FACTURE_OUVERTE', timestamp '2026-01-02 08:00:00',
                         timestamptz '2026-01-02 08:00:00+00', ?::jsonb)""",

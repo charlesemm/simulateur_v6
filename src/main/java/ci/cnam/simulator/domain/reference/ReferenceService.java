@@ -104,21 +104,21 @@ public class ReferenceService implements Catalogue {
         List<Assure> assures = jdbc.query("""
                 select id, numero_assure, nom, prenoms, date_naissance, genre, statut_cotisation,
                        date_debut_droits, date_fin_droits
-                from assure order by numero_assure""",
+                from "TB_ECHO_ASSURE" order by numero_assure""",
                 (rs, i) -> new Assure(rs.getObject("id", UUID.class), rs.getString("numero_assure"),
                         rs.getString("nom"), rs.getString("prenoms"),
                         rs.getObject("date_naissance", java.time.LocalDate.class),
                         Genre.valueOf(rs.getString("genre")), StatutCotisation.valueOf(rs.getString("statut_cotisation")),
                         rs.getObject("date_debut_droits", java.time.LocalDate.class),
                         rs.getObject("date_fin_droits", java.time.LocalDate.class)));
-        List<CentreSante> centres = jdbc.query("select id, code, nom, type, ville from centre_sante order by code",
+        List<CentreSante> centres = jdbc.query("select id, code, nom, type, ville from \"TB_ECHO_CENTRE_SANTE\" order by code",
                 (rs, i) -> new CentreSante(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("nom"),
                         TypeCentreSante.valueOf(rs.getString("type")), rs.getString("ville")));
         List<Medecin> medecins = jdbc.query(
-                "select id, code, nom, prenoms, specialite, centre_sante_id from medecin order by code",
+                "select id, code, nom, prenoms, specialite, centre_sante_id from \"TB_ECHO_MEDECIN\" order by code",
                 (rs, i) -> new Medecin(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("nom"),
                         rs.getString("prenoms"), rs.getString("specialite"), rs.getObject("centre_sante_id", UUID.class)));
-        List<Pharmacie> pharmacies = jdbc.query("select id, code, nom, ville from pharmacie order by code",
+        List<Pharmacie> pharmacies = jdbc.query("select id, code, nom, ville from \"TB_ECHO_PHARMACIE\" order by code",
                 (rs, i) -> new Pharmacie(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("nom"),
                         rs.getString("ville")));
         if (assures.isEmpty() || centres.isEmpty() || medecins.isEmpty() || pharmacies.isEmpty()) {
@@ -127,16 +127,16 @@ public class ReferenceService implements Catalogue {
         Map<UUID, List<Medecin>> parCentre = new HashMap<>();
         medecins.forEach(m -> parCentre.computeIfAbsent(m.centreSanteId(), k -> new java.util.ArrayList<>()).add(m));
         Map<CategorieActe, List<Acte>> actes = new java.util.EnumMap<>(CategorieActe.class);
-        jdbc.query("select id, code, libelle, categorie, tarif from acte order by code",
+        jdbc.query("select id, code, libelle, categorie, tarif from \"TB_ECHO_ACTE\" order by code",
                 (rs, i) -> new Acte(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("libelle"),
                         CategorieActe.valueOf(rs.getString("categorie")), rs.getBigDecimal("tarif")))
                 .forEach(a -> actes.computeIfAbsent(a.categorie(), k -> new java.util.ArrayList<>()).add(a));
         Map<TypeExamen, List<Examen>> examens = new java.util.EnumMap<>(TypeExamen.class);
-        jdbc.query("select id, code, libelle, type, tarif from examen order by code",
+        jdbc.query("select id, code, libelle, type, tarif from \"TB_ECHO_EXAMEN\" order by code",
                 (rs, i) -> new Examen(rs.getObject("id", UUID.class), rs.getString("code"), rs.getString("libelle"),
                         TypeExamen.valueOf(rs.getString("type")), rs.getBigDecimal("tarif")))
                 .forEach(e -> examens.computeIfAbsent(e.type(), k -> new java.util.ArrayList<>()).add(e));
-        List<Medicament> medicaments = jdbc.query("select id, code, libelle, tarif from medicament order by code",
+        List<Medicament> medicaments = jdbc.query("select id, code, libelle, tarif from \"TB_ECHO_MEDICAMENT\" order by code",
                 (rs, i) -> new Medicament(rs.getObject("id", UUID.class), rs.getString("code"),
                         rs.getString("libelle"), rs.getBigDecimal("tarif")));
         if (actes.isEmpty() || examens.isEmpty() || medicaments.isEmpty()) {

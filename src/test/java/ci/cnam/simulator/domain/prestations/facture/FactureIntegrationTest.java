@@ -40,8 +40,8 @@ class FactureIntegrationTest {
     JdbcTemplate jdbc;
 
     private NouvelleFacture demande() {
-        UUID assure = jdbc.queryForObject("select id from assure limit 1", UUID.class);
-        UUID centre = jdbc.queryForObject("select id from centre_sante limit 1", UUID.class);
+        UUID assure = jdbc.queryForObject("select id from \"TB_ECHO_ASSURE\" limit 1", UUID.class);
+        UUID centre = jdbc.queryForObject("select id from \"TB_ECHO_CENTRE_SANTE\" limit 1", UUID.class);
         return new NouvelleFacture(SupportRun.nouveauRun(jdbc), assure, assure, centre, TypeBon.AMBULATOIRE, T0);
     }
 
@@ -123,9 +123,9 @@ class FactureIntegrationTest {
     @Test
     void lesContraintesCheckRefusentUnStatutOuUnTypeInconnu() {
         Facture f = service.ouvrir(demande());
-        assertThatThrownBy(() -> jdbc.update("update facture set statut = 'INCONNU' where id = ?", f.id()))
+        assertThatThrownBy(() -> jdbc.update("update \"TB_ECHO_FACTURE\" set statut = 'INCONNU' where id = ?", f.id()))
                 .isInstanceOf(DataIntegrityViolationException.class);
-        assertThatThrownBy(() -> jdbc.update("update facture set type_bon = 'AUTRE' where id = ?", f.id()))
+        assertThatThrownBy(() -> jdbc.update("update \"TB_ECHO_FACTURE\" set type_bon = 'AUTRE' where id = ?", f.id()))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 

@@ -98,11 +98,11 @@ class PlanificationIntegrationTest {
 
     @BeforeEach
     void table() {
-        jdbc.update("delete from analyse_attendue");
-        jdbc.update("delete from planification_analyse");
+        jdbc.update("delete from \"TB_ECHO_ANALYSE_ATTENDUE\"");
+        jdbc.update("delete from \"TB_ECHO_PLANIFICATION_ANALYSE\"");
         // Les runs d'un test precedent feraient une « derniere simulation terminee » involontaire :
         // le test « sans cible » n'en veut aucune, et les autres veulent la leur.
-        jdbc.update("delete from simulation_run");
+        jdbc.update("delete from \"TB_ECHO_SIMULATION_RUN\"");
         jdbc.update("delete from scenario");
         horloge.a("2026-11-09T02:00:00Z");
     }
@@ -114,16 +114,16 @@ class PlanificationIntegrationTest {
         jdbc.update("insert into scenario (id, nom, contenu_yaml) values (?, ?, 'nom: test')",
                 scenario, "planif-" + scenario);
         jdbc.update("""
-                insert into simulation_run (id, scenario_id, seed, statut, debut_simule, parametres, date_fin)
+                insert into "TB_ECHO_SIMULATION_RUN" (id, scenario_id, seed, statut, debut_simule, parametres, date_fin)
                 values (?, ?, 42, 'ARRETE', timestamp '2026-01-02 00:00:00', '{}'::jsonb, ?)""",
                 run, scenario, java.time.OffsetDateTime.parse("2026-11-09T01:00:00Z"));
         for (int i = 0; i < evenements; i++) {
             UUID id = UUID.randomUUID();
             jdbc.update("""
-                    insert into evenement (event_id, run_id, domaine, type, timestamp_simule, timestamp_reel, payload)
+                    insert into "TB_ECHO_EVENEMENT" (event_id, run_id, domaine, type, timestamp_simule, timestamp_reel, payload)
                     values (?, ?, 'prestations', 'FACTURE_OUVERTE', timestamp '2026-01-02 08:00:00',
                             timestamptz '2026-01-02 08:00:00+00', '{}'::jsonb)""", id, run);
-            jdbc.update("insert into anomaly_injected (run_id, event_id, type, champ) "
+            jdbc.update("insert into \"TB_ECHO_ANOMALY_INJECTED\" (run_id, event_id, type, champ) "
                     + "values (?, ?, 'CHAMP_VIDE', 'nom')", run, id);
             dernierEvenement = id;
         }
@@ -138,7 +138,7 @@ class PlanificationIntegrationTest {
 
     private List<Map<String, Object>> echeances() {
         return jdbc.queryForList("select planification_id, run_id, date_echeance, date_retrait, "
-                + "date_rapport, statut, detail from analyse_attendue order by date_echeance");
+                + "date_rapport, statut, detail from \"TB_ECHO_ANALYSE_ATTENDUE\" order by date_echeance");
     }
 
     @Test
@@ -204,7 +204,7 @@ class PlanificationIntegrationTest {
         horloge.a("2026-11-09T03:00:45Z");
         assertThat(planification.ouvrirEcheancesDues()).isZero();
 
-        assertThat(jdbc.queryForObject("select count(*) from analyse_attendue", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_ANALYSE_ATTENDUE\"", Integer.class)).isEqualTo(1);
     }
 
     @Test

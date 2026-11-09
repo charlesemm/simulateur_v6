@@ -75,15 +75,15 @@ class ExportIntegrationTest {
 
     private Jeu jeuTermine(int evenements) {
         UUID run = run("ARRETE");
-        List<UUID> assures = jdbc.queryForList("select id from assure order by numero_assure limit 20", UUID.class);
-        UUID centre = jdbc.queryForObject("select id from centre_sante order by code limit 1", UUID.class);
+        List<UUID> assures = jdbc.queryForList("select id from \"TB_ECHO_ASSURE\" order by numero_assure limit 20", UUID.class);
+        UUID centre = jdbc.queryForObject("select id from \"TB_ECHO_CENTRE_SANTE\" order by code limit 1", UUID.class);
 
         List<UUID> factures = new ArrayList<>();
         for (int i = 0; i < 40; i++) {
             UUID facture = UUID.randomUUID();
             UUID assure = assures.get(i % assures.size());
             jdbc.update("""
-                    insert into facture (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
+                    insert into "TB_ECHO_FACTURE" (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
                                          type_bon, statut, date_ouverture, montant_total, part_cnam, part_assure)
                     values (?, ?, 'FAC-2026-' || lpad(nextval('seq_numero_facture')::text, 6, '0'),
                             ?, ?, ?, 'AMBULATOIRE', 'FINALISEE', timestamp '2026-01-02 08:00:00',
@@ -92,7 +92,7 @@ class ExportIntegrationTest {
             factures.add(facture);
             for (int l = 1; l <= 2; l++) {
                 jdbc.update("""
-                        insert into facture_ligne (id, run_id, facture_id, numero_ligne, code, designation, date_soin,
+                        insert into "TB_ECHO_FACTURE_LIGNE" (id, run_id, facture_id, numero_ligne, code, designation, date_soin,
                                                    quantite, prix_unitaire, montant, part_cnam, part_assure)
                         values (?, ?, ?, ?, 'ACT-01', 'Consultation generale',
                                 timestamp '2026-01-02 08:30:00', 1, 500.00, 500.00, 400.00, 100.00)""",
@@ -102,7 +102,7 @@ class ExportIntegrationTest {
 
         List<UUID> ids = new ArrayList<>();
         jdbc.batchUpdate("""
-                insert into evenement (event_id, run_id, facture_id, domaine, type, timestamp_simule, timestamp_reel,
+                insert into "TB_ECHO_EVENEMENT" (event_id, run_id, facture_id, domaine, type, timestamp_simule, timestamp_reel,
                                        payload)
                 values (?, ?, ?, 'prestations', 'FACTURE_OUVERTE', timestamp '2026-01-02 08:00:00',
                         timestamptz '2026-01-02 08:00:00+00', ?::jsonb)""",
@@ -116,7 +116,7 @@ class ExportIntegrationTest {
                         .toList());
 
         jdbc.update("""
-                insert into anomaly_injected (run_id, event_id, type, champ, valeur_origine, valeur_corrompue)
+                insert into "TB_ECHO_ANOMALY_INJECTED" (run_id, event_id, type, champ, valeur_origine, valeur_corrompue)
                 values (?, ?, 'CHAMP_VIDE', 'nom', ?, '')""", run, ids.get(0), SECRET);
 
         return new Jeu(run, 20, 40, 80, evenements);
@@ -128,7 +128,7 @@ class ExportIntegrationTest {
         jdbc.update("insert into scenario (id, nom, contenu_yaml) values (?, ?, 'nom: test')", scenario,
                 "export-" + scenario);
         jdbc.update("""
-                insert into simulation_run (id, scenario_id, seed, statut, debut_simule, parametres)
+                insert into "TB_ECHO_SIMULATION_RUN" (id, scenario_id, seed, statut, debut_simule, parametres)
                 values (?, ?, 42, ?, timestamp '2026-01-02 00:00:00', '{}'::jsonb)""", run, scenario, statut);
         return run;
     }
@@ -218,7 +218,7 @@ class ExportIntegrationTest {
         }
 
         // le nombre de lignes inscrit dans export_fichier est celui des quatre tables reunies
-        assertThat(jdbc.queryForList("select nombre_lignes from export_fichier where run_id = ?", Long.class,
+        assertThat(jdbc.queryForList("select nombre_lignes from \"TB_ECHO_EXPORT_FICHIER\" where run_id = ?", Long.class,
                 jeu.run())).containsOnly((long) jeu.lignesTotales());
     }
 
@@ -233,7 +233,7 @@ class ExportIntegrationTest {
 
             String format = extension.toUpperCase(java.util.Locale.ROOT);
             List<String> empreintes = jdbc.queryForList("""
-                    select empreinte from export_fichier where run_id = ? and format = ?""",
+                    select empreinte from "TB_ECHO_EXPORT_FICHIER" where run_id = ? and format = ?""",
                     String.class, jeu.run(), format);
             assertThat(empreintes).as("une ligne par telechargement : " + extension).hasSize(2);
             assertThat(empreintes.get(0).strip()).isEqualTo(empreintes.get(1).strip());
@@ -295,7 +295,7 @@ class ExportIntegrationTest {
         }
         mvc.perform(get("/export/jeu.csv").param("run", run.toString()).with(user("chef").roles("ADMIN")))
                 .andExpect(status().isConflict());
-        assertThat(jdbc.queryForObject("select count(*) from export_fichier where run_id = ?", Integer.class, run))
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_EXPORT_FICHIER\" where run_id = ?", Integer.class, run))
                 .isZero();
     }
 
@@ -325,7 +325,7 @@ class ExportIntegrationTest {
                 .contains("donnee_fictive = OUI");
 
         String empreinte = jdbc.queryForList("""
-                select empreinte from export_fichier where run_id = ? and format = 'CSV'""",
+                select empreinte from "TB_ECHO_EXPORT_FICHIER" where run_id = ? and format = 'CSV'""",
                 String.class, jeu.run()).get(0).strip();
         // Deux fois dans le tableau des telechargements, et deux fois dans le journal des echanges :
         // un retrait sous cle d'API y inscrit un ENVOI, qui porte l'empreinte des octets retires.
@@ -346,6 +346,6 @@ class ExportIntegrationTest {
         Jeu jeu = jeuTermine(10);
         JsonNode racine = json.readTree(telecharger(jeu.run(), "json"));
         assertThat(racine.get("assures")).hasSize(20);
-        assertThat(jdbc.queryForObject("select count(*) from assure", Integer.class)).isGreaterThan(100);
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_ASSURE\"", Integer.class)).isGreaterThan(100);
     }
 }

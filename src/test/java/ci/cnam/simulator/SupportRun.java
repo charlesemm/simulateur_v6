@@ -15,7 +15,7 @@ public final class SupportRun {
         jdbc.update("insert into scenario (id, nom, contenu_yaml) values (?, ?, ?)", scenario,
                 "test-" + scenario, "nom: test");
         jdbc.update("""
-                insert into simulation_run (id, scenario_id, seed, statut, debut_simule, parametres)
+                insert into "TB_ECHO_SIMULATION_RUN" (id, scenario_id, seed, statut, debut_simule, parametres)
                 values (?, ?, 42, 'CREE', now(), '{}'::jsonb)""", run, scenario);
         return run;
     }

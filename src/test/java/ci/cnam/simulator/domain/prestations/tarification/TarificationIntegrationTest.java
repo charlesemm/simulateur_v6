@@ -55,7 +55,7 @@ class TarificationIntegrationTest {
     void lesSixTauxFictifsSontLusDansLaBase() {
         RegleTaux regle = taux.charger();
 
-        assertThat(jdbc.queryForObject("select count(*) from taux", Integer.class)).isEqualTo(6);
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_TAUX\"", Integer.class)).isEqualTo(6);
         for (TypePrestation type : TypePrestation.values()) {
             assertThat(regle.tauxCnam(type)).isBetween(BigDecimal.ZERO, BigDecimal.ONE);
         }
@@ -66,13 +66,13 @@ class TarificationIntegrationTest {
     void unTauxModifieEnBaseEstPrisEnCompteApresRechargement() {
         BigDecimal avant = taux.charger().tauxCnam(TypePrestation.DENTAIRE);
         try {
-            jdbc.update("update taux set taux = 0.1000 where code = 'CNAM_DENTAIRE'");
+            jdbc.update("update \"TB_ECHO_TAUX\" set taux = 0.1000 where code = 'CNAM_DENTAIRE'");
             tarification.recharger();
 
             Repartition r = tarification.repartir(new BigDecimal("1000.00"), TypePrestation.DENTAIRE);
             assertThat(r.partCnam()).isEqualByComparingTo("100.00");
         } finally {
-            jdbc.update("update taux set taux = ? where code = 'CNAM_DENTAIRE'", avant);
+            jdbc.update("update \"TB_ECHO_TAUX\" set taux = ? where code = 'CNAM_DENTAIRE'", avant);
             tarification.recharger();
         }
     }

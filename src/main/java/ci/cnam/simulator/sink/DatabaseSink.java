@@ -54,23 +54,23 @@ public class DatabaseSink implements EventSink, AutoCloseable {
     private static final long ATTENTE_OFFRE_MS = 100;
 
     private static final String INSERT = """
-            insert into evenement (event_id, run_id, facture_id, domaine, type, timestamp_simule, timestamp_reel,
+            insert into "TB_ECHO_EVENEMENT" (event_id, run_id, facture_id, domaine, type, timestamp_simule, timestamp_reel,
                                    payload, statut)
             values (?, ?, ?, ?, ?, ?, ?, ?::jsonb, 'ECRIT')
             on conflict (event_id) do nothing""";
 
     private static final String INSERT_ANOMALIE = """
-            insert into anomaly_injected (run_id, event_id, facture_id, type, champ, valeur_origine,
+            insert into "TB_ECHO_ANOMALY_INJECTED" (run_id, event_id, facture_id, type, champ, valeur_origine,
                                           valeur_corrompue, doublon_de)
             values (?, ?, ?, ?, ?, ?, ?, ?)
             on conflict do nothing""";
 
     private static final String CHECKPOINT = """
-            insert into checkpoint_evenement (run_id, dernier_event_id, compteur, date_maj)
+            insert into "TB_ECHO_CHECKPOINT_EVENEMENT" (run_id, dernier_event_id, compteur, date_maj)
             values (?, ?, ?, now())
             on conflict (run_id) do update
                set dernier_event_id = excluded.dernier_event_id,
-                   compteur = checkpoint_evenement.compteur + excluded.compteur,
+                   compteur = "TB_ECHO_CHECKPOINT_EVENEMENT".compteur + excluded.compteur,
                    date_maj = now()""";
 
     /** Dernier point valide d'un run. */
@@ -192,7 +192,7 @@ public class DatabaseSink implements EventSink, AutoCloseable {
 
     /** Dernier point valide du run, s'il y en a un (base de la reprise). */
     public Optional<Checkpoint> checkpoint(UUID runId) {
-        return jdbc.query("select run_id, dernier_event_id, compteur from checkpoint_evenement where run_id = ?",
+        return jdbc.query("select run_id, dernier_event_id, compteur from \"TB_ECHO_CHECKPOINT_EVENEMENT\" where run_id = ?",
                 (rs, n) -> new Checkpoint(rs.getObject("run_id", UUID.class),
                         rs.getObject("dernier_event_id", UUID.class), rs.getLong("compteur")), runId)
                 .stream().findFirst();
@@ -324,7 +324,7 @@ public class DatabaseSink implements EventSink, AutoCloseable {
         Map<UUID, Long> resultat = new HashMap<>();
         jdbc.query(con -> {
             PreparedStatement ps = con.prepareStatement(
-                    "select run_id, count(*) as n from evenement where event_id = any(?) group by run_id");
+                    "select run_id, count(*) as n from \"TB_ECHO_EVENEMENT\" where event_id = any(?) group by run_id");
             Array tableau = con.createArrayOf("uuid", ids);
             ps.setArray(1, tableau);
             return ps;

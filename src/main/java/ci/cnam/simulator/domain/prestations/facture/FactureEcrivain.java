@@ -17,20 +17,20 @@ import org.springframework.stereotype.Component;
 public class FactureEcrivain implements EcrivainAnnexe<FactureEcrite> {
 
     private static final String FACTURE = """
-            insert into facture (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id, type_bon,
+            insert into "TB_ECHO_FACTURE" (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id, type_bon,
                                  statut, date_ouverture, date_finalisation, montant_total, part_cnam,
                                  part_assurance_complementaire, part_assure)
             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             on conflict (id) do nothing""";
 
     private static final String LIGNE = """
-            insert into facture_ligne (id, run_id, facture_id, numero_ligne, code, designation, date_soin, quantite,
+            insert into "TB_ECHO_FACTURE_LIGNE" (id, run_id, facture_id, numero_ligne, code, designation, date_soin, quantite,
                                        prix_unitaire, montant, part_cnam, part_assurance_complementaire, part_assure)
             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             on conflict (id) do nothing""";
 
     private static final String HISTORIQUE = """
-            insert into facture_historique (id, run_id, facture_id, ancien_statut, nouveau_statut, horodatage_simule,
+            insert into "TB_ECHO_FACTURE_HISTORIQUE" (id, run_id, facture_id, ancien_statut, nouveau_statut, horodatage_simule,
                                             horodatage_reel)
             values (?, ?, ?, ?, ?, ?, ?)
             on conflict (id) do nothing""";

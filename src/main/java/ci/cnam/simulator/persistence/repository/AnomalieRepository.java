@@ -27,7 +27,7 @@ public class AnomalieRepository implements AnomalyQueryStore {
         parametres.add((long) page * taille);
         return jdbc.query("""
                 select run_id, event_id, facture_id, type, champ, valeur_origine, valeur_corrompue, doublon_de
-                from anomaly_injected""" + ou + " order by id limit ? offset ?",
+                from "TB_ECHO_ANOMALY_INJECTED\"""" + ou + " order by id limit ? offset ?",
                 (rs, n) -> new AnomalyRecord(
                         rs.getObject("run_id", UUID.class),
                         rs.getObject("event_id", UUID.class),
@@ -44,7 +44,7 @@ public class AnomalieRepository implements AnomalyQueryStore {
     public long compter(UUID runId, AnomalyType type, String champ) {
         List<Object> parametres = new ArrayList<>();
         String ou = filtres(runId, type, champ, parametres);
-        Long total = jdbc.queryForObject("select count(*) from anomaly_injected" + ou, Long.class,
+        Long total = jdbc.queryForObject("select count(*) from \"TB_ECHO_ANOMALY_INJECTED\"" + ou, Long.class,
                 parametres.toArray());
         return total == null ? 0 : total;
     }

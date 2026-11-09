@@ -66,8 +66,8 @@ class FactureLotIntegrationTest {
     /** Un parcours termine : facture OUVERTE -> EN_COURS (une ligne) -> FINALISEE, comme le fait le generateur. */
     private FactureEcrite unParcours(UUID run) {
         GestionFactureMemoire gestion = new GestionFactureMemoire(numerotation);
-        UUID assure = jdbc.queryForObject("select id from assure limit 1", UUID.class);
-        UUID centre = jdbc.queryForObject("select id from centre_sante limit 1", UUID.class);
+        UUID assure = jdbc.queryForObject("select id from \"TB_ECHO_ASSURE\" limit 1", UUID.class);
+        UUID centre = jdbc.queryForObject("select id from \"TB_ECHO_CENTRE_SANTE\" limit 1", UUID.class);
         Facture f = gestion.ouvrir(new NouvelleFacture(run, assure, assure, centre, TypeBon.AMBULATOIRE, T0));
         gestion.ajouterLigne(f.id(), new NouvelleLigne("C01", "Consultation", T0.plusMinutes(10), 1,
                 new BigDecimal("5000.00"), new BigDecimal("5000.00"), new BigDecimal("4000.00"),
@@ -87,7 +87,7 @@ class FactureLotIntegrationTest {
     }
 
     private long compter(String table, UUID run) {
-        return jdbc.queryForObject("select count(*) from " + table + " where run_id = ?", Long.class, run);
+        return jdbc.queryForObject("select count(*) from \"TB_ECHO_" + table.toUpperCase() + "\" where run_id = ?", Long.class, run);
     }
 
     @Test
@@ -103,11 +103,11 @@ class FactureLotIntegrationTest {
         assertThat(compter("facture_ligne", run)).isEqualTo(1);
         assertThat(compter("facture_historique", run)).isEqualTo(5);
         assertThat(compter("evenement", run)).isEqualTo(2);
-        assertThat(jdbc.queryForObject("select statut from facture where id = ?", String.class,
+        assertThat(jdbc.queryForObject("select statut from \"TB_ECHO_FACTURE\" where id = ?", String.class,
                 ecrite.facture().id())).isEqualTo("FINALISEE");
         // L'ordre de l'historique est lisible sans ambiguite : le dernier est le statut final.
         assertThat(jdbc.queryForObject("""
-                select nouveau_statut from facture_historique where facture_id = ?
+                select nouveau_statut from "TB_ECHO_FACTURE_HISTORIQUE" where facture_id = ?
                  order by horodatage_reel desc limit 1""", String.class, ecrite.facture().id()))
                 .isEqualTo("FINALISEE");
     }
@@ -174,11 +174,11 @@ class FactureLotIntegrationTest {
             assertThat(compter("facture", run)).isEqualTo(50);
             assertThat(compter("facture_ligne", run)).isEqualTo(50);
             assertThat(compter("evenement", run)).isEqualTo(100);
-            assertThat(jdbc.queryForObject("select compteur from checkpoint_evenement where run_id = ?", Long.class,
+            assertThat(jdbc.queryForObject("select compteur from \"TB_ECHO_CHECKPOINT_EVENEMENT\" where run_id = ?", Long.class,
                     run)).isEqualTo(100);
             assertThat(jdbc.queryForObject("""
-                    select count(*) from evenement e where e.run_id = ?
-                       and not exists (select 1 from facture f where f.id = e.facture_id)""", Long.class, run))
+                    select count(*) from "TB_ECHO_EVENEMENT" e where e.run_id = ?
+                       and not exists (select 1 from "TB_ECHO_FACTURE" f where f.id = e.facture_id)""", Long.class, run))
                     .as("aucun evenement sans sa facture").isZero();
         } finally {
             sink.close();

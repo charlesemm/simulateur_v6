@@ -50,7 +50,7 @@ public class EvenementRepository implements EventQueryStore {
         ajouter(ou, parametres, "type", r.type());
         ajouter(ou, parametres, "statut", r.statut());
 
-        Long total = jdbc.queryForObject("select count(*) from evenement" + ou, Long.class,
+        Long total = jdbc.queryForObject("select count(*) from \"TB_ECHO_EVENEMENT\"" + ou, Long.class,
                 parametres.toArray());
 
         List<Object> page = new ArrayList<>(parametres);
@@ -58,7 +58,7 @@ public class EvenementRepository implements EventQueryStore {
         page.add((long) r.page() * r.taille());
         List<EvenementLu> contenu = jdbc.query("""
                 select event_id, run_id, facture_id, domaine, type, timestamp_simule, timestamp_reel, statut, payload
-                from evenement""" + ou + " order by timestamp_reel, event_id limit ? offset ?",
+                from "TB_ECHO_EVENEMENT\"""" + ou + " order by timestamp_reel, event_id limit ? offset ?",
                 (RowMapper<EvenementLu>) this::lire, page.toArray());
 
         return new PageEvenements(contenu, r.page(), r.taille(), total == null ? 0 : total);

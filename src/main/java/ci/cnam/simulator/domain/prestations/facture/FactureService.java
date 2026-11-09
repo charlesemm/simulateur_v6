@@ -81,7 +81,7 @@ public class FactureService implements GestionFacture {
         // Identifiant derive (jamais UUID.randomUUID) : meme run et meme numero, meme identifiant.
         UUID id = identifiant("facture", d.runId(), numero);
         jdbc.update("""
-                insert into facture (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
+                insert into "TB_ECHO_FACTURE" (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
                                      type_bon, statut, date_ouverture)
                 values (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 id, d.runId(), numero, d.assureId(), d.beneficiaireId(), d.centreSanteId(),
@@ -99,11 +99,11 @@ public class FactureService implements GestionFacture {
                     + facture.statut() + " : ligne refusee");
         }
         Integer numero = jdbc.queryForObject(
-                "select coalesce(max(numero_ligne), 0) + 1 from facture_ligne where facture_id = ?",
+                "select coalesce(max(numero_ligne), 0) + 1 from \"TB_ECHO_FACTURE_LIGNE\" where facture_id = ?",
                 Integer.class, factureId);
         UUID id = identifiant("ligne", factureId, String.valueOf(numero));
         jdbc.update("""
-                insert into facture_ligne (id, run_id, facture_id, numero_ligne, code, designation, date_soin,
+                insert into "TB_ECHO_FACTURE_LIGNE" (id, run_id, facture_id, numero_ligne, code, designation, date_soin,
                                            quantite, prix_unitaire, montant, part_cnam,
                                            part_assurance_complementaire, part_assure)
                 values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -111,14 +111,14 @@ public class FactureService implements GestionFacture {
                 l.quantite(), l.prixUnitaire(), l.montant(), l.partCnam(), l.partAssuranceComplementaire(),
                 l.partAssure());
         jdbc.update("""
-                update facture set
+                update "TB_ECHO_FACTURE" set
                     montant_total = montant_total + ?,
                     part_cnam = part_cnam + ?,
                     part_assurance_complementaire = part_assurance_complementaire + ?,
                     part_assure = part_assure + ?
                 where id = ?""",
                 l.montant(), l.partCnam(), l.partAssuranceComplementaire(), l.partAssure(), factureId);
-        return jdbc.queryForObject("select * from facture_ligne where id = ?", LIGNE, id);
+        return jdbc.queryForObject("select * from \"TB_ECHO_FACTURE_LIGNE\" where id = ?", LIGNE, id);
     }
 
     /**
@@ -129,7 +129,7 @@ public class FactureService implements GestionFacture {
     public Facture changerStatut(UUID factureId, FactureStatut nouveau, LocalDateTime dateSimulee) {
         Facture facture = verrouiller(factureId);
         Facture modifiee = facture.avecStatut(nouveau, dateSimulee);
-        jdbc.update("update facture set statut = ?, date_finalisation = ? where id = ?",
+        jdbc.update("update \"TB_ECHO_FACTURE\" set statut = ?, date_finalisation = ? where id = ?",
                 nouveau.name(),
                 modifiee.dateFinalisation() == null ? null : Timestamp.valueOf(modifiee.dateFinalisation()),
                 factureId);
@@ -138,7 +138,7 @@ public class FactureService implements GestionFacture {
     }
 
     public Facture trouver(UUID factureId) {
-        List<Facture> resultat = jdbc.query("select * from facture where id = ?", FACTURE, factureId);
+        List<Facture> resultat = jdbc.query("select * from \"TB_ECHO_FACTURE\" where id = ?", FACTURE, factureId);
         if (resultat.isEmpty()) {
             throw new IllegalArgumentException("Facture inconnue : " + factureId);
         }
@@ -146,16 +146,16 @@ public class FactureService implements GestionFacture {
     }
 
     public List<FactureLigne> lignes(UUID factureId) {
-        return jdbc.query("select * from facture_ligne where facture_id = ? order by numero_ligne", LIGNE, factureId);
+        return jdbc.query("select * from \"TB_ECHO_FACTURE_LIGNE\" where facture_id = ? order by numero_ligne", LIGNE, factureId);
     }
 
     public List<FactureHistorique> historique(UUID factureId) {
-        return jdbc.query("select * from facture_historique where facture_id = ? order by horodatage_reel, id",
+        return jdbc.query("select * from \"TB_ECHO_FACTURE_HISTORIQUE\" where facture_id = ? order by horodatage_reel, id",
                 HISTORIQUE, factureId);
     }
 
     private Facture verrouiller(UUID factureId) {
-        List<Facture> resultat = jdbc.query("select * from facture where id = ? for update", FACTURE, factureId);
+        List<Facture> resultat = jdbc.query("select * from \"TB_ECHO_FACTURE\" where id = ? for update", FACTURE, factureId);
         if (resultat.isEmpty()) {
             throw new IllegalArgumentException("Facture inconnue : " + factureId);
         }
@@ -164,10 +164,10 @@ public class FactureService implements GestionFacture {
 
     private void historiser(UUID factureId, UUID runId, FactureStatut ancien, FactureStatut nouveau,
                             LocalDateTime dateSimulee) {
-        Integer rang = jdbc.queryForObject("select count(*) + 1 from facture_historique where facture_id = ?",
+        Integer rang = jdbc.queryForObject("select count(*) + 1 from \"TB_ECHO_FACTURE_HISTORIQUE\" where facture_id = ?",
                 Integer.class, factureId);
         jdbc.update("""
-                insert into facture_historique (id, run_id, facture_id, ancien_statut, nouveau_statut,
+                insert into "TB_ECHO_FACTURE_HISTORIQUE" (id, run_id, facture_id, ancien_statut, nouveau_statut,
                                                 horodatage_simule)
                 values (?, ?, ?, ?, ?, ?)""",
                 identifiant("historique", factureId, String.valueOf(rang)), runId, factureId,

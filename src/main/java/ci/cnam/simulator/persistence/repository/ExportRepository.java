@@ -53,8 +53,8 @@ public class ExportRepository implements JeuStore {
                 "select a.id::text, a.numero_assure, a.nom, a.prenoms,"
                         + " to_char(a.date_naissance, 'YYYY-MM-DD'), a.genre, a.statut_cotisation,"
                         + " to_char(a.date_debut_droits, 'YYYY-MM-DD'), to_char(a.date_fin_droits, 'YYYY-MM-DD')"
-                        + " from assure a"
-                        + " where exists (select 1 from facture f where f.assure_id = a.id and f.run_id = ?)",
+                        + " from \"TB_ECHO_ASSURE\" a"
+                        + " where exists (select 1 from \"TB_ECHO_FACTURE\" f where f.assure_id = a.id and f.run_id = ?)",
                 "a.id", "uuid", runId);
     }
 
@@ -69,7 +69,7 @@ public class ExportRepository implements JeuStore {
                         + " to_char(f.date_ouverture, " + SIMULE + "), to_char(f.date_finalisation, " + SIMULE + "),"
                         + " f.montant_total::text, f.part_cnam::text,"
                         + " f.part_assurance_complementaire::text, f.part_assure::text"
-                        + " from facture f where f.run_id = ?",
+                        + " from \"TB_ECHO_FACTURE\" f where f.run_id = ?",
                 "f.id", "uuid", runId);
     }
 
@@ -82,7 +82,7 @@ public class ExportRepository implements JeuStore {
                         + " to_char(l.date_soin, " + SIMULE + "), l.quantite::text, l.prix_unitaire::text,"
                         + " l.montant::text, l.part_cnam::text, l.part_assurance_complementaire::text,"
                         + " l.part_assure::text"
-                        + " from facture_ligne l where l.run_id = ?",
+                        + " from \"TB_ECHO_FACTURE_LIGNE\" l where l.run_id = ?",
                 "l.id", "uuid", runId);
     }
 
@@ -95,7 +95,7 @@ public class ExportRepository implements JeuStore {
                         + " to_char(e.timestamp_simule, " + SIMULE + "),"
                         + " to_char(e.timestamp_reel at time zone 'UTC', " + REEL + "),"
                         + " e.statut, e.payload::text"
-                        + " from evenement e where e.run_id = ?",
+                        + " from \"TB_ECHO_EVENEMENT\" e where e.run_id = ?",
                 "e.event_id", "uuid", runId);
     }
 
@@ -106,13 +106,13 @@ public class ExportRepository implements JeuStore {
                         "doublon_de"),
                 "select a.id::text, a.event_id::text, a.facture_id::text, a.type, a.champ, a.valeur_origine,"
                         + " a.valeur_corrompue, a.doublon_de::text"
-                        + " from anomaly_injected a where a.run_id = ?",
+                        + " from \"TB_ECHO_ANOMALY_INJECTED\" a where a.run_id = ?",
                 "a.id", "bigint", runId);
     }
 
     @Override
     public void tracer(UUID id, UUID runId, FormatExport format, long nombreLignes, String empreinte) {
-        jdbc.update("insert into export_fichier (id, run_id, format, nombre_lignes, empreinte) values (?, ?, ?, ?, ?)",
+        jdbc.update("insert into \"TB_ECHO_EXPORT_FICHIER\" (id, run_id, format, nombre_lignes, empreinte) values (?, ?, ?, ?, ?)",
                 id, runId, format.name(), nombreLignes, empreinte);
     }
 
@@ -124,7 +124,7 @@ public class ExportRepository implements JeuStore {
         // ON CONFLICT DO NOTHING : retelecharger le meme export rejoue les memes pieges (meme alea, derive de
         // event_id), donc les memes lignes de corrige. On les ecrit une fois, pas une par telechargement.
         jdbc.batchUpdate("""
-                insert into anomaly_injected
+                insert into "TB_ECHO_ANOMALY_INJECTED"
                     (run_id, event_id, facture_id, type, champ, valeur_origine, valeur_corrompue)
                 values (?, ?, ?, ?, ?, ?, ?)
                 on conflict do nothing""",
@@ -143,7 +143,7 @@ public class ExportRepository implements JeuStore {
     public List<Telechargement> telechargements(UUID runId) {
         return jdbc.query("""
                 select id, format, date_creation, nombre_lignes, empreinte
-                from export_fichier where run_id = ? order by date_creation desc, id""",
+                from "TB_ECHO_EXPORT_FICHIER" where run_id = ? order by date_creation desc, id""",
                 (rs, i) -> new Telechargement(
                         rs.getObject("id", UUID.class),
                         FormatExport.valueOf(rs.getString("format")),

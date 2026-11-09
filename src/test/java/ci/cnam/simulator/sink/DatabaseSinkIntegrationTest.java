@@ -75,7 +75,7 @@ class DatabaseSinkIntegrationTest {
     }
 
     private long nombre(UUID runId) {
-        return jdbc.queryForObject("select count(*) from evenement where run_id = ?", Long.class, runId);
+        return jdbc.queryForObject("select count(*) from \"TB_ECHO_EVENEMENT\" where run_id = ?", Long.class, runId);
     }
 
     @Test
@@ -180,7 +180,7 @@ class DatabaseSinkIntegrationTest {
         }
 
         assertThat(nombre(run)).isEqualTo(total);
-        assertThat(jdbc.queryForObject("select count(distinct event_id) from evenement where run_id = ?", Long.class,
+        assertThat(jdbc.queryForObject("select count(distinct event_id) from \"TB_ECHO_EVENEMENT\" where run_id = ?", Long.class,
                 run)).isEqualTo(total);
         assertThat(apresRedemarrage.checkpoint(run).orElseThrow().compteur()).isEqualTo(total);
     }

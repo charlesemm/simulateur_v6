@@ -52,11 +52,11 @@ class InterfaceIntegrationTest {
     private UUID runAvecEvenements(UUID evenementEchoue) {
         UUID run = SupportRun.nouveauRun(jdbc);
         jdbc.update("""
-                insert into evenement (event_id, run_id, domaine, type, timestamp_simule, timestamp_reel, payload, statut)
+                insert into "TB_ECHO_EVENEMENT" (event_id, run_id, domaine, type, timestamp_simule, timestamp_reel, payload, statut)
                 values (?, ?, 'prestations', 'FACTURE_OUVERTE', now(), now(), '{"nom":"Kone"}'::jsonb, 'ECRIT')""",
                 UUID.randomUUID(), run);
         jdbc.update("""
-                insert into evenement (event_id, run_id, domaine, type, timestamp_simule, timestamp_reel, payload, statut)
+                insert into "TB_ECHO_EVENEMENT" (event_id, run_id, domaine, type, timestamp_simule, timestamp_reel, payload, statut)
                 values (?, ?, 'prestations', '=FORMULE', now(), now(), '{"nom":"=1+1"}'::jsonb, 'ECHEC')""",
                 evenementEchoue, run);
         return run;
@@ -87,7 +87,7 @@ class InterfaceIntegrationTest {
 
         mvc.perform(post("/evenements/{id}/rejouer", echoue).with(csrf()).with(operateur))
                 .andExpect(status().isOk());
-        assertThat(jdbc.queryForObject("select statut from evenement where event_id = ?", String.class, echoue))
+        assertThat(jdbc.queryForObject("select statut from \"TB_ECHO_EVENEMENT\" where event_id = ?", String.class, echoue))
                 .isEqualTo("ECRIT");
         assertThat(lignesAudit("EVENEMENT_REJOUE")).isGreaterThanOrEqualTo(1);
 
@@ -108,7 +108,7 @@ class InterfaceIntegrationTest {
         mvc.perform(post("/evenements/{id}/rejouer", echoue).with(csrf()).with(user("obs").roles("OBSERVATEUR")))
                 .andExpect(status().isForbidden());
 
-        assertThat(jdbc.queryForObject("select statut from evenement where event_id = ?", String.class, echoue))
+        assertThat(jdbc.queryForObject("select statut from \"TB_ECHO_EVENEMENT\" where event_id = ?", String.class, echoue))
                 .isEqualTo("ECHEC");
     }
 

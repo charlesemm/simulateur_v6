@@ -66,16 +66,16 @@ class EchangeIntegrationTest {
         jdbc.update("insert into scenario (id, nom, contenu_yaml) values (?, ?, 'nom: test')", scenario,
                 "echange-" + scenario);
         jdbc.update("""
-                insert into simulation_run (id, scenario_id, seed, statut, debut_simule, parametres)
+                insert into "TB_ECHO_SIMULATION_RUN" (id, scenario_id, seed, statut, debut_simule, parametres)
                 values (?, ?, 42, 'ARRETE', timestamp '2026-01-02 00:00:00', '{}'::jsonb)""", run, scenario);
         List<UUID> evenements = new ArrayList<>();
         for (int i = 0; i < nombre; i++) {
             UUID id = UUID.randomUUID();
             jdbc.update("""
-                    insert into evenement (event_id, run_id, domaine, type, timestamp_simule, timestamp_reel, payload)
+                    insert into "TB_ECHO_EVENEMENT" (event_id, run_id, domaine, type, timestamp_simule, timestamp_reel, payload)
                     values (?, ?, 'prestations', 'FACTURE_OUVERTE', timestamp '2026-01-02 08:00:00',
                             timestamptz '2026-01-02 08:00:00+00', '{}'::jsonb)""", id, run);
-            jdbc.update("insert into anomaly_injected (run_id, event_id, type, champ) values (?, ?, 'CHAMP_VIDE', ?)",
+            jdbc.update("insert into \"TB_ECHO_ANOMALY_INJECTED\" (run_id, event_id, type, champ) values (?, ?, 'CHAMP_VIDE', ?)",
                     run, id, "nom");
             evenements.add(id);
         }
@@ -98,7 +98,7 @@ class EchangeIntegrationTest {
 
     private List<Map<String, Object>> echanges(UUID run) {
         return jdbc.queryForList(
-                "select sens, statut, version_outil, date_echange from echange where run_id = ? "
+                "select sens, statut, version_outil, date_echange from \"TB_ECHO_ECHANGE\" where run_id = ? "
                         + "order by date_echange, id", run);
     }
 
@@ -154,7 +154,7 @@ class EchangeIntegrationTest {
         retirer(jeu.run(), "csv");
 
         // Le delai est de 60 minutes : on recule l'envoi de deux heures plutot que d'attendre.
-        jdbc.update("update echange set date_echange = date_echange - interval '2 hours' where run_id = ?",
+        jdbc.update("update \"TB_ECHO_ECHANGE\" set date_echange = date_echange - interval '2 hours' where run_id = ?",
                 jeu.run());
 
         mvc.perform(get("/api/runs/{id}/echanges", jeu.run()).header(ApiKeyFilter.ENTETE, CLE))
@@ -193,7 +193,7 @@ class EchangeIntegrationTest {
                 .andExpect(status().isUnprocessableEntity());
 
         // L'envoi a ete annule (aucun rapport enregistre), la TRACE de la tentative a survecu.
-        assertThat(jdbc.queryForObject("select count(*) from quality_report where run_id = ?", Integer.class,
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_QUALITY_REPORT\" where run_id = ?", Integer.class,
                 jeu.run())).isZero();
         assertThat(echanges(jeu.run())).hasSize(2);
         assertThat(dernier(jeu.run())).containsEntry("statut", "RAPPORT_MALFORME").containsEntry("sens", "RECEPTION");

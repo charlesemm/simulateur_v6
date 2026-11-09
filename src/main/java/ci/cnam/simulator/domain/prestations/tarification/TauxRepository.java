@@ -18,7 +18,7 @@ public class TauxRepository {
 
     public RegleTaux charger() {
         Map<String, BigDecimal> lignes = new HashMap<>();
-        jdbc.query("select code, taux from taux", rs -> {
+        jdbc.query("select code, taux from \"TB_ECHO_TAUX\"", rs -> {
             lignes.put(rs.getString("code"), rs.getBigDecimal("taux"));
         });
         return RegleTaux.depuis(lignes);

@@ -31,29 +31,29 @@ public class ChaosActionStore {
 
     public void creer(ChaosAction a) {
         jdbc.update("""
-                insert into chaos_action (id, run_id, type, parametres, debut, fin_prevue, auteur)
+                insert into "TB_ECHO_CHAOS_ACTION" (id, run_id, type, parametres, debut, fin_prevue, auteur)
                 values (?, ?, ?, ?::jsonb, ?, ?, ?)""",
                 a.id(), a.runId(), a.type().name(), ecrire(a.parametres()), utc(a.debut()), utc(a.finPrevue()),
                 a.auteur());
     }
 
     public void terminer(UUID id, Instant fin, String motif, long touches) {
-        jdbc.update("update chaos_action set fin = ?, motif_fin = ?, evenements_touches = ? where id = ?",
+        jdbc.update("update \"TB_ECHO_CHAOS_ACTION\" set fin = ?, motif_fin = ?, evenements_touches = ? where id = ?",
                 utc(fin), motif, touches, id);
     }
 
     public void supprimer(UUID id) {
-        jdbc.update("delete from chaos_action where id = ?", id);
+        jdbc.update("delete from \"TB_ECHO_CHAOS_ACTION\" where id = ?", id);
     }
 
     public List<ChaosAction> lister(UUID runId) {
-        return jdbc.query("select * from chaos_action where run_id = ? order by debut, id", ligne(), runId);
+        return jdbc.query("select * from \"TB_ECHO_CHAOS_ACTION\" where run_id = ? order by debut, id", ligne(), runId);
     }
 
     /** Au demarrage : une action restee ouverte appartient a un processus mort, son effet n'existe plus. */
     public int interrompre(Instant maintenant) {
         return jdbc.update("""
-                update chaos_action set fin = greatest(?, debut), motif_fin = 'INTERROMPUE' where fin is null""",
+                update "TB_ECHO_CHAOS_ACTION" set fin = greatest(?, debut), motif_fin = 'INTERROMPUE' where fin is null""",
                 utc(maintenant));
     }
 

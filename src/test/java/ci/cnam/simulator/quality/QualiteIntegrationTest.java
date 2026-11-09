@@ -55,13 +55,13 @@ class QualiteIntegrationTest {
     private UUID evenement(UUID run) {
         UUID id = UUID.randomUUID();
         jdbc.update("""
-                insert into evenement (event_id, run_id, domaine, type, timestamp_simule, timestamp_reel, payload)
+                insert into "TB_ECHO_EVENEMENT" (event_id, run_id, domaine, type, timestamp_simule, timestamp_reel, payload)
                 values (?, ?, 'prestations', 'FACTURE_OUVERTE', now(), now(), '{}'::jsonb)""", id, run);
         return id;
     }
 
     private void injectee(UUID run, UUID evenement, String type, String champ) {
-        jdbc.update("insert into anomaly_injected (run_id, event_id, type, champ) values (?, ?, ?, ?)",
+        jdbc.update("insert into \"TB_ECHO_ANOMALY_INJECTED\" (run_id, event_id, type, champ) values (?, ?, ?, ?)",
                 run, evenement, type, champ);
     }
 
@@ -161,7 +161,7 @@ class QualiteIntegrationTest {
         envoyer(double_.run(), "v1", b.subList(40, b.size()));   // 10 detections renvoyees
 
         assertThat(chiffres(comparaison(double_.run()))).isEqualTo(chiffres(comparaison(unique.run())));
-        assertThat(jdbc.queryForObject("select count(*) from quality_report where run_id = ?", Integer.class,
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_QUALITY_REPORT\" where run_id = ?", Integer.class,
                 double_.run())).isEqualTo(2);
     }
 
@@ -193,7 +193,7 @@ class QualiteIntegrationTest {
                 .andExpect(jsonPath("$.details[0]", containsString("evenement inconnu pour ce run : " + inconnu)))
                 .andExpect(jsonPath("$.details[1]", containsString(autreRun.toString())));
 
-        assertThat(jdbc.queryForObject("select count(*) from quality_report where run_id = ?", Integer.class,
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_QUALITY_REPORT\" where run_id = ?", Integer.class,
                 jeu.run())).isZero();
     }
 
@@ -250,7 +250,7 @@ class QualiteIntegrationTest {
         // Une anomalie dont on connait la valeur d'origine, et qui ne sera jamais signalee.
         UUID oublie = evenement(jeu.run());
         jdbc.update("""
-                insert into anomaly_injected (run_id, event_id, type, champ, valeur_origine, valeur_corrompue)
+                insert into "TB_ECHO_ANOMALY_INJECTED" (run_id, event_id, type, champ, valeur_origine, valeur_corrompue)
                 values (?, ?, 'FAUTE_ORTHOGRAPHE', 'nom', 'Koné', 'Konne')""", jeu.run(), oublie);
         envoyer(jeu.run(), "v1", detectionsDuJeu(jeu));
         ComparaisonQualite rapport = qualite.comparer(jeu.run(), null);

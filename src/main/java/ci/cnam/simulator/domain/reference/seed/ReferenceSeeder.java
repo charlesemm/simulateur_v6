@@ -38,7 +38,7 @@ public class ReferenceSeeder implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        Integer existants = jdbc.queryForObject("select count(*) from assure", Integer.class);
+        Integer existants = jdbc.queryForObject("select count(*) from \"TB_ECHO_ASSURE\"", Integer.class);
         if (existants != null && existants > 0) {
             log.info("Referentiel deja present ({} assures) : aucun remplissage", existants);
             return;
@@ -61,33 +61,33 @@ public class ReferenceSeeder implements ApplicationRunner {
         List<Assure> assures = personnes.assures(nbAssures);
         List<AyantDroit> ayantsDroit = personnes.ayantsDroit(assures);
 
-        lot("insert into acte (id, code, libelle, categorie, tarif) values (?, ?, ?, ?, ?)", actes,
+        lot("insert into \"TB_ECHO_ACTE\" (id, code, libelle, categorie, tarif) values (?, ?, ?, ?, ?)", actes,
                 (ps, a) -> { ps.setObject(1, a.id()); ps.setString(2, a.code()); ps.setString(3, a.libelle());
                     ps.setString(4, a.categorie().name()); ps.setBigDecimal(5, a.tarif()); });
-        lot("insert into examen (id, code, libelle, type, tarif) values (?, ?, ?, ?, ?)", examens,
+        lot("insert into \"TB_ECHO_EXAMEN\" (id, code, libelle, type, tarif) values (?, ?, ?, ?, ?)", examens,
                 (ps, e) -> { ps.setObject(1, e.id()); ps.setString(2, e.code()); ps.setString(3, e.libelle());
                     ps.setString(4, e.type().name()); ps.setBigDecimal(5, e.tarif()); });
-        lot("insert into medicament (id, code, libelle, tarif) values (?, ?, ?, ?)", medicaments,
+        lot("insert into \"TB_ECHO_MEDICAMENT\" (id, code, libelle, tarif) values (?, ?, ?, ?)", medicaments,
                 (ps, m) -> { ps.setObject(1, m.id()); ps.setString(2, m.code()); ps.setString(3, m.libelle());
                     ps.setBigDecimal(4, m.tarif()); });
-        lot("insert into centre_sante (id, code, nom, type, ville) values (?, ?, ?, ?, ?)", centres,
+        lot("insert into \"TB_ECHO_CENTRE_SANTE\" (id, code, nom, type, ville) values (?, ?, ?, ?, ?)", centres,
                 (ps, c) -> { ps.setObject(1, c.id()); ps.setString(2, c.code()); ps.setString(3, c.nom());
                     ps.setString(4, c.type().name()); ps.setString(5, c.ville()); });
-        lot("insert into medecin (id, code, nom, prenoms, specialite, centre_sante_id) values (?, ?, ?, ?, ?, ?)", medecins,
+        lot("insert into \"TB_ECHO_MEDECIN\" (id, code, nom, prenoms, specialite, centre_sante_id) values (?, ?, ?, ?, ?, ?)", medecins,
                 (ps, m) -> { ps.setObject(1, m.id()); ps.setString(2, m.code()); ps.setString(3, m.nom());
                     ps.setString(4, m.prenoms()); ps.setString(5, m.specialite()); ps.setObject(6, m.centreSanteId()); });
-        lot("insert into pharmacie (id, code, nom, ville) values (?, ?, ?, ?)", pharmacies,
+        lot("insert into \"TB_ECHO_PHARMACIE\" (id, code, nom, ville) values (?, ?, ?, ?)", pharmacies,
                 (ps, p) -> { ps.setObject(1, p.id()); ps.setString(2, p.code()); ps.setString(3, p.nom());
                     ps.setString(4, p.ville()); });
         lot("""
-                insert into assure (id, numero_assure, nom, prenoms, date_naissance, genre, statut_cotisation,
+                insert into "TB_ECHO_ASSURE" (id, numero_assure, nom, prenoms, date_naissance, genre, statut_cotisation,
                                     date_debut_droits, date_fin_droits) values (?, ?, ?, ?, ?, ?, ?, ?, ?)""", assures,
                 (ps, a) -> { ps.setObject(1, a.id()); ps.setString(2, a.numeroAssure()); ps.setString(3, a.nom());
                     ps.setString(4, a.prenoms()); ps.setObject(5, a.dateNaissance()); ps.setString(6, a.genre().name());
                     ps.setString(7, a.statutCotisation().name()); ps.setObject(8, a.dateDebutDroits());
                     ps.setObject(9, a.dateFinDroits()); });
         lot("""
-                insert into ayant_droit (id, assure_id, nom, prenoms, date_naissance, genre, lien_parente)
+                insert into "TB_ECHO_AYANT_DROIT" (id, assure_id, nom, prenoms, date_naissance, genre, lien_parente)
                 values (?, ?, ?, ?, ?, ?, ?)""", ayantsDroit,
                 (ps, a) -> { ps.setObject(1, a.id()); ps.setObject(2, a.assureId()); ps.setString(3, a.nom());
                     ps.setString(4, a.prenoms()); ps.setObject(5, a.dateNaissance()); ps.setString(6, a.genre().name());

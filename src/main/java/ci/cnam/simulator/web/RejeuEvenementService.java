@@ -25,11 +25,11 @@ public class RejeuEvenementService {
 
     /** @throws IllegalArgumentException evenement inconnu ou deja ecrit */
     public void rejouer(UUID eventId, String acteur) {
-        int modifies = jdbc.update("update evenement set statut = ? where event_id = ? and statut <> ?",
+        int modifies = jdbc.update("update \"TB_ECHO_EVENEMENT\" set statut = ? where event_id = ? and statut <> ?",
                 ECRIT, eventId, ECRIT);
         if (modifies == 0) {
             boolean existe = Boolean.TRUE.equals(jdbc.queryForObject(
-                    "select exists(select 1 from evenement where event_id = ?)", Boolean.class, eventId));
+                    "select exists(select 1 from \"TB_ECHO_EVENEMENT\" where event_id = ?)", Boolean.class, eventId));
             throw new IllegalArgumentException(existe
                     ? "Cet evenement est deja ecrit : rien a rejouer"
                     : "Evenement inconnu : " + eventId);

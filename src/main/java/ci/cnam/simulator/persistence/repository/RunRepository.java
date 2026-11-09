@@ -33,9 +33,9 @@ public class RunRepository implements RunStore {
     private static final String SELECT_RUN = """
             select r.id, s.nom as scenario, r.seed, r.statut, r.date_debut, r.date_fin, r.message_erreur,
                    coalesce(c.compteur, 0) as evenements
-            from simulation_run r
+            from "TB_ECHO_SIMULATION_RUN" r
             join scenario s on s.id = r.scenario_id
-            left join checkpoint_evenement c on c.run_id = r.id
+            left join "TB_ECHO_CHECKPOINT_EVENEMENT" c on c.run_id = r.id
             """;
 
     private static final RowMapper<RunInfo> MAPPER = RunRepository::lire;
@@ -56,7 +56,7 @@ public class RunRepository implements RunStore {
                 on conflict (nom) do update set contenu_yaml = excluded.contenu_yaml, date_maj = now()
                 returning id""", UUID.class, UUID.randomUUID(), s.nom(), s.contenuYaml());
         jdbc.update("""
-                insert into simulation_run (id, scenario_id, seed, statut, debut_simule, parametres)
+                insert into "TB_ECHO_SIMULATION_RUN" (id, scenario_id, seed, statut, debut_simule, parametres)
                 values (?, ?, ?, ?, ?, ?::jsonb)""",
                 runId, scenarioId, s.seed(), EtatRun.CREE.name(), Timestamp.valueOf(s.debutSimule()), parametres(s));
     }
@@ -64,7 +64,7 @@ public class RunRepository implements RunStore {
     @Override
     public void mettreAJour(UUID runId, EtatRun etat, Instant debut, Instant fin, String erreur) {
         jdbc.update("""
-                update simulation_run set statut = ?, date_debut = ?, date_fin = ?, message_erreur = ?
+                update "TB_ECHO_SIMULATION_RUN" set statut = ?, date_debut = ?, date_fin = ?, message_erreur = ?
                 where id = ?""",
                 etat.name(), date(debut), date(fin), erreur, runId);
     }
@@ -80,7 +80,7 @@ public class RunRepository implements RunStore {
     }
 
     public String statut(UUID runId) {
-        return jdbc.queryForObject("select statut from simulation_run where id = ?", String.class, runId);
+        return jdbc.queryForObject("select statut from \"TB_ECHO_SIMULATION_RUN\" where id = ?", String.class, runId);
     }
 
     private static RunInfo lire(ResultSet rs, int ligne) throws SQLException {

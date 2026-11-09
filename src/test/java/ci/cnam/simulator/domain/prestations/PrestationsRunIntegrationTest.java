@@ -76,7 +76,7 @@ class PrestationsRunIntegrationTest {
 
         // arreter() a vide le sink : tout ce qui a ete emis est en base.
         List<Map<String, Object>> evenements = jdbc.queryForList(
-                "select type, timestamp_simule from evenement where run_id = ? order by timestamp_simule", run.id());
+                "select type, timestamp_simule from \"TB_ECHO_EVENEMENT\" where run_id = ? order by timestamp_simule", run.id());
         assertThat(evenements).hasSize((int) manager.info(run.id()).evenementsEmis());
         long arrivees = evenements.stream().filter(e -> e.get("type").equals("PATIENT_ARRIVE")).count();
         assertThat(arrivees).isEqualTo(manager.info(run.id()).parcoursGeneres());
@@ -84,13 +84,13 @@ class PrestationsRunIntegrationTest {
         // Les dates simulees avancent a x100 depuis le debut du scenario.
         assertThat(((java.sql.Timestamp) evenements.get(0).get("timestamp_simule")).toLocalDateTime())
                 .isAfterOrEqualTo(LocalDateTime.of(2026, 3, 10, 8, 0));
-        assertThat(jdbc.queryForObject("select compteur from checkpoint_evenement where run_id = ?", Long.class,
+        assertThat(jdbc.queryForObject("select compteur from \"TB_ECHO_CHECKPOINT_EVENEMENT\" where run_id = ?", Long.class,
                 run.id())).isEqualTo(evenements.size());
 
-        Integer factures = jdbc.queryForObject("select count(*) from facture where run_id = ?", Integer.class, run.id());
+        Integer factures = jdbc.queryForObject("select count(*) from \"TB_ECHO_FACTURE\" where run_id = ?", Integer.class, run.id());
         assertThat(factures).isPositive();
         Map<String, Object> enregistre = jdbc.queryForMap(
-                "select seed, statut, date_debut, date_fin, parametres::text as parametres from simulation_run where id = ?",
+                "select seed, statut, date_debut, date_fin, parametres::text as parametres from \"TB_ECHO_SIMULATION_RUN\" where id = ?",
                 run.id());
         assertThat(enregistre.get("seed")).isEqualTo(42L);
         assertThat(enregistre.get("date_debut")).isNotNull();
@@ -99,20 +99,20 @@ class PrestationsRunIntegrationTest {
         assertThat(jdbc.queryForObject("select contenu_yaml from scenario where nom = 'IT - prestations'",
                 String.class)).isEqualTo(YAML);
 
-        jdbc.update("delete from simulation_run where id = ?", run.id());
-        assertThat(jdbc.queryForObject("select count(*) from evenement where run_id = ?", Integer.class, run.id()))
+        jdbc.update("delete from \"TB_ECHO_SIMULATION_RUN\" where id = ?", run.id());
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_EVENEMENT\" where run_id = ?", Integer.class, run.id()))
                 .isZero();
-        assertThat(jdbc.queryForObject("select count(*) from facture where run_id = ?", Integer.class, run.id()))
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_FACTURE\" where run_id = ?", Integer.class, run.id()))
                 .isZero();
     }
 
     @Test
     void uneFactureNePeutPasPointerVersUnRunInexistant() {
-        UUID assure = jdbc.queryForObject("select id from assure limit 1", UUID.class);
-        UUID centre = jdbc.queryForObject("select id from centre_sante limit 1", UUID.class);
+        UUID assure = jdbc.queryForObject("select id from \"TB_ECHO_ASSURE\" limit 1", UUID.class);
+        UUID centre = jdbc.queryForObject("select id from \"TB_ECHO_CENTRE_SANTE\" limit 1", UUID.class);
 
         assertThatThrownBy(() -> jdbc.update("""
-                insert into facture (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
+                insert into "TB_ECHO_FACTURE" (id, run_id, numero_facture, assure_id, beneficiaire_id, centre_sante_id,
                                      type_bon, statut, date_ouverture)
                 values (?, ?, 'FAC-2026-999999', ?, ?, ?, 'AMBULATOIRE', 'OUVERTE', now())""",
                 UUID.randomUUID(), UUID.randomUUID(), assure, assure, centre))

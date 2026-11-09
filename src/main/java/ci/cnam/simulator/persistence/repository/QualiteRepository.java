@@ -25,7 +25,7 @@ public class QualiteRepository implements QualityStore {
     /** Detections distinctes du run (tous rapports confondus, ou ceux d'une version de l'outil). */
     private static final String DETECTIONS = """
             select distinct d.event_id, d.type, d.champ
-            from quality_detection d join quality_report r on r.id = d.report_id
+            from "TB_ECHO_QUALITY_DETECTION" d join "TB_ECHO_QUALITY_REPORT" r on r.id = d.report_id
             where d.run_id = ? and (?::text is null or r.version_outil = ?)""";
 
     private final JdbcTemplate jdbc;
@@ -41,7 +41,7 @@ public class QualiteRepository implements QualityStore {
         for (int i = 0; i < ids.size(); i += 5000) {
             List<UUID> tranche = ids.subList(i, Math.min(ids.size(), i + 5000));
             trouves.addAll(jdbc.query(
-                    "select event_id from evenement where run_id = ? and event_id = any (?)",
+                    "select event_id from \"TB_ECHO_EVENEMENT\" where run_id = ? and event_id = any (?)",
                     (rs, n) -> rs.getObject(1, UUID.class), runId, tranche.toArray(UUID[]::new)));
         }
         return trouves;
@@ -49,10 +49,10 @@ public class QualiteRepository implements QualityStore {
 
     @Override
     public int enregistrer(UUID rapportId, UUID runId, String versionOutil, List<Detection> detections) {
-        jdbc.update("insert into quality_report (id, run_id, version_outil) values (?, ?, ?)", rapportId, runId,
+        jdbc.update("insert into \"TB_ECHO_QUALITY_REPORT\" (id, run_id, version_outil) values (?, ?, ?)", rapportId, runId,
                 versionOutil);
         jdbc.batchUpdate("""
-                insert into quality_detection (report_id, run_id, event_id, type, champ, regle, score)
+                insert into "TB_ECHO_QUALITY_DETECTION" (report_id, run_id, event_id, type, champ, regle, score)
                 values (?, ?, ?, ?, ?, ?, ?) on conflict do nothing""", detections, TAILLE_LOT, (ps, d) -> {
             ps.setObject(1, rapportId);
             ps.setObject(2, runId);
@@ -63,20 +63,20 @@ public class QualiteRepository implements QualityStore {
             ps.setObject(7, d.score());
         });
         // Le pilote ne dit pas toujours quelles lignes ont ete ignorees : on recompte.
-        Integer reel = jdbc.queryForObject("select count(*) from quality_detection where report_id = ?",
+        Integer reel = jdbc.queryForObject("select count(*) from \"TB_ECHO_QUALITY_DETECTION\" where report_id = ?",
                 Integer.class, rapportId);
         return reel == null ? 0 : reel;
     }
 
     @Override
     public Map<AnomalyType, Long> injectees(UUID runId) {
-        return compter("select type, count(*) from anomaly_injected where run_id = ? group by type", runId);
+        return compter("select type, count(*) from \"TB_ECHO_ANOMALY_INJECTED\" where run_id = ? group by type", runId);
     }
 
     @Override
     public Map<AnomalyType, Long> detectees(UUID runId, String versionOutil) {
         return compter("""
-                select a.type, count(*) from anomaly_injected a
+                select a.type, count(*) from "TB_ECHO_ANOMALY_INJECTED" a
                 where a.run_id = ? and exists (select 1 from (""" + DETECTIONS + """
                 ) d where d.event_id = a.event_id and d.type = a.type and d.champ is not distinct from a.champ)
                 group by a.type""", runId, runId, versionOutil, versionOutil);
@@ -87,7 +87,7 @@ public class QualiteRepository implements QualityStore {
         return compter("""
                 select d.type, count(*) from (""" + DETECTIONS + """
                 ) d where not exists (
-                    select 1 from anomaly_injected a where a.run_id = ? and a.event_id = d.event_id
+                    select 1 from "TB_ECHO_ANOMALY_INJECTED" a where a.run_id = ? and a.event_id = d.event_id
                     and a.type = d.type and a.champ is not distinct from d.champ)
                 group by d.type""", runId, versionOutil, versionOutil, runId);
     }
@@ -102,7 +102,7 @@ public class QualiteRepository implements QualityStore {
     public List<AnomalieRatee> ratees(UUID runId, String versionOutil, int limite, int decalage) {
         return jdbc.query("""
                 select a.event_id, a.facture_id, a.type, a.champ, a.valeur_origine, a.valeur_corrompue
-                from anomaly_injected a
+                from "TB_ECHO_ANOMALY_INJECTED" a
                 where a.run_id = ? and not exists (select 1 from (""" + DETECTIONS + """
                 ) d where d.event_id = a.event_id and d.type = a.type and d.champ is not distinct from a.champ)
                 order by a.id limit ? offset ?""",
@@ -116,7 +116,7 @@ public class QualiteRepository implements QualityStore {
                                                          int decalage) {
         return jdbc.query("select d.event_id, d.type, d.champ from (" + DETECTIONS + """
                 ) d where not exists (
-                    select 1 from anomaly_injected a where a.run_id = ? and a.event_id = d.event_id
+                    select 1 from "TB_ECHO_ANOMALY_INJECTED" a where a.run_id = ? and a.event_id = d.event_id
                     and a.type = d.type and a.champ is not distinct from d.champ)
                 order by d.event_id, d.type, d.champ limit ? offset ?""",
                 (rs, n) -> new FauxPositifSignale(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3)),

@@ -39,7 +39,7 @@ class ReferenceIntegrationTest {
     ReferenceService service;
 
     private int compter(String table) {
-        return jdbc.queryForObject("select count(*) from " + table, Integer.class);
+        return jdbc.queryForObject("select count(*) from \"TB_ECHO_" + table.toUpperCase() + "\"", Integer.class);
     }
 
     @Test

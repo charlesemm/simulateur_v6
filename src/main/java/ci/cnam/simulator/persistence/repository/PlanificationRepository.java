@@ -31,12 +31,12 @@ public class PlanificationRepository implements PlanificationStore {
 
     private static final String SELECT_PLANIFICATION = """
             select id, libelle, heure, jours_semaine, cible, actif, date_creation, date_maj
-            from planification_analyse
+            from "TB_ECHO_PLANIFICATION_ANALYSE"
             """;
 
     private static final String SELECT_ECHEANCE = """
             select id, planification_id, run_id, date_echeance, date_retrait, date_rapport, statut, detail
-            from analyse_attendue
+            from "TB_ECHO_ANALYSE_ATTENDUE"
             """;
 
     private static final RowMapper<Planification> PLANIFICATION = PlanificationRepository::lirePlanification;
@@ -51,7 +51,7 @@ public class PlanificationRepository implements PlanificationStore {
     @Override
     public void creer(Planification p) {
         jdbc.update("""
-                insert into planification_analyse
+                insert into "TB_ECHO_PLANIFICATION_ANALYSE"
                     (id, libelle, heure, jours_semaine, cible, actif, date_creation, date_maj)
                 values (?, ?, ?, ?, ?, ?, ?, ?)""",
                 p.id(), p.libelle(), p.heure(), p.jours().texte(), p.cible().name(), p.actif(),
@@ -60,7 +60,7 @@ public class PlanificationRepository implements PlanificationStore {
 
     @Override
     public boolean changerActivite(UUID id, boolean actif, Instant maintenant) {
-        return jdbc.update("update planification_analyse set actif = ?, date_maj = ? where id = ?",
+        return jdbc.update("update \"TB_ECHO_PLANIFICATION_ANALYSE\" set actif = ?, date_maj = ? where id = ?",
                 actif, date(maintenant), id) == 1;
     }
 
@@ -68,7 +68,7 @@ public class PlanificationRepository implements PlanificationStore {
     public boolean supprimer(UUID id) {
         // Les echeances deja ouvertes survivent (planification_id passe a nul par ON DELETE SET NULL) :
         // ce qui a eu lieu reste tracable, meme si la regle n'existe plus.
-        return jdbc.update("delete from planification_analyse where id = ?", id) == 1;
+        return jdbc.update("delete from \"TB_ECHO_PLANIFICATION_ANALYSE\" where id = ?", id) == 1;
     }
 
     @Override
@@ -84,7 +84,7 @@ public class PlanificationRepository implements PlanificationStore {
     @Override
     public boolean ouvrir(Echeance e) {
         return jdbc.update("""
-                insert into analyse_attendue
+                insert into "TB_ECHO_ANALYSE_ATTENDUE"
                     (id, planification_id, run_id, date_echeance, date_retrait, date_rapport, statut, detail)
                 values (?, ?, ?, ?, ?, ?, ?, ?)
                 on conflict (planification_id, date_echeance) do nothing""",
@@ -106,7 +106,7 @@ public class PlanificationRepository implements PlanificationStore {
     @Override
     public Optional<Instant> derniereEcheance(UUID planificationId) {
         return Optional.ofNullable(jdbc.queryForObject(
-                        "select max(date_echeance) from analyse_attendue where planification_id = ?",
+                        "select max(date_echeance) from \"TB_ECHO_ANALYSE_ATTENDUE\" where planification_id = ?",
                         OffsetDateTime.class, planificationId))
                 .map(OffsetDateTime::toInstant);
     }
@@ -123,7 +123,7 @@ public class PlanificationRepository implements PlanificationStore {
         // coalesce : une date nulle n'efface pas celle qui est deja inscrite (le retrait reste
         // visible une fois le rapport arrive).
         jdbc.update("""
-                update analyse_attendue
+                update "TB_ECHO_ANALYSE_ATTENDUE"
                 set statut = ?,
                     date_retrait = coalesce(?, date_retrait),
                     date_rapport = coalesce(?, date_rapport),
@@ -137,7 +137,7 @@ public class PlanificationRepository implements PlanificationStore {
         // « Terminee » au sens de la planification : ARRETE. Un run ECHOUE n'est pas un jeu a
         // analyser, meme s'il est exportable.
         return jdbc.query("""
-                select id from simulation_run where statut = 'ARRETE'
+                select id from "TB_ECHO_SIMULATION_RUN" where statut = 'ARRETE'
                 order by coalesce(date_fin, date_creation) desc, id desc limit 1""",
                 (rs, i) -> rs.getObject("id", UUID.class)).stream().findFirst();
     }
