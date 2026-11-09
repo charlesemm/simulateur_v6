@@ -59,6 +59,9 @@ class AnomaliesIntegrationTest {
         injection.flush();
     }
 
+    /** Les deux types qui emettent une ligne de plus au lieu d'abimer l'originale. */
+    private static final List<String> DOUBLONS = List.of("DOUBLON_EXACT", "DOUBLON_APPROXIMATIF");
+
     @Test
     void chaqueLigneRetrouveLaValeurProprePuisLeDoublonReferenceSonOriginal() throws Exception {
         UUID run = SupportRun.nouveauRun(jdbc);
@@ -66,34 +69,59 @@ class AnomaliesIntegrationTest {
         Map<UUID, SimEvent> parId = new HashMap<>();
         propres.forEach(e -> parId.put(e.eventId(), e));
         AnomalyProfile profil = AnomalyProfile.depuis(Map.of("global", 20.0));
-        long attendues = propres.stream().flatMap(e -> injecteur.injecter(e, profil).stream())
-                .mapToLong(e -> e.anomalies().size()).sum();
-        long doublons = propres.stream().flatMap(e -> injecteur.injecter(e, profil).stream())
-                .filter(e -> !e.anomalies().isEmpty() && e.anomalies().get(0).type().equals("DOUBLON_EXACT")).count();
+        // L'injecteur est deterministe : son alea vient de l'identifiant de l'evenement, pas d'un etat
+        // interne. On peut donc le rejouer ici pour savoir ce que l'ecriture va produire.
+        List<SimEvent> emis = propres.stream().flatMap(e -> injecteur.injecter(e, profil).stream()).toList();
+        long attendues = emis.stream().mapToLong(e -> e.anomalies().size()).sum();
+        long doublons = emis.stream()
+                .filter(e -> !e.anomalies().isEmpty() && DOUBLONS.contains(e.anomalies().get(0).type())).count();
 
         ecrire(run, propres, profil);
 
-        List<Map<String, Object>> lignes = jdbc.queryForList("""
-                select a.event_id, a.facture_id, a.type, a.champ, a.valeur_origine, a.valeur_corrompue,
-                       a.doublon_de, e.payload::text as payload
-                from anomaly_injected a join evenement e on e.event_id = a.event_id
-                where a.run_id = ?""", run);
         assertThat(attendues).isPositive();
-        assertThat(lignes).hasSize((int) attendues);
-        assertThat(jdbc.queryForObject("select count(*) from evenement where run_id = ?", Long.class, run))
+        assertThat(doublons).isPositive();
+        // Compte direct, sans jointure : une jointure sur event_id compterait deux fois une anomalie dont
+        // l'evenement apparait deux fois, et masquerait le vrai nombre de lignes de verite terrain.
+        assertThat(jdbc.queryForObject(
+                "select count(*) from \"TB_ECHO_ANOMALY_INJECTED\" where run_id = ?", Long.class, run))
+                .isEqualTo(attendues);
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_EVENEMENT\" where run_id = ?", Long.class, run))
                 .isEqualTo(propres.size() + doublons);
+
+        Map<UUID, String> payloads = new HashMap<>();
+        for (Map<String, Object> e : jdbc.queryForList(
+                "select event_id, payload::text as payload from \"TB_ECHO_EVENEMENT\" where run_id = ?", run)) {
+            payloads.put((UUID) e.get("event_id"), (String) e.get("payload"));
+        }
+        List<Map<String, Object>> lignes = jdbc.queryForList("""
+                select event_id, facture_id, type, champ, valeur_origine, valeur_corrompue, doublon_de
+                from "TB_ECHO_ANOMALY_INJECTED" where run_id = ?""", run);
+        assertThat(lignes).hasSize((int) attendues);
 
         int doublonsVus = 0;
         for (Map<String, Object> l : lignes) {
-            Map<String, Object> payload = json.readValue((String) l.get("payload"), PAYLOAD);
-            if (l.get("type").equals("DOUBLON_EXACT")) {
+            String type = (String) l.get("type");
+            Map<String, Object> payload = json.readValue(payloads.get((UUID) l.get("event_id")), PAYLOAD);
+            if (DOUBLONS.contains(type)) {
                 doublonsVus++;
                 SimEvent original = parId.get((UUID) l.get("doublon_de"));
-                assertThat(original).isNotNull();
+                assertThat(original).as(type).isNotNull();
                 assertThat((UUID) l.get("event_id")).isNotEqualTo(original.eventId());
-                assertThat(l.get("champ")).isNull();
-                assertThat(payload).isEqualTo(json.readValue(json.writeValueAsString(original.payload()), PAYLOAD));
-                assertThat(jdbc.queryForObject("select count(*) from evenement where event_id = ?", Long.class,
+                Map<String, Object> origine = json.readValue(json.writeValueAsString(original.payload()), PAYLOAD);
+                if ("DOUBLON_EXACT".equals(type)) {
+                    // Copie conforme : aucun champ nomme, le payload est mot pour mot celui de l'originale.
+                    assertThat(l.get("champ")).isNull();
+                    assertThat(payload).isEqualTo(origine);
+                } else {
+                    // Presque la meme : un champ nomme, ecrit autrement, tout le reste identique.
+                    String champ = (String) l.get("champ");
+                    assertThat(champ).as("champ du doublon approximatif").isNotNull();
+                    assertThat(l.get("valeur_origine")).isEqualTo(String.valueOf(origine.get(champ)));
+                    assertThat(l.get("valeur_corrompue")).isEqualTo(String.valueOf(payload.get(champ)))
+                            .isNotEqualTo(l.get("valeur_origine"));
+                    assertThat(payload).isNotEqualTo(origine);
+                }
+                assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_EVENEMENT\" where event_id = ?", Long.class,
                         original.eventId())).isEqualTo(1);
                 continue;
             }
@@ -113,11 +141,11 @@ class AnomaliesIntegrationTest {
         UUID run = SupportRun.nouveauRun(jdbc);
         ecrire(run, EvenementsDeTest.propres(run, 7, 3_000), AnomalyProfile.depuis(Map.of("global", 30.0)));
 
-        long total = jdbc.queryForObject("select count(*) from anomaly_injected where run_id = ?", Long.class, run);
+        long total = jdbc.queryForObject("select count(*) from \"TB_ECHO_ANOMALY_INJECTED\" where run_id = ?", Long.class, run);
         long champVide = jdbc.queryForObject(
-                "select count(*) from anomaly_injected where run_id = ? and type = 'CHAMP_VIDE'", Long.class, run);
+                "select count(*) from \"TB_ECHO_ANOMALY_INJECTED\" where run_id = ? and type = 'CHAMP_VIDE'", Long.class, run);
         long surNom = jdbc.queryForObject(
-                "select count(*) from anomaly_injected where run_id = ? and champ = 'nom'", Long.class, run);
+                "select count(*) from \"TB_ECHO_ANOMALY_INJECTED\" where run_id = ? and champ = 'nom'", Long.class, run);
 
         assertThat(service.rechercher(run, null, null, 0, 10).total()).isEqualTo(total);
         assertThat(service.rechercher(run, null, null, 0, 10).contenu()).hasSize(10);
@@ -137,8 +165,8 @@ class AnomaliesIntegrationTest {
         assertThat(lues).hasSize(21).doesNotHaveDuplicates();
 
         // Supprimer le run supprime sa verite terrain.
-        jdbc.update("delete from simulation_run where id = ?", run);
-        assertThat(jdbc.queryForObject("select count(*) from anomaly_injected where run_id = ?", Long.class, run))
+        jdbc.update("delete from \"TB_ECHO_SIMULATION_RUN\" where id = ?", run);
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_ANOMALY_INJECTED\" where run_id = ?", Long.class, run))
                 .isZero();
     }
 
@@ -147,9 +175,9 @@ class AnomaliesIntegrationTest {
         UUID run = SupportRun.nouveauRun(jdbc);
         ecrire(run, EvenementsDeTest.propres(run, 99, 2_000), AnomalyProfile.depuis(Map.of("global", 0.0)));
 
-        assertThat(jdbc.queryForObject("select count(*) from evenement where run_id = ?", Long.class, run))
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_EVENEMENT\" where run_id = ?", Long.class, run))
                 .isEqualTo(2_000);
-        assertThat(jdbc.queryForObject("select count(*) from anomaly_injected where run_id = ?", Long.class, run))
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_ANOMALY_INJECTED\" where run_id = ?", Long.class, run))
                 .isZero();
     }
 
@@ -162,26 +190,26 @@ class AnomaliesIntegrationTest {
         assertThat(compter(avec)).isPositive();
         // Chaque anomalie est portee par un evenement ecrit, et la valeur ecrite est bien la valeur corrompue.
         assertThat(jdbc.queryForObject("""
-                select count(*) from anomaly_injected a join evenement e on e.event_id = a.event_id
+                select count(*) from "TB_ECHO_ANOMALY_INJECTED" a join "TB_ECHO_EVENEMENT" e on e.event_id = a.event_id
                 where a.run_id = ? and a.champ is not null and (e.payload ->> a.champ) is distinct from a.valeur_corrompue
                 """, Long.class, avec)).isZero();
         assertThat(jdbc.queryForObject("""
-                select count(*) from anomaly_injected
+                select count(*) from "TB_ECHO_ANOMALY_INJECTED"
                 where run_id = ? and champ is not null and valeur_origine is not distinct from valeur_corrompue
                 """, Long.class, avec)).isZero();
         // Un doublon n'a pas de champ et reference un evenement original ecrit dans le meme run.
         assertThat(jdbc.queryForObject("""
-                select count(*) from anomaly_injected a join evenement o on o.event_id = a.doublon_de
+                select count(*) from "TB_ECHO_ANOMALY_INJECTED" a join "TB_ECHO_EVENEMENT" o on o.event_id = a.doublon_de
                 where a.run_id = ? and a.type = 'DOUBLON_EXACT' and o.run_id = a.run_id
                 """, Long.class, avec)).isEqualTo(jdbc.queryForObject(
-                "select count(*) from anomaly_injected where run_id = ? and type = 'DOUBLON_EXACT'", Long.class, avec));
+                "select count(*) from \"TB_ECHO_ANOMALY_INJECTED\" where run_id = ? and type = 'DOUBLON_EXACT'", Long.class, avec));
         // L'identite du patient est bien dans les evenements du parcours.
         assertThat(jdbc.queryForObject("""
-                select count(*) from evenement where run_id = ? and type = 'PATIENT_ARRIVE'
+                select count(*) from "TB_ECHO_EVENEMENT" where run_id = ? and type = 'PATIENT_ARRIVE'
                   and jsonb_exists(payload, 'nom') and jsonb_exists(payload, 'prenoms')
                   and jsonb_exists(payload, 'dateNaissance') and jsonb_exists(payload, 'genre')
                 """, Long.class, avec)).isPositive();
-        assertThat(jdbc.queryForObject("select count(*) from evenement where run_id = ?", Long.class, sans))
+        assertThat(jdbc.queryForObject("select count(*) from \"TB_ECHO_EVENEMENT\" where run_id = ?", Long.class, sans))
                 .isPositive();
         assertThat(compter(sans)).isZero();
     }
@@ -204,6 +232,6 @@ class AnomaliesIntegrationTest {
     }
 
     private long compter(UUID run) {
-        return jdbc.queryForObject("select count(*) from anomaly_injected where run_id = ?", Long.class, run);
+        return jdbc.queryForObject("select count(*) from \"TB_ECHO_ANOMALY_INJECTED\" where run_id = ?", Long.class, run);
     }
 }

@@ -39,13 +39,18 @@ class AnomalyProfileTest {
     }
 
     @Test
-    void globalSeRepartitEgalementEntreLesOnzeTypes() {
-        AnomalyProfile p = AnomalyProfile.depuis(Map.of("global", 11.0));
+    void globalSeRepartitEgalementEntreTousLesTypes() {
+        // On demande autant de pour cent qu'il y a de types : chacun doit en recevoir exactement un.
+        // Ecrit ainsi, le test suit le catalogue sans qu'on ait a le reprendre a chaque nouveau type.
+        int nombreDeTypes = AnomalyType.values().length;
+        AnomalyProfile p = AnomalyProfile.depuis(Map.of("global", (double) nombreDeTypes));
 
         for (AnomalyType type : AnomalyType.values()) {
-            assertThat(p.taux(type)).isEqualTo(0.01);
+            assertThat(p.taux(type)).as(type.name())
+                    .isCloseTo(0.01, org.assertj.core.data.Offset.offset(1e-12));
         }
-        assertThat(p.tauxGlobal()).isCloseTo(0.11, org.assertj.core.data.Offset.offset(1e-12));
+        assertThat(p.tauxGlobal())
+                .isCloseTo(nombreDeTypes / 100.0, org.assertj.core.data.Offset.offset(1e-12));
     }
 
     @Test
