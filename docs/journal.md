@@ -68,3 +68,6 @@ recherche n'a retrouvé aucune nomenclature publique de motifs de rejet de la CN
 vert : 533 tests, 0 échec. Flyway à V20, /health UP.
 Reste à faire : le pg_dump de la base Alembic pour les 27 tables cibles de structure inconnue, que
 je ne peux pas obtenir moi-même.
+
+2026-11-12 | Etat des lieux et fusion dans main (hors brique) | docs/08-etat-des-lieux.md : constat de `main` a la v1.1.0 contre le cahier des charges, base comprise (auditee sur une base jetable montee avec V1 a V12). Puis les branches 13 a 17 fusionnees dans `main` en avance rapide (module Qualite Q1 a Q5, TB_ECHO_*, tables de valeurs, V13 a V20) ; `clean verify` vert sur le resultat : 533 tests, 0 echec, 2 ignores.
+Reste a faire : script d'index (aucun index hors cles et unicites), reprise du run par le moteur, parcours dentaire et sortie ABANDONNEE, feuille de soins complete, ecran des cles d'API, chaos du YAML, /api/stream/metrics, tableau de bord Grafana ; V16 et V17 jamais jouees sur une base non vide, a repeter sur une copie avant le serveur ; certificat *.ipscnam.ci a renouveler avant le 20/11/2026.
