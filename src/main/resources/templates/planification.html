@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title>Analyses programmées — Echo</title>
+</head>
+<body>
+<main id="contenu" class="page">
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-clock"/></svg>Analyses programmées</h1>
+        <div class="actions">
+            <a class="bouton secondaire" th:href="@{/qualite}">
+                <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Lire les résultats</a>
+        </div>
+    </div>
+    <p class="sous-titre">Echo tient le calendrier, il ne déclenche rien : à l'heure dite, il ouvre une échéance.
+        Le script extérieur vient la lire, retire le jeu et pousse son rapport.</p>
+
+    <!--/* Les écritures htmx (créer, activer, supprimer) renvoient ce seul morceau. */-->
+    <div id="calendrier" th:fragment="calendrier" class="grille">
+        <p class="alerte large" th:if="${erreur}" role="alert">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg><span th:text="${erreur}"></span></p>
+        <p class="info large" th:if="${message}" role="status">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-check"/></svg><span th:text="${message}"></span></p>
+
+        <section class="carte large">
+            <header>
+                <h2><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>Planification</h2>
+                <span class="legende">Heures du serveur, fuseau <b th:text="${fuseau}">Africa/Abidjan</b></span>
+            </header>
+
+            <div class="vide" th:if="${#lists.isEmpty(planifications)}">
+                <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
+                <b>Aucune analyse programmée</b>
+                <p>Tant qu'aucune règle n'existe, aucune échéance ne s'ouvre et le script n'a rien à venir
+                    chercher.</p>
+            </div>
+
+            <div class="defilement" th:unless="${#lists.isEmpty(planifications)}">
+                <table>
+                    <thead>
+                    <tr>
+                        <th scope="col">Libellé</th>
+                        <th scope="col">Calendrier</th>
+                        <th scope="col">Cible</th>
+                        <th scope="col">État</th>
+                        <th scope="col" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="p : ${planifications}">
+                        <td th:text="${p.libelle}">Analyse de nuit</td>
+                        <td class="chiffre" th:text="${p.libelleCalendrier()}">03:00, tous les jours</td>
+                        <td class="discret" th:text="${p.cible().libelle()}">La dernière simulation terminée</td>
+                        <td><span class="badge" th:classappend="${p.actif()} ? 'actif' : 'echec'"
+                                  th:text="${p.actif()} ? 'Active' : 'Désactivée'">Active</span></td>
+                        <td class="actions" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
+                            <button type="button" class="secondaire"
+                                    th:hx-post="@{/qualite/planifications/{id}/activer(id=${p.id()},actif=${!p.actif()})}"
+                                    hx-target="#calendrier" hx-swap="outerHTML"
+                                    th:text="${p.actif()} ? 'Désactiver' : 'Activer'">Désactiver</button>
+                            <button type="button" class="danger"
+                                    th:hx-post="@{/qualite/planifications/{id}/supprimer(id=${p.id()})}"
+                                    hx-target="#calendrier" hx-swap="outerHTML"
+                                    hx-confirm="Supprimer cette analyse programmée ? Les échéances déjà ouvertes restent dans l'historique.">
+                                <svg class="ico" aria-hidden="true"><use href="#i-croix"/></svg>Supprimer</button>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">Programmer une analyse</h3>
+            <form class="filtres" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')"
+                  th:hx-post="@{/qualite/planifications}" hx-target="#calendrier" hx-swap="outerHTML">
+                <label>Libellé
+                    <input type="text" name="libelle" required maxlength="120" placeholder="Analyse de nuit">
+                </label>
+                <label>Heure
+                    <input type="time" name="heure" required value="03:00">
+                    <span class="aide-champ">Heure du serveur, fuseau <span th:text="${fuseau}">Africa/Abidjan</span>.
+                        La minute est la granularité : les secondes ne sont pas honorées.</span>
+                </label>
+                <label>Jours
+                    <input type="text" name="jours" value="TOUS" maxlength="80" placeholder="TOUS">
+                    <span class="aide-champ"><code>TOUS</code>, ou une liste comme <code>LUNDI,MARDI</code>.</span>
+                </label>
+                <label>Cible
+                    <select name="cible">
+                        <option th:each="c : ${cibles}" th:value="${c}" th:text="${c.libelle()}">cible</option>
+                    </select>
+                </label>
+                <div class="actions">
+                    <button type="submit"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Programmer</button>
+                </div>
+            </form>
+            <p class="avert" sec:authorize="!hasAnyRole('ADMIN','OPERATEUR')">
+                <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+                Lecture seule : votre rôle ne permet pas de modifier le calendrier.
+            </p>
+        </section>
+
+        <section class="carte large">
+            <header>
+                <h2><svg class="ico" aria-hidden="true"><use href="#i-activity"/></svg>Analyses</h2>
+            </header>
+            <!--/* Exigence 4.5 : un échange qui n'aboutit pas est un échec d'échange, JAMAIS un taux de 0 %. */-->
+            <p class="sous-titre">L'historique des échéances. Un échange qui n'aboutit pas est dit comme tel —
+                <b>jamais</b> comme un taux de 0 %. Au-delà de
+                <b th:text="${delaiRapportMinutes}">120</b> minutes sans rapport, l'échéance passe en silence.</p>
+
+            <div class="vide" th:if="${#lists.isEmpty(echeances)}">
+                <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
+                <b>Aucune échéance ouverte</b>
+                <p>La première s'ouvrira à l'heure de la prochaine règle active.</p>
+            </div>
+
+            <div class="defilement" th:unless="${#lists.isEmpty(echeances)}">
+                <table data-triable>
+                    <thead>
+                    <tr>
+                        <th scope="col">Heure dite</th>
+                        <th scope="col">Simulation</th>
+                        <th scope="col">Jeu retiré le</th>
+                        <th scope="col">Rapport reçu le</th>
+                        <th scope="col">Statut</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="v : ${echeances}">
+                        <td class="chiffre"
+                            th:text="${#temporals.format(v.echeance().dateEcheance(), 'dd/MM/yyyy à HH:mm')}">date</td>
+                        <td>
+                            <a th:if="${v.echeance().runId() != null}"
+                               th:href="@{/qualite(run=${v.echeance().runId()})}"
+                               th:title="'Ouvrir l\'analyse de ' + ${v.echeance().runId()}"><code
+                                    th:text="${#strings.substring(v.echeance().runId().toString(), 0, 8)}">abcd1234</code></a>
+                            <span class="discret" th:if="${v.echeance().runId() == null}">aucune</span>
+                        </td>
+                        <td class="chiffre" th:text="${v.echeance().dateRetrait() != null}
+                                ? ${#temporals.format(v.echeance().dateRetrait(), 'dd/MM/yyyy à HH:mm:ss')} : '—'">—</td>
+                        <td class="chiffre" th:text="${v.echeance().dateRapport() != null}
+                                ? ${#temporals.format(v.echeance().dateRapport(), 'dd/MM/yyyy à HH:mm:ss')} : '—'">—</td>
+                        <td>
+                            <span class="badge" th:classappend="${v.echecEchange()} ? 'echec' : 'actif'"
+                                  th:text="${v.echeance().statut().libelle()}">Rapport reçu</span>
+                            <span class="discret" th:if="${v.echecEchange()}">
+                                échec d'échange : <span th:text="${v.etatEnClair()}">en attente du script</span></span>
+                            <span class="discret" th:unless="${v.echecEchange()}"
+                                  th:text="${v.etatEnClair()}">rapport reçu, mesure possible</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <script th:src="@{/js/tri.js}" defer></script>
+</main>
+</body>
+</html>

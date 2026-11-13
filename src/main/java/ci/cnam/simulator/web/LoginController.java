@@ -35,27 +35,38 @@ public class LoginController {
 
     @GetMapping("/mot-de-passe")
     public String formulaireMotDePasse(Authentication auth, Model modele) {
-        modele.addAttribute("obligatoire", auth.getPrincipal() instanceof AppUserPrincipal p
-                && p.motDePasseAChanger());
-        return "mot-de-passe";
+        return ecranMotDePasse(obligatoire(auth), modele);
+    }
+
+    private static boolean obligatoire(Authentication auth) {
+        return auth.getPrincipal() instanceof AppUserPrincipal p && p.motDePasseAChanger();
+    }
+
+    /**
+     * Mot de passe temporaire : ecran isole, rien d'autre n'est accessible tant qu'il n'est pas change.
+     * Sinon : la page « Mon compte », dans l'application, d'ou l'on revient librement.
+     */
+    private static String ecranMotDePasse(boolean obligatoire, Model modele) {
+        modele.addAttribute("obligatoire", obligatoire);
+        return obligatoire ? "mot-de-passe" : "compte";
     }
 
     @PostMapping("/mot-de-passe")
     public String changerMotDePasse(@RequestParam String ancien, @RequestParam String nouveau,
                                     @RequestParam String confirmation, Authentication auth,
                                     HttpServletRequest requete, HttpServletResponse reponse, Model modele) {
+        boolean obligatoire = obligatoire(auth);
         try {
             if (!nouveau.equals(confirmation)) {
                 throw new ComptesException("La confirmation ne correspond pas au nouveau mot de passe");
             }
             String nouveauHash = comptes.changerMotDePasse(auth.getName(), ancien, nouveau);
             rafraichirSession(auth, nouveauHash, requete, reponse);
-            return "redirect:/";
+            // Premiere connexion : on entre dans l'application. Changement volontaire : on le confirme.
+            return obligatoire ? "redirect:/" : "redirect:/mot-de-passe?modifie";
         } catch (ComptesException e) {
             modele.addAttribute("erreur", e.getMessage());
-            modele.addAttribute("obligatoire", auth.getPrincipal() instanceof AppUserPrincipal p
-                    && p.motDePasseAChanger());
-            return "mot-de-passe";
+            return ecranMotDePasse(obligatoire, modele);
         }
     }
 

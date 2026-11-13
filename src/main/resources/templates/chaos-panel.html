@@ -9,7 +9,7 @@
     <div class="titre-ecran">
         <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-zap"/></svg>Crash tests</h1>
     </div>
-    <p class="sous-titre">Provoquer volontairement une panne pendant qu'une simulation tourne, pour vérifier qu'aucune
+    <p class="sous-titre">Provoquer volontairement une panne pendant qu'une simulation tourne, pour vérifier qu'aucun
         événement n'est perdu ni écrit deux fois. Chaque action s'arrête d'elle-même au bout de la durée choisie.</p>
 
     <section id="zone" th:fragment="zone" aria-live="polite">
@@ -47,7 +47,7 @@
                     <dt>Événements produits</dt>
                     <dd class="chiffre" th:text="${#numbers.formatInteger(actif.evenementsEmis, 1, 'WHITESPACE')}">0</dd>
                     <dt>Référence</dt>
-                    <dd><a th:href="@{/evenements(run=${actif.id})}"><code th:text="${actif.id}">id</code></a></dd>
+                    <dd><a th:href="@{/simulations/{id}(id=${actif.id})}" title="Ouvrir la fiche"><code th:text="${actif.id}">id</code></a></dd>
                 </dl>
                 <div class="actions" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
                     <button type="button" th:if="${actif.etat.name() == 'EN_COURS'}"
@@ -172,14 +172,15 @@
 
         <p class="avert" sec:authorize="!hasAnyRole('ADMIN','OPERATEUR')">
             <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
-            Lecture seule : votre rôle ne permet pas de déclencher du chaos.
+            Lecture seule : votre rôle ne permet pas de provoquer une panne.
         </p>
 
         <div id="actions" class="carte" th:fragment="actions"
              th:hx-get="@{/chaos/actions}" hx-trigger="every 3s" hx-swap="outerHTML">
             <header>
                 <h2>Pannes provoquées
-                    <code th:if="${cible}" th:text="${#strings.substring(cible.id.toString(), 0, 8)}">abcd1234</code>
+                    <a th:if="${cible}" th:href="@{/simulations/{id}(id=${cible.id})}" title="Ouvrir la fiche"><code
+                            th:text="${#strings.substring(cible.id.toString(), 0, 8)}">abcd1234</code></a>
                 </h2>
                 <span class="legende">Rafraîchi toutes les trois secondes</span>
             </header>
@@ -201,12 +202,12 @@
                     </thead>
                     <tbody>
                     <tr th:each="a : ${actions}">
-                        <td><span class="badge" th:classappend="${a.fin == null} ? 'charge'" th:text="${a.type}">LATENCE</span></td>
+                        <td><span class="badge" th:classappend="${a.fin == null} ? 'charge'" th:text="${libelles.panne(a.type)}">Liaison ralentie</span></td>
                         <td class="payload" th:text="${a.parametres}">{}</td>
                         <td class="chiffre" th:text="${#temporals.format(a.debut, 'HH:mm:ss')}">12:00:00</td>
                         <td class="chiffre" th:text="${#temporals.format(a.finPrevue, 'HH:mm:ss')}">12:00:30</td>
                         <td class="chiffre" th:text="${a.fin == null} ? 'en cours' : ${#temporals.format(a.fin, 'HH:mm:ss')}">en cours</td>
-                        <td th:text="${a.motifFin} ?: '—'">EXPIREE</td>
+                        <td th:text="${libelles.finDePanne(a.motifFin)}">Durée écoulée</td>
                         <td th:text="${a.auteur}">admin</td>
                         <td class="chiffre" th:text="${#numbers.formatInteger(a.evenementsTouches, 1, 'WHITESPACE')}">0</td>
                     </tr>

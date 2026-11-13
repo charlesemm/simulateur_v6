@@ -2,7 +2,6 @@ package ci.cnam.simulator.web;
 
 import ci.cnam.simulator.core.engine.RunInfo;
 import ci.cnam.simulator.core.engine.RunManager;
-import ci.cnam.simulator.export.ExportService;
 import ci.cnam.simulator.quality.ComparaisonQualite;
 import ci.cnam.simulator.quality.EtatEchange;
 import ci.cnam.simulator.quality.QualityReportService;
@@ -27,18 +26,15 @@ import org.springframework.ui.Model;
 public class AnalyseWebService {
 
     /** Fragment de l'ecran que les actions d'ecriture du calendrier renvoient. */
-    public static final String ZONE_PLANIFICATION = "quality-report :: calendrier";
+    public static final String ZONE_PLANIFICATION = "planification :: calendrier";
 
     private final QualityReportService qualite;
     private final PlanificationService planification;
-    private final ExportService export;
     private final RunManager runs;
 
-    public AnalyseWebService(QualityReportService qualite, PlanificationService planification,
-                             ExportService export, RunManager runs) {
+    public AnalyseWebService(QualityReportService qualite, PlanificationService planification, RunManager runs) {
         this.qualite = qualite;
         this.planification = planification;
-        this.export = export;
         this.runs = runs;
     }
 
@@ -76,7 +72,6 @@ public class AnalyseWebService {
         modele.addAttribute("run", choisi);
         modele.addAttribute("comparer", comparer);
         modele.addAttribute("version", version);
-        preparerPlanification(modele);
         if (choisi == null) {
             return;
         }
@@ -90,7 +85,6 @@ public class AnalyseWebService {
             modele.addAttribute(autre.mesure() ? "rapportB" : "comparerSansMesure", autre);
         }
         modele.addAttribute("perimetre", perimetre(tous, choisi, comparer));
-        modele.addAttribute("telechargements", export.telechargements(choisi));
         modele.addAttribute("ratees", qualite.ratees(rapport, pageRatees, QualityReportService.LIGNES_PAR_PAGE));
         modele.addAttribute("fauxPositifs",
                 qualite.fauxPositifs(rapport, pageFauxPositifs, QualityReportService.LIGNES_PAR_PAGE));

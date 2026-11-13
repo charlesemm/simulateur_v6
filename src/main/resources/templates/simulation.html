@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title th:text="'Simulation ' + ${#strings.substring(courant.id.toString(), 0, 8)} + ' — Echo'">Simulation — Echo</title>
+</head>
+<body>
+<main id="contenu" class="page" data-parent="simulations">
+    <a class="retour" th:href="@{/simulations}">
+        <svg class="ico" aria-hidden="true"><use href="#i-chevron-gauche"/></svg>Toutes les simulations</a>
+
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-dossier"/></svg>Simulation&nbsp;<code
+                th:text="${#strings.substring(courant.id.toString(), 0, 8)}" th:title="${courant.id}">abcd1234</code></h1>
+        <span th:replace="~{fragments/etat :: badge(${courant.etat})}"></span>
+        <div class="actions">
+            <a class="bouton secondaire" th:if="${courant.etat.actif()}" th:href="@{/dashboard}">
+                <svg class="ico" aria-hidden="true"><use href="#i-dashboard"/></svg>Suivre en direct</a>
+            <!--/* Les boutons sont masques a l'observateur ; c'est @PreAuthorize sur LancementController qui refuse. */-->
+            <th:block sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
+                <button type="button" class="danger" th:if="${courant.etat.actif()}"
+                        th:hx-post="@{/lancement/{id}/arreter(id=${courant.id})}" hx-target="#retour" hx-swap="innerHTML"
+                        hx-confirm="Arrêter cette simulation ? Les événements en attente seront enregistrés avant l'arrêt.">
+                    <svg class="ico" aria-hidden="true"><use href="#i-stop"/></svg>Arrêter</button>
+                <button type="button" class="secondaire" th:if="${courant.etat.terminal()}"
+                        th:hx-post="@{/lancement/{id}/rejouer(id=${courant.id})}" hx-target="#retour" hx-swap="innerHTML"
+                        hx-confirm="Relancer ce scénario avec la même graine ?">
+                    <svg class="ico" aria-hidden="true"><use href="#i-undo"/></svg>Rejouer</button>
+            </th:block>
+        </div>
+    </div>
+    <p class="sous-titre">Scénario « <span th:text="${courant.scenario}">parcours-normal</span> », graine
+        <span class="chiffre" th:text="${courant.seed}">42</span>. La même graine rejoue exactement les mêmes
+        données et les mêmes anomalies.</p>
+
+    <nav th:replace="~{fragments/onglets :: onglets(${courant.id}, 'synthese')}"></nav>
+
+    <div id="retour" aria-live="polite"></div>
+
+    <p class="alerte" th:if="${courant.erreur}" role="alert">
+        <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+        <span>Simulation interrompue : <span th:text="${courant.erreur}">erreur</span></span>
+    </p>
+
+    <div class="kpis" aria-label="Chiffres de la simulation">
+        <div class="kpi">
+            <span class="kpi-titre">Durée</span>
+            <span><span class="kpi-valeur" th:text="${libelles.duree(fiche.duree)}">12 min 05 s</span></span>
+            <span class="kpi-detail" th:text="${courant.fin != null} ? 'temps réel, du début à la fin' : 'temps réel, jusqu\'à maintenant'">temps réel</span>
+        </div>
+        <div class="kpi">
+            <span class="kpi-titre">Parcours créés</span>
+            <span><span class="kpi-valeur" th:text="${#numbers.formatInteger(courant.parcoursGeneres, 1, 'WHITESPACE')}">0</span></span>
+            <span class="kpi-detail"><span th:text="${#numbers.formatInteger(courant.evenementsEmis, 1, 'WHITESPACE')}">0</span> événements produits</span>
+        </div>
+        <div class="kpi">
+            <span class="kpi-titre">Pannes provoquées</span>
+            <span><span class="kpi-valeur" th:text="${#lists.size(fiche.pannes)}">0</span></span>
+            <span class="kpi-detail" th:classappend="${!#lists.isEmpty(fiche.pannes)} ? 'charge'">crash tests pendant cette simulation</span>
+        </div>
+        <div class="kpi">
+            <span class="kpi-titre">Téléchargements</span>
+            <span><span class="kpi-valeur" th:text="${fiche.telechargements}">0</span></span>
+            <span class="kpi-detail">fichiers déjà servis</span>
+        </div>
+    </div>
+
+    <div class="grille">
+        <section class="carte" aria-labelledby="t-identite">
+            <header><h2 id="t-identite">Déroulement</h2></header>
+            <dl>
+                <dt>Scénario</dt><dd th:text="${courant.scenario}">scénario</dd>
+                <dt>Graine</dt><dd class="chiffre" th:text="${courant.seed}">42</dd>
+                <dt>Démarrée le</dt>
+                <dd class="chiffre" th:text="${courant.debut != null} ? ${#temporals.format(courant.debut, 'dd/MM/yyyy à HH:mm:ss')} : '—'">date</dd>
+                <dt>Terminée le</dt>
+                <dd class="chiffre" th:text="${courant.fin != null} ? ${#temporals.format(courant.fin, 'dd/MM/yyyy à HH:mm:ss')} : '—'">date</dd>
+                <dt>Durée</dt><dd class="chiffre" th:text="${libelles.duree(fiche.duree)}">12 min 05 s</dd>
+                <dt>Référence</dt><dd><code th:text="${courant.id}">id</code></dd>
+            </dl>
+        </section>
+
+        <section class="carte" aria-labelledby="t-qualite" th:with="rapport=${fiche.rapport}">
+            <header>
+                <h2 id="t-qualite">Comparaison avec l'outil de qualité</h2>
+                <span class="badge charge" th:if="${rapport.reference}">Simulation de référence</span>
+            </header>
+
+            <!--/* Echange non abouti : ni chiffre, ni 0 %. Les mots viennent du service. */-->
+            <th:block th:unless="${rapport.mesure()}">
+                <p class="avert">
+                    <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+                    <span><b th:text="${rapport.echange.libelle()}">Échec d'échange</b> —
+                        <span th:text="${rapport.echange.detail()}">détail</span></span>
+                </p>
+                <p class="aide-champ">Ce n'est pas un taux de rappel de 0 % : aucune mesure n'est possible tant
+                    qu'un rapport exploitable n'est pas arrivé.</p>
+            </th:block>
+
+            <dl th:if="${rapport.mesure()}">
+                <dt>Anomalies semées</dt>
+                <dd class="chiffre" th:text="${#numbers.formatInteger(rapport.total.injectees, 1, 'WHITESPACE')}">0</dd>
+                <dt>Retrouvées par l'outil</dt>
+                <dd class="chiffre" th:text="${#numbers.formatInteger(rapport.total.detectees, 1, 'WHITESPACE')}">0</dd>
+                <dt>Taux de rappel</dt>
+                <dd class="chiffre" th:text="${rapport.total.tauxDetection != null}
+                        ? ${#numbers.formatDecimal(rapport.total.tauxDetection * 100, 1, 1)} + ' %' : '—'">—</dd>
+                <dt>Précision</dt>
+                <dd class="chiffre" th:text="${rapport.total.precision != null}
+                        ? ${#numbers.formatDecimal(rapport.total.precision * 100, 1, 1)} + ' %' : '—'">—</dd>
+            </dl>
+            <p class="aide-champ" th:if="${rapport.mesure() and rapport.echange == null}">Aucun échange avec
+                l'outil pour l'instant : les taux se rempliront à la réception de son rapport.</p>
+            <div class="actions">
+                <a class="bouton secondaire" th:href="@{/qualite(run=${courant.id})}">
+                    <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Ouvrir l'analyse</a>
+            </div>
+        </section>
+
+        <section class="carte large" aria-labelledby="t-pannes">
+            <header>
+                <h2 id="t-pannes">Pannes provoquées</h2>
+                <span class="legende">De la plus récente à la plus ancienne</span>
+            </header>
+
+            <div class="vide" th:if="${#lists.isEmpty(fiche.pannes)}">
+                <svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>
+                <b>Aucune panne provoquée</b>
+                <p>Cette simulation s'est déroulée sans crash test.</p>
+            </div>
+
+            <div class="defilement" th:unless="${#lists.isEmpty(fiche.pannes)}">
+                <table>
+                    <thead>
+                    <tr>
+                        <th scope="col">Panne</th><th scope="col">Réglages</th><th scope="col">Déclenchée à</th>
+                        <th scope="col">Terminée à</th><th scope="col">Raison de la fin</th>
+                        <th scope="col">Déclenchée par</th><th scope="col">Événements touchés</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="a : ${fiche.pannes}">
+                        <td><span class="badge" th:classappend="${a.fin == null} ? 'charge'"
+                                  th:text="${libelles.panne(a.type)}">Liaison ralentie</span></td>
+                        <td class="payload" th:text="${a.parametres}">{}</td>
+                        <td class="chiffre" th:text="${#temporals.format(a.debut, 'dd/MM/yyyy à HH:mm:ss')}">date</td>
+                        <td class="chiffre" th:text="${a.fin == null} ? 'en cours' : ${#temporals.format(a.fin, 'HH:mm:ss')}">en cours</td>
+                        <td th:text="${libelles.finDePanne(a.motifFin)}">Durée écoulée</td>
+                        <td th:text="${a.auteur}">admin</td>
+                        <td class="chiffre" th:text="${#numbers.formatInteger(a.evenementsTouches, 1, 'WHITESPACE')}">0</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="carte large" aria-labelledby="t-export">
+            <header><h2 id="t-export">Export</h2></header>
+            <p class="sous-titre" th:if="${fiche.telechargements == 0}">Rien n'a encore été téléchargé pour cette
+                simulation.</p>
+            <p class="sous-titre" th:unless="${fiche.telechargements == 0}">
+                <b class="chiffre" th:text="${fiche.telechargements}">3</b>
+                <span th:text="${fiche.telechargements > 1} ? 'fichiers déjà servis' : 'fichier déjà servi'">fichiers déjà servis</span> :
+                leurs empreintes sont sur l'écran d'export.</p>
+            <p class="avert" th:unless="${courant.etat.terminal()}">
+                <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
+                Le téléchargement s'ouvre quand la simulation est terminée : tant qu'elle écrit, le fichier
+                changerait à chaque appel.</p>
+            <div class="actions">
+                <a class="bouton secondaire" th:href="@{/export(run=${courant.id})}">
+                    <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Ouvrir l'export</a>
+                <a class="bouton secondaire" th:href="@{/evenements(run=${courant.id})}">
+                    <svg class="ico" aria-hidden="true"><use href="#i-activity"/></svg>Voir le flux de données</a>
+            </div>
+        </section>
+    </div>
+</main>
+</body>
+</html>

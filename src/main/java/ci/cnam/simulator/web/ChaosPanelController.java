@@ -61,7 +61,7 @@ public class ChaosPanelController {
     public String pause(@PathVariable UUID id, Authentication auth, Model modele, HttpServletResponse reponse) {
         ActionWeb.executer(modele, reponse, () -> {
             pilotage.pause(id, auth.getName());
-            return "Simulation mise en pause";
+            return "Simulation mise en pause.";
         });
         preparer(modele);
         return ZONE;
@@ -72,7 +72,7 @@ public class ChaosPanelController {
     public String reprendre(@PathVariable UUID id, Authentication auth, Model modele, HttpServletResponse reponse) {
         ActionWeb.executer(modele, reponse, () -> {
             pilotage.reprendre(id, auth.getName());
-            return "Simulation reprise";
+            return "Simulation reprise.";
         });
         preparer(modele);
         return ZONE;
@@ -83,7 +83,7 @@ public class ChaosPanelController {
     public String arreter(@PathVariable UUID id, Authentication auth, Model modele, HttpServletResponse reponse) {
         ActionWeb.executer(modele, reponse, () -> {
             pilotage.arreter(id, auth.getName());
-            return "Simulation arretee : les evenements en attente ont ete enregistres";
+            return "Simulation arrêtée : les événements en attente ont été enregistrés.";
         });
         preparer(modele);
         return ZONE;
@@ -103,7 +103,7 @@ public class ChaosPanelController {
             RunInfo run = runs.actif().orElseThrow(() ->
                     new IllegalStateException("Aucun run actif : lancer une simulation avant de casser quoi que ce soit"));
             ChaosAction action = pilotage.declencher(run.id(), demande, auth.getName());
-            return "Action " + action.type() + " démarrée pour " + demande.dureeSecondes() + " s";
+            return Libelles.INSTANCE.panne(action.type()) + " (" + action.type() + ") : panne démarrée pour " + demande.dureeSecondes() + " s, elle prendra fin seule.";
         });
         preparer(modele);
         return ZONE;
@@ -115,7 +115,7 @@ public class ChaosPanelController {
         ActionWeb.executer(modele, reponse, () -> {
             RunInfo run = derniereCible().orElseThrow(() -> new IllegalStateException("Aucun run connu"));
             int n = pilotage.retablir(run.id(), auth.getName()).size();
-            return n + " action(s) annulée(s) : tout est rétabli";
+            return n + " panne(s) annulée(s) : tout est rétabli.";
         });
         preparer(modele);
         return ZONE;

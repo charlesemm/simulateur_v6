@@ -94,8 +94,8 @@ class QualiteWebTest {
         /** Le vrai assembleur de modele : c'est lui qu'on veut voir a l'oeuvre. */
         @Bean
         AnalyseWebService analyseWebService(QualityReportService qualite, PlanificationService planification,
-                                            ExportService export, RunManager runs) {
-            return new AnalyseWebService(qualite, planification, export, runs);
+                                            RunManager runs) {
+            return new AnalyseWebService(qualite, planification, runs);
         }
     }
 
@@ -145,12 +145,16 @@ class QualiteWebTest {
     // ---- Les trois blocs -------------------------------------------------------------------------------
 
     @Test
-    @DisplayName("L'ecran repond 200 et porte ses trois blocs : Planification, Analyses, Resultat")
+    @DisplayName("Trois blocs sur deux ecrans : Planification et Analyses d'un cote, le Resultat de l'autre")
     void troisBlocs() throws Exception {
-        mvc.perform(get("/qualite").with(user("op").roles("OPERATEUR")))
+        mvc.perform(get("/qualite/planifications").with(user("op").roles("OPERATEUR")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Planification")))
                 .andExpect(content().string(containsString("Analyses")))
+                .andExpect(content().string(containsString("Analyse de nuit")));
+        mvc.perform(get("/qualite").with(user("op").roles("OPERATEUR")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("/qualite/planifications")))
                 .andExpect(content().string(containsString("Détail par type")))
                 .andExpect(content().string(containsString("Périmètre comparé")))
                 .andExpect(content().string(containsString("parcours-normal")))
@@ -170,14 +174,15 @@ class QualiteWebTest {
     }
 
     @Test
-    @DisplayName("Empreinte du format deja telecharge, et liens vers les trois formats et le corrige")
+    @DisplayName("Liens vers les trois formats et le corrige ; les empreintes sont sur l'ecran d'export")
     void telechargements() throws Exception {
         mvc.perform(get("/qualite").with(user("op").roles("OPERATEUR")))
                 .andExpect(content().string(containsString("jeu.xlsx")))
                 .andExpect(content().string(containsString("jeu.csv")))
                 .andExpect(content().string(containsString("jeu.json")))
                 .andExpect(content().string(containsString("corrige.csv")))
-                .andExpect(content().string(containsString("abc123")));
+                .andExpect(content().string(containsString("/export?run=" + RUN)))
+                .andExpect(content().string(not(containsString("abc123"))));
     }
 
     // ---- Exigence 4.5 : un echec d'echange n'est jamais un taux ----------------------------------------
@@ -207,8 +212,11 @@ class QualiteWebTest {
         when(qualite.comparer(eq(RUN), any())).thenReturn(ComparaisonQualite.sansMesure(RUN, null,
                 new EtatEchange(StatutEchange.SILENCE, Instant.parse("2026-11-08T05:00:00Z"), "silence")));
 
-        mvc.perform(get("/qualite").with(user("op").roles("OPERATEUR")))
+        mvc.perform(get("/qualite/planifications").with(user("op").roles("OPERATEUR")))
                 .andExpect(content().string(containsString("échec d'échange")))
+                .andExpect(content().string(containsString("en attente du script")))
+                .andExpect(content().string(not(containsString("kpi-valeur"))));
+        mvc.perform(get("/qualite").with(user("op").roles("OPERATEUR")))
                 .andExpect(content().string(containsString("en attente du script")))
                 .andExpect(content().string(not(containsString("kpi-valeur"))));
     }
@@ -249,7 +257,8 @@ class QualiteWebTest {
     @Test
     @DisplayName("Un OBSERVATEUR voit l'ecran mais aucun bouton d'ecriture")
     void observateurSansBouton() throws Exception {
-        mvc.perform(get("/qualite").with(user("obs").roles("OBSERVATEUR")))
+        mvc.perform(get("/qualite").with(user("obs").roles("OBSERVATEUR"))).andExpect(status().isOk());
+        mvc.perform(get("/qualite/planifications").with(user("obs").roles("OBSERVATEUR")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Analyse de nuit")))
                 .andExpect(content().string(not(containsString("Programmer une analyse"))))

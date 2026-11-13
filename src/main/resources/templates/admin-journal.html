@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title>Journal d'activité — Echo</title>
+</head>
+<body>
+<main id="contenu" class="page">
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-list"/></svg>Journal d'activité</h1>
+        <span class="badge" th:unless="${#lists.isEmpty(journal)}"
+              th:text="${#lists.size(journal)} + (${#lists.size(journal)} > 1 ? ' lignes' : ' ligne')">0 ligne</span>
+        <div class="actions">
+            <a class="bouton secondaire" th:href="@{/admin/utilisateurs}">
+                <svg class="ico" aria-hidden="true"><use href="#i-users"/></svg>Comptes</a>
+        </div>
+    </div>
+    <p class="sous-titre">Qui a fait quoi, et quand : tout ce qui est lancé, arrêté, cassé ou modifié laisse une
+        trace ici. Les lignes les plus récentes d'abord.</p>
+
+    <section class="carte">
+        <div class="vide" th:if="${#lists.isEmpty(journal)}">
+            <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
+            <b>Rien à signaler</b>
+            <p>Les lancements, arrêts, pannes provoquées et changements de compte s'inscrivent ici.</p>
+        </div>
+
+        <div class="defilement" th:unless="${#lists.isEmpty(journal)}">
+            <table data-triable>
+                <thead>
+                <tr><th scope="col">Quand</th><th scope="col">Qui</th><th scope="col">Quoi</th>
+                    <th scope="col">Sur quoi</th><th scope="col" data-tri="non">Détails</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="l : ${journal}">
+                    <td class="chiffre" th:text="${#temporals.format(l.date, 'dd/MM/yyyy à HH:mm:ss')}">date</td>
+                    <td th:text="${l.acteur}">admin</td>
+                    <td th:text="${libelles.action(l.action)}" th:title="${l.action}">Simulation lancée</td>
+                    <td><code th:text="${l.cible}">cible</code></td>
+                    <td class="payload" th:text="${l.details}">détails</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <script th:src="@{/js/tri.js}" defer></script>
+</main>
+</body>
+</html>

@@ -35,8 +35,10 @@ public class LancementController {
 
     @GetMapping("/lancement")
     @PreAuthorize("isAuthenticated()")
-    public String page(Model modele) {
+    public String page(@RequestParam(required = false) String scenario, Model modele) {
         preparer(modele);
+        // Arrivee depuis la liste des scenarios : celui qu'on vient de choisir est deja selectionne.
+        modele.addAttribute("choisi", scenario);
         return "lancement";
     }
 
@@ -53,7 +55,7 @@ public class LancementController {
                          HttpServletResponse reponse) {
         ActionWeb.executer(modele, reponse, () -> {
             var run = pilotage.lancer(scenario, graine, vitesse, auth.getName());
-            return "Run " + run.id() + " lancé (graine " + run.seed() + ")";
+            return "Simulation démarrée : scénario « " + run.scenario() + " » lancé (graine " + run.seed() + ").";
         });
         preparer(modele);
         return ZONE;
@@ -63,7 +65,7 @@ public class LancementController {
     public String pause(@PathVariable UUID id, Authentication auth, Model modele, HttpServletResponse reponse) {
         ActionWeb.executer(modele, reponse, () -> {
             pilotage.pause(id, auth.getName());
-            return "Run en pause";
+            return "Simulation mise en pause.";
         });
         preparer(modele);
         return ZONE;
@@ -73,7 +75,7 @@ public class LancementController {
     public String reprendre(@PathVariable UUID id, Authentication auth, Model modele, HttpServletResponse reponse) {
         ActionWeb.executer(modele, reponse, () -> {
             pilotage.reprendre(id, auth.getName());
-            return "Run repris";
+            return "Simulation reprise.";
         });
         preparer(modele);
         return ZONE;
@@ -83,7 +85,7 @@ public class LancementController {
     public String arreter(@PathVariable UUID id, Authentication auth, Model modele, HttpServletResponse reponse) {
         ActionWeb.executer(modele, reponse, () -> {
             pilotage.arreter(id, auth.getName());
-            return "Run arrêté";
+            return "Simulation arrêtée : les événements en attente ont été enregistrés.";
         });
         preparer(modele);
         return ZONE;
@@ -93,7 +95,7 @@ public class LancementController {
     public String rejouer(@PathVariable UUID id, Authentication auth, Model modele, HttpServletResponse reponse) {
         ActionWeb.executer(modele, reponse, () -> {
             var run = pilotage.rejouer(id, auth.getName());
-            return "Run " + run.id() + " lancé avec la graine " + run.seed() + " du run " + id;
+            return "Simulation rejouée : scénario « " + run.scenario() + " » lancé (graine " + run.seed() + "), comme la simulation " + id.toString().substring(0, 8) + ".";
         });
         preparer(modele);
         return ZONE;
@@ -102,6 +104,6 @@ public class LancementController {
     private void preparer(Model modele) {
         modele.addAttribute("scenarios", scenarios.lister());
         modele.addAttribute("actif", runs.actif().orElse(null));
-        modele.addAttribute("recents", runs.lister().stream().limit(5).toList());
+        modele.addAttribute("derniere", runs.lister().stream().findFirst().orElse(null));
     }
 }

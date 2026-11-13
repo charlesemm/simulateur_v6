@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<!--/* Page d'erreur (404 d'une simulation inconnue, 403, 500...). Ecran isole : il doit se rendre meme
+       sans session et sans le modele commun, donc sans layout.html. */-->
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Erreur — Echo</title>
+    <meta name="color-scheme" content="light dark">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script th:src="@{/js/theme.js}"></script>
+</head>
+<body class="centre">
+<th:block th:replace="~{icones :: sprite}"></th:block>
+<main>
+    <section class="carte">
+        <p class="code-erreur" th:text="${status}">404</p>
+        <h1 th:text="${status == 404} ? 'Cette page n\'existe pas'
+                   : (${status == 403} ? 'Accès refusé' : 'Une erreur est survenue')">Cette page n'existe pas</h1>
+        <p class="discret" th:if="${status == 404}">L'adresse est peut-être incomplète, ou la simulation demandée
+            n'existe plus.</p>
+        <p class="discret" th:if="${status == 403}">Votre rôle ne permet pas cette action.</p>
+        <p class="discret" th:unless="${status == 404 or status == 403}">L'action n'a pas abouti. Si le problème
+            persiste, relevez l'heure et prévenez un administrateur.</p>
+        <div class="actions">
+            <a class="bouton" th:href="@{/dashboard}">
+                <svg class="ico" aria-hidden="true"><use href="#i-dashboard"/></svg>Tableau de bord</a>
+            <a class="bouton secondaire" th:href="@{/simulations}">Simulations</a>
+        </div>
+    </section>
+</main>
+</body>
+</html>

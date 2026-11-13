@@ -145,7 +145,7 @@
                         </button>
                         <a class="bouton secondaire" th:href="@{/scenarios/export(nom=${s.nom})}">
                             <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Télécharger</a>
-                        <a class="bouton secondaire" th:href="@{/lancement}">
+                        <a class="bouton secondaire" th:href="@{/lancement(scenario=${s.nom})}">
                             <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Lancer</a>
                     </td>
                 </tr>
