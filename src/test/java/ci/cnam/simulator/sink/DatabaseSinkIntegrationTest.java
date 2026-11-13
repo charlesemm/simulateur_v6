@@ -65,7 +65,7 @@ class DatabaseSinkIntegrationTest {
     }
 
     private static SimEvent evenement(UUID runId, int i) {
-        return new SimEvent(UUID.nameUUIDFromBytes((runId + ":" + i).getBytes()), runId, "prestations", "TEST",
+        return new SimEvent(UUID.nameUUIDFromBytes((runId + ":" + i).getBytes()), runId, "prestations", "PATIENT_ARRIVE",
                 LocalDateTime.of(2026, 3, 10, 8, 0).plusSeconds(i), Map.of("n", i), null);
     }
 

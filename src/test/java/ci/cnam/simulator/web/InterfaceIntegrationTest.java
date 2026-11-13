@@ -57,7 +57,7 @@ class InterfaceIntegrationTest {
                 UUID.randomUUID(), run);
         jdbc.update("""
                 insert into "TB_ECHO_EVENEMENT" (event_id, run_id, domaine, type, timestamp_simule, timestamp_reel, payload, statut)
-                values (?, ?, 'prestations', '=FORMULE', now(), now(), '{"nom":"=1+1"}'::jsonb, 'ECHEC')""",
+                values (?, ?, 'prestations', 'FACTURE_FINALISEE', now(), now(), '{"nom":"=1+1"}'::jsonb, 'ECHOUE')""",
                 evenementEchoue, run);
         return run;
     }
@@ -73,7 +73,7 @@ class InterfaceIntegrationTest {
         UUID run = runAvecEvenements(echoue);
         var operateur = user("operateur").roles("OPERATEUR");
 
-        mvc.perform(get("/evenements").param("run", run.toString()).param("statut", "ECHEC").with(operateur))
+        mvc.perform(get("/evenements").param("run", run.toString()).param("statut", "ECHOUE").with(operateur))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("1</strong> événement")))
                 .andExpect(content().string(containsString("Rejouer")));
@@ -83,7 +83,7 @@ class InterfaceIntegrationTest {
         String csv = mvc.perform(asyncDispatch(debut)).andExpect(status().isOk()).andReturn().getResponse()
                 .getContentAsString(StandardCharsets.UTF_8);
         assertThat(csv.split("\r\n")).hasSize(3);
-        assertThat(csv).contains("FACTURE_OUVERTE").contains(",'=FORMULE,").contains("\"{\"\"nom\"\":\"\"Kone\"\"}\"");
+        assertThat(csv).contains("FACTURE_OUVERTE").contains(",FACTURE_FINALISEE,").contains("\"{\"\"nom\"\":\"\"Kone\"\"}\"");   // echappement des formules : EvenementsCsvTest (le type ne peut plus en porter, V22)
 
         mvc.perform(post("/evenements/{id}/rejouer", echoue).with(csrf()).with(operateur))
                 .andExpect(status().isOk());
@@ -109,7 +109,7 @@ class InterfaceIntegrationTest {
                 .andExpect(status().isForbidden());
 
         assertThat(jdbc.queryForObject("select statut from \"TB_ECHO_EVENEMENT\" where event_id = ?", String.class, echoue))
-                .isEqualTo("ECHEC");
+                .isEqualTo("ECHOUE");
     }
 
     @Test

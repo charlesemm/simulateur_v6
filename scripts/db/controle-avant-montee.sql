@@ -1,4 +1,4 @@
--- Controle AVANT la montee d'une base V12 vers V20. Lecture seule : ce script ne modifie rien.
+-- Controle AVANT la montee d'une base V12 vers V22. Lecture seule : ce script ne modifie rien.
 --
 -- V19 remplace la ville (centres, pharmacies) et la specialite (medecins) par une cle etrangere.
 -- Une valeur qu'elle ne reconnait pas n'est PAS refusee : elle est rattachee en silence a un
@@ -49,4 +49,24 @@ FROM pharmacie WHERE ville NOT IN (SELECT libelle FROM departements)
 UNION ALL
 SELECT 'medecin', code, specialite, 'MG (Medecine generale)'
 FROM medecin WHERE specialite NOT IN (SELECT libelle FROM specialites)
+-- V22 (contraintes sur les evenements) ne rattache rien : elle REFUSE de s'appliquer. Memes listes
+-- que V22 et que scripts/db/controle-avant-v22.sql, sur les noms de tables de V12.
+UNION ALL
+SELECT 'evenement', 'statut', statut, 'REFUS DE V22 (' || count(*) || ' ligne(s))'
+FROM evenement WHERE statut NOT IN ('ECRIT', 'ECHOUE') GROUP BY statut
+UNION ALL
+SELECT 'evenement', 'type', type, 'REFUS DE V22 (' || count(*) || ' ligne(s))'
+FROM evenement WHERE type NOT IN ('PATIENT_ARRIVE', 'DROITS_VERIFIES', 'ACCES_REFUSE', 'FACTURE_OUVERTE',
+                                  'CONSULTATION_REALISEE', 'EXAMEN_REALISE', 'HOSPITALISATION_REALISEE',
+                                  'PRESCRIPTION_EMISE', 'MEDICAMENTS_DELIVRES', 'FACTURE_FINALISEE')
+GROUP BY type
+UNION ALL
+SELECT 'evenement', 'domaine', domaine, 'REFUS DE V22 (' || count(*) || ' ligne(s))'
+FROM evenement WHERE domaine NOT IN ('prestations') GROUP BY domaine
+UNION ALL
+SELECT 'facture_ligne', 'run_id', run_id::text, 'REFUS DE V22 (' || count(*) || ' ligne(s))'
+FROM facture_ligne l WHERE NOT EXISTS (SELECT 1 FROM simulation_run r WHERE r.id = l.run_id) GROUP BY run_id
+UNION ALL
+SELECT 'facture_historique', 'run_id', run_id::text, 'REFUS DE V22 (' || count(*) || ' ligne(s))'
+FROM facture_historique h WHERE NOT EXISTS (SELECT 1 FROM simulation_run r WHERE r.id = h.run_id) GROUP BY run_id
 ORDER BY table_source, code;

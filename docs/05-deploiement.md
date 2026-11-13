@@ -430,7 +430,7 @@ Depuis la version qu'on va déployer (`git switch --detach vX.Y.Z`) :
 ```powershell
 # poste de developpement, PowerShell, a la racine du depot
 ssh adm-mnguessan@10.10.4.165 "mkdir -p /tmp/echo6-montee"
-scp scripts/db/controle-avant-montee.sql scripts/db/comptes-par-table.sql adm-mnguessan@10.10.4.165:/tmp/echo6-montee/
+scp scripts/db/controle-avant-montee.sql scripts/db/comptes-par-table.sql scripts/db/cles-sans-index.sql adm-mnguessan@10.10.4.165:/tmp/echo6-montee/
 scp -r src/main/resources/db/migration adm-mnguessan@10.10.4.165:/tmp/echo6-montee/
 ```
 
@@ -468,7 +468,7 @@ cat /tmp/echo6-montee/comptes-avant.txt                     # 24 tables
 
 Si le contrôle renvoie une ligne : ne pas aller plus loin. Corriger la valeur **sur la vraie base, encore à V12**
 (par exemple `UPDATE centre_sante SET ville = 'Yamoussoukro' WHERE code = '...'`), refaire une sauvegarde, et
-reprendre à l'étape 1.
+reprendre à l'étape 1. Une ligne marquée `REFUS DE V22` se traite comme en section 9 ter.
 
 ### Étape 4 — migrer la copie
 
@@ -481,13 +481,13 @@ sudo podman run --rm --network echo6-repetition \
   -v /tmp/echo6-montee/migration:/flyway/sql:ro,Z \
   docker.io/flyway/flyway:11.7.2 \
   -url=jdbc:postgresql://echo6-copie:5432/simulateur -user=simulateur -password=copie-jetable migrate
-# attendu : « Successfully applied 8 migrations ... now at version v20 »
+# attendu : « Successfully applied 10 migrations ... now at version v22 »
 ```
 
 ### Étape 5 — contrôler la copie APRÈS
 
 ```bash
-$COPIE -c "select version from flyway_schema_history where success order by installed_rank desc limit 1"   # 20
+$COPIE -c "select version from flyway_schema_history where success order by installed_rank desc limit 1"   # 22
 $COPIE -c "select count(*) from flyway_schema_history where not success"                                    # 0
 $COPIE < /tmp/echo6-montee/comptes-par-table.sql > /tmp/echo6-montee/comptes-apres.txt
 # chaque ligne d'avant doit se retrouver telle quelle apres ; la sortie doit etre VIDE
@@ -518,10 +518,10 @@ cd /opt/echo6
 sudo /opt/echo6/sauvegarde.sh
 sudo podman-compose -f compose.prod.yaml exec -T postgres psql -U simulateur -d simulateur -At \
   < /tmp/echo6-montee/comptes-par-table.sql > /tmp/echo6-montee/comptes-prod-avant.txt
-sudo vi .env                                          # ECHO_IMAGE=...:X.Y.Z (la version qui porte V20)
+sudo vi .env                                          # ECHO_IMAGE=...:X.Y.Z (la version qui porte V22)
 sudo podman-compose -f compose.prod.yaml pull
 sudo podman-compose -f compose.prod.yaml up -d
-sudo podman logs echo6_simulator_1 2>&1 | grep -i "flyway\|migrat"   # « now at version v20 »
+sudo podman logs echo6_simulator_1 2>&1 | grep -i "flyway\|migrat"   # « now at version v22 »
 curl -sf http://127.0.0.1:8088/simulateur/actuator/health
 sudo podman-compose -f compose.prod.yaml exec -T postgres psql -U simulateur -d simulateur -At \
   < /tmp/echo6-montee/comptes-par-table.sql > /tmp/echo6-montee/comptes-prod-apres.txt
@@ -568,6 +568,40 @@ podman exec echo6-copie psql -U simulateur -d simulateur -c 'select departement_
 # menage
 podman rm -f echo6-copie; podman network rm echo6-repetition
 Remove-Item .\dump.sql.gz, comptes-avant.txt, comptes-apres.txt
+```
+
+## 9 ter. V21 et V22 : index et contraintes sur une base remplie
+
+La montée de 9 bis joue aussi V21 (index) et V22 (contraintes sur les événements, clé étrangère `run_id` des lignes
+et de l'historique de facture). Une base à V20 qui monte seule passe par la même procédure, avec
+`scripts/db/controle-avant-v22.sql` à la place de `controle-avant-montee.sql` à l'étape 3.
+
+- **V21** ne touche aucune donnée. Elle crée 36 index, application arrêtée (pas de `CONCURRENTLY` : Flyway joue le
+  script dans une transaction). Durée de création non mesurée sur la base du serveur : la noter dans le journal.
+- **V22 ne rattache rien en silence** : si une ligne existante viole une contrainte, elle **s'arrête** avec un
+  message du type `V22 refusee : lignes existantes hors contrainte (evenements : 0 statut, 3 type, 0 domaine ; ...)`
+  et **ne modifie rien** : la base reste à V21, l'application ne démarre pas (Flyway échoue au démarrage).
+  `MonteeV22IntegrationTest` rejoue ce cas.
+
+Une base remplie par l'application ne contient que des valeurs permises (elle écrit le nom exact de l'enum et le
+domaine `prestations`) : le contrôle doit revenir vide. S'il renvoie une ligne, c'est une donnée écrite à la main ;
+sur la vraie base, **à son ancienne version**, après une sauvegarde :
+
+| Ligne du contrôle | Quoi faire |
+|---|---|
+| `statut` inconnu | Un événement non écrit normalement : `UPDATE ... SET statut = 'ECHOUE'` le rend rejouable depuis l'explorateur. |
+| `type` ou `domaine` inconnu | Si c'est une variante d'écriture (casse, espace) : la corriger en la valeur exacte. Sinon, la ligne n'a pas été produite par Écho : supprimer l'événement (`DELETE`), ses anomalies partent en cascade. |
+| `run_id` sans run (lignes, historique) | Orphelins sans simulation : les supprimer. |
+
+Puis refaire le contrôle (vide), refaire une sauvegarde, et reprendre la procédure. Ne jamais ajouter une valeur au
+`CHECK` à la main pour faire passer V22 : un type nouveau s'ajoute dans le code **et** par une migration, et le test
+`IndexEtContraintesIntegrationTest` vérifie qu'ils restent alignés.
+
+Après la montée, deux vérifications de plus à l'étape 5 :
+
+```bash
+$COPIE < /tmp/echo6-montee/cles-sans-index.sql                                                  # vide
+$COPIE -c "select count(*) from pg_constraint where conname like 'ck_evenement_%'"              # 3
 ```
 
 ### Une base de développement déjà à V20

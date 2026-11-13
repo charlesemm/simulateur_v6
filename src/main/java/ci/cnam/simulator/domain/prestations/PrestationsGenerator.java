@@ -7,6 +7,7 @@ import ci.cnam.simulator.core.engine.ContexteGeneration;
 import ci.cnam.simulator.core.random.SeededRandom;
 import ci.cnam.simulator.core.scenario.ConfigDomaine;
 import ci.cnam.simulator.domain.FlowGenerator;
+import ci.cnam.simulator.domain.prestations.events.PrestationEventType;
 import ci.cnam.simulator.domain.prestations.parcours.ParcoursContext;
 import ci.cnam.simulator.domain.prestations.parcours.ParcoursOrchestrator;
 import ci.cnam.simulator.domain.prestations.parcours.ParcoursProperties;
@@ -14,6 +15,8 @@ import ci.cnam.simulator.domain.reference.ReferenceService;
 import ci.cnam.simulator.domain.reference.model.Assure;
 import ci.cnam.simulator.domain.reference.model.CentreSante;
 import ci.cnam.simulator.sink.EventSink;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.stereotype.Component;
@@ -46,6 +49,11 @@ public class PrestationsGenerator implements FlowGenerator {
     @Override
     public String domaine() {
         return ParcoursContext.DOMAINE;
+    }
+
+    @Override
+    public List<String> typesEvenements() {
+        return Arrays.stream(PrestationEventType.values()).map(Enum::name).toList();
     }
 
     @Override

@@ -1,5 +1,6 @@
 package ci.cnam.simulator.web;
 
+import ci.cnam.simulator.core.event.StatutEcriture;
 import ci.cnam.simulator.security.AuditService;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Service;
 public class RejeuEvenementService {
 
     /** Statut d'un evenement ecrit normalement par le DatabaseSink. */
-    public static final String ECRIT = "ECRIT";
+    public static final String ECRIT = StatutEcriture.ECRIT.name();
 
     private final JdbcTemplate jdbc;
     private final AuditService audit;

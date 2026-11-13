@@ -20,6 +20,11 @@ class GenerateurFactice implements FlowGenerator {
     }
 
     @Override
+    public java.util.List<String> typesEvenements() {
+        return java.util.List.of("TOP");
+    }
+
+    @Override
     public void generer(ContexteGeneration ctx) {
         ctx.sink().emettre(new SimEvent(ctx.random().nextUuid(), ctx.runId(), domaine, "TOP",
                 LocalDateTime.now(ctx.horloge()), Map.of("tirage", ctx.random().nextInt(1000)), null));

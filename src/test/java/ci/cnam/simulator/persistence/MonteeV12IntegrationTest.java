@@ -98,8 +98,8 @@ class MonteeV12IntegrationTest {
     void laMonteeVaJusquaLaDerniereVersionSansEchec() throws SQLException {
         assertThat(montee.success).isTrue();
         assertThat(montee.initialSchemaVersion).isEqualTo("12");
-        assertThat(montee.targetSchemaVersion).isEqualTo("20");
-        assertThat(montee.migrationsExecuted).isEqualTo(8);
+        assertThat(montee.targetSchemaVersion).isEqualTo("22");
+        assertThat(montee.migrationsExecuted).isEqualTo(10);
         assertThat(valeur("select count(*) from flyway_schema_history where not success")).isZero();
     }
 
