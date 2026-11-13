@@ -91,6 +91,13 @@ public class PlanificationController {
         return zone(modele);
     }
 
+    /** L ecran des analyses programmees : les regles, le formulaire, et l historique des echeances. */
+    @org.springframework.web.bind.annotation.GetMapping
+    public String page(Model modele) {
+        ecran.preparerPlanification(modele);
+        return "planification";
+    }
+
     private String zone(Model modele) {
         ecran.preparerPlanification(modele);
         return AnalyseWebService.ZONE_PLANIFICATION;

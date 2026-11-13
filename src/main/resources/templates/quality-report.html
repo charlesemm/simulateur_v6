@@ -6,148 +6,23 @@
 </head>
 <body>
 <main id="contenu" class="page">
+    <a class="retour" th:if="${run != null}" th:href="@{/simulations/{id}(id=${run})}">
+        <svg class="ico" aria-hidden="true"><use href="#i-chevron-gauche"/></svg>Fiche de la simulation</a>
+
     <div class="titre-ecran">
         <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-shield"/></svg>Analyse</h1>
         <span class="badge charge" th:if="${rapport != null and rapport.reference}">Simulation de référence</span>
+        <div class="actions">
+            <a class="bouton secondaire" th:href="@{/qualite/planifications}">
+                <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>Analyses programmées</a>
+        </div>
     </div>
-    <p class="sous-titre">D'ici on programme les analyses, on suit les échanges avec l'outil de qualité, et on lit
-        ce qu'il a retrouvé de ce qu'Echo a semé. Echo sait exactement quelles anomalies il a semées : il compare,
-        puis ouvre d'un clic la ligne exacte qui a été manquée.</p>
+    <p class="sous-titre">Ce que l'outil de qualité a retrouvé de ce qu'Echo a semé. Echo sait exactement quelles
+        anomalies il a semées : il compare, puis ouvre d'un clic la ligne exacte qui a été manquée.</p>
 
-    <!--/* ============ Bloc 1 et 2 : le calendrier. Les écritures htmx renvoient ce seul morceau. */-->
-    <div id="calendrier" th:fragment="calendrier">
-        <p class="alerte" th:if="${erreur}" th:text="${erreur}" role="alert"></p>
-        <p class="info" th:if="${message}" th:text="${message}" role="status"></p>
-
-        <section class="carte">
-            <header>
-                <h2><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>Planification</h2>
-            </header>
-            <p class="sous-titre">Echo tient le calendrier, il ne déclenche rien : à l'heure dite, il ouvre une
-                échéance. Le script extérieur vient la lire, retire le jeu et pousse son rapport.
-                Heures du serveur, fuseau <b th:text="${fuseau}">Africa/Abidjan</b>.</p>
-
-            <div class="vide" th:if="${#lists.isEmpty(planifications)}">
-                <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
-                <b>Aucune analyse programmée</b>
-                <p>Tant qu'aucune règle n'existe, aucune échéance ne s'ouvre et le script n'a rien à venir
-                    chercher.</p>
-            </div>
-
-            <div class="defilement" th:unless="${#lists.isEmpty(planifications)}">
-                <table>
-                    <thead>
-                    <tr>
-                        <th scope="col">Libellé</th>
-                        <th scope="col">Calendrier</th>
-                        <th scope="col">Cible</th>
-                        <th scope="col">État</th>
-                        <th scope="col" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">Actions</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="p : ${planifications}">
-                        <td th:text="${p.libelle}">Analyse de nuit</td>
-                        <td class="chiffre" th:text="${p.libelleCalendrier()}">03:00, tous les jours</td>
-                        <td class="discret" th:text="${p.cible().libelle()}">La dernière simulation terminée</td>
-                        <td><span class="badge" th:classappend="${p.actif()} ? 'actif' : 'echec'"
-                                  th:text="${p.actif()} ? 'Active' : 'Désactivée'">Active</span></td>
-                        <td class="actions" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">
-                            <button type="button" class="secondaire"
-                                    th:hx-post="@{/qualite/planifications/{id}/activer(id=${p.id()},actif=${!p.actif()})}"
-                                    hx-target="#calendrier" hx-swap="outerHTML"
-                                    th:text="${p.actif()} ? 'Désactiver' : 'Activer'">Désactiver</button>
-                            <button type="button" class="danger"
-                                    th:hx-post="@{/qualite/planifications/{id}/supprimer(id=${p.id()})}"
-                                    hx-target="#calendrier" hx-swap="outerHTML"
-                                    hx-confirm="Supprimer cette analyse programmée ? Les échéances déjà ouvertes restent dans l'historique.">
-                                <svg class="ico" aria-hidden="true"><use href="#i-croix"/></svg>Supprimer</button>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h3 sec:authorize="hasAnyRole('ADMIN','OPERATEUR')">Programmer une analyse</h3>
-            <form class="filtres" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')"
-                  th:hx-post="@{/qualite/planifications}" hx-target="#calendrier" hx-swap="outerHTML">
-                <label>Libellé
-                    <input type="text" name="libelle" required maxlength="120" placeholder="Analyse de nuit">
-                </label>
-                <label>Heure
-                    <input type="time" name="heure" required value="03:00">
-                    <span class="aide-champ">Heure du serveur, fuseau <span th:text="${fuseau}">Africa/Abidjan</span>.
-                        La minute est la granularité : les secondes ne sont pas honorées.</span>
-                </label>
-                <label>Jours
-                    <input type="text" name="jours" value="TOUS" maxlength="80" placeholder="TOUS">
-                    <span class="aide-champ"><code>TOUS</code>, ou une liste comme <code>LUNDI,MARDI</code>.</span>
-                </label>
-                <label>Cible
-                    <select name="cible">
-                        <option th:each="c : ${cibles}" th:value="${c}" th:text="${c.libelle()}">cible</option>
-                    </select>
-                </label>
-                <div class="actions">
-                    <button type="submit"><svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>Programmer</button>
-                </div>
-            </form>
-        </section>
-
-        <section class="carte">
-            <header>
-                <h2><svg class="ico" aria-hidden="true"><use href="#i-activity"/></svg>Analyses</h2>
-            </header>
-            <!--/* Exigence 4.5 : un échange qui n'aboutit pas est un échec d'échange, JAMAIS un taux de 0 %. */-->
-            <p class="sous-titre">L'historique des échéances. Un échange qui n'aboutit pas est dit comme tel —
-                <b>jamais</b> comme un taux de 0 %. Au-delà de
-                <b th:text="${delaiRapportMinutes}">120</b> minutes sans rapport, l'échéance passe en silence.</p>
-
-            <div class="vide" th:if="${#lists.isEmpty(echeances)}">
-                <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
-                <b>Aucune échéance ouverte</b>
-                <p>La première s'ouvrira à l'heure de la prochaine règle active.</p>
-            </div>
-
-            <div class="defilement" th:unless="${#lists.isEmpty(echeances)}">
-                <table data-triable>
-                    <thead>
-                    <tr>
-                        <th scope="col">Heure dite</th>
-                        <th scope="col">Simulation</th>
-                        <th scope="col">Jeu retiré le</th>
-                        <th scope="col">Rapport reçu le</th>
-                        <th scope="col">Statut</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="v : ${echeances}">
-                        <td class="chiffre"
-                            th:text="${#temporals.format(v.echeance().dateEcheance(), 'dd/MM/yyyy à HH:mm')}">date</td>
-                        <td>
-                            <a th:if="${v.echeance().runId() != null}"
-                               th:href="@{/qualite(run=${v.echeance().runId()})}"
-                               th:text="${#strings.substring(v.echeance().runId().toString(), 0, 8)}">abcd1234</a>
-                            <span class="discret" th:if="${v.echeance().runId() == null}">aucune</span>
-                        </td>
-                        <td class="chiffre" th:text="${v.echeance().dateRetrait() != null}
-                                ? ${#temporals.format(v.echeance().dateRetrait(), 'dd/MM/yyyy à HH:mm:ss')} : '—'">—</td>
-                        <td class="chiffre" th:text="${v.echeance().dateRapport() != null}
-                                ? ${#temporals.format(v.echeance().dateRapport(), 'dd/MM/yyyy à HH:mm:ss')} : '—'">—</td>
-                        <td>
-                            <span class="badge" th:classappend="${v.echecEchange()} ? 'echec' : 'actif'"
-                                  th:text="${v.echeance().statut().libelle()}">Rapport reçu</span>
-                            <span class="discret" th:if="${v.echecEchange()}">
-                                échec d'échange : <span th:text="${v.etatEnClair()}">en attente du script</span></span>
-                            <span class="discret" th:unless="${v.echecEchange()}"
-                                  th:text="${v.etatEnClair()}">rapport reçu, mesure possible</span>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </div>
+    <th:block th:if="${run != null}">
+        <nav th:replace="~{fragments/onglets :: onglets(${run}, 'analyse')}"></nav>
+    </th:block>
 
     <!--/* ============ Bloc 3 : le résultat. Le calcul ne bouge pas, seuls les libellés sont ceux du métier. */-->
     <section class="carte" th:if="${#lists.isEmpty(runs)}">
@@ -166,7 +41,7 @@
             <header>
                 <h2><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg>Périmètre comparé</h2>
             </header>
-            <dl class="paires">
+            <dl>
                 <dt>Simulation</dt><dd><code th:text="${perimetre.simulation().id()}">id</code></dd>
                 <dt>Scénario</dt><dd th:text="${perimetre.simulation().scenario()}">parcours-normal</dd>
                 <dt>Graine</dt><dd class="chiffre" th:text="${perimetre.simulation().seed()}">42</dd>
@@ -293,10 +168,8 @@
                         </thead>
                         <tbody>
                         <tr th:each="l, it : ${rapport.types}">
-                            <td th:text="${l.libelle}">CHAMP_VIDE</td>
-                            <!--/* Classement reproduit ici faute d'etre porte par LigneQualite : a deplacer cote service. */-->
-                            <td class="discret"
-                                th:text="${#lists.contains({'FAUTE_ORTHOGRAPHE','CASSE_INCOHERENTE','CARACTERES_SPECIAUX'}, l.libelle)} ? 'Sémantique' : 'Structurelle'">Structurelle</td>
+                            <td th:text="${libelles.anomalie(l.libelle)}" th:title="${l.libelle}">Champ vidé</td>
+                            <td class="discret" th:text="${libelles.categorieDe(l.libelle)}">Structurelle</td>
                             <td class="chiffre" th:text="${l.injectees}">0</td>
                             <td class="chiffre" th:text="${l.detectees}">0</td>
                             <td class="chiffre" th:text="${l.ratees}">0</td>
@@ -313,7 +186,8 @@
                         </tbody>
                         <tfoot>
                         <tr th:each="l, it : ${rapport.categories}">
-                            <th scope="row" th:text="${l.libelle == 'SEMANTIQUE'} ? 'Anomalies sémantiques' : 'Anomalies structurelles'">Anomalies structurelles</th>
+                            <th scope="row" th:text="'Catégorie : ' + ${libelles.categorie(l.libelle)}"
+                                th:title="${libelles.categorieEnClair(l.libelle)}">Catégorie : Structurelle</th>
                             <td></td>
                             <td class="chiffre" th:text="${l.injectees}">0</td>
                             <td class="chiffre" th:text="${l.detectees}">0</td>
@@ -347,8 +221,11 @@
                 </div>
                 <p class="aide-champ">Le <b>taux de rappel</b> est le nombre d'anomalies retrouvées sur le nombre
                     d'anomalies semées ; la <b>précision</b> est le nombre d'anomalies justes sur le nombre
-                    d'anomalies signalées. Les anomalies sémantiques (orthographe, casse, caractères spéciaux) ne
-                    se repèrent qu'en comparant à un référentiel : un rappel plus bas y est normal.</p>
+                    d'anomalies signalées.</p>
+                <ul class="aide-champ">
+                    <li th:each="c : ${rapport.categories}"><b th:text="${libelles.categorie(c.libelle)}">Structurelle</b> :
+                        <span th:text="${libelles.categorieEnClair(c.libelle)}">comment elle se voit</span>.</li>
+                </ul>
 
                 <!--/* Volets dépliables : pas de data-triable, ces tableaux sont paginés (règle posée à la brique UI). */-->
                 <details th:if="${ratees != null and ratees.total() > 0}">
@@ -369,7 +246,7 @@
                             </thead>
                             <tbody>
                             <tr th:each="a : ${ratees.contenu()}">
-                                <td th:text="${a.type()}">CHAMP_VIDE</td>
+                                <td th:text="${libelles.anomalie(a.type())}" th:title="${a.type()}">Champ vidé</td>
                                 <td th:text="${a.champ() != null} ? ${a.champ()} : 'événement entier'">nom</td>
                                 <td th:text="${a.valeurOrigine() != null} ? ${a.valeurOrigine()} : '—'">Koné</td>
                                 <td th:text="${a.valeurCorrompue() != null} ? ${a.valeurCorrompue()} : '(vidé)'">(vidé)</td>
@@ -407,7 +284,7 @@
                             </thead>
                             <tbody>
                             <tr th:each="f : ${fauxPositifs.contenu()}">
-                                <td th:text="${f.type()}">CHAMP_VIDE</td>
+                                <td th:text="${libelles.anomalie(f.type())}" th:title="${f.type()}">Champ vidé</td>
                                 <td th:text="${f.champ() != null} ? ${f.champ()} : 'événement entier'">nom</td>
                                 <td><a th:href="@{/evenements(run=${run},evenement=${f.eventId()})}"
                                        th:text="${#strings.substring(f.eventId().toString(), 0, 8)}">abcd1234</a></td>
@@ -434,8 +311,8 @@
             <header>
                 <h2><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Jeu à analyser et corrigé</h2>
             </header>
-            <p class="sous-titre">Le jeu dans ses trois formats, et le corrigé à part. Deux téléchargements du même
-                format donnent la <b>même empreinte</b> : c'est la preuve que le fichier est reproductible.</p>
+            <p class="sous-titre">Le jeu dans ses trois formats, et le corrigé à part. Les empreintes des fichiers
+                déjà servis et le journal des échanges sont sur l'écran d'export.</p>
             <div class="actions">
                 <a class="bouton secondaire" th:href="@{/export/jeu.xlsx(run=${run})}">
                     <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Classeur xlsx</a>
@@ -446,17 +323,8 @@
                 <a class="bouton secondaire" sec:authorize="hasAnyRole('ADMIN','OPERATEUR')"
                    th:href="@{/export/corrige.csv(run=${run})}">
                     <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Corrigé csv</a>
+                <a class="bouton secondaire" th:href="@{/export(run=${run})}">Empreintes et échanges</a>
             </div>
-            <p class="aide-champ" th:if="${#lists.isEmpty(telechargements)}">Rien n'a encore été téléchargé pour
-                cette simulation : l'empreinte s'affichera ici dès le premier fichier servi.</p>
-            <dl class="paires" th:unless="${#lists.isEmpty(telechargements)}">
-                <th:block th:each="t : ${telechargements}">
-                    <dt th:text="${t.format}">XLSX</dt>
-                    <dd><code class="empreinte" th:text="${t.empreinte}">empreinte</code>
-                        <span class="discret"
-                              th:text="'servi le ' + ${#temporals.format(t.date, 'dd/MM/yyyy à HH:mm:ss')}">servi le</span></dd>
-                </th:block>
-            </dl>
         </section>
     </th:block>
 

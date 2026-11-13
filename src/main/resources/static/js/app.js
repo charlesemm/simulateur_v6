@@ -68,20 +68,38 @@
         minuteur = setTimeout(function () { zone.hidden = true; }, 8000);
     }
 
-    /* --- Destination courante : surlignage dans le rail et dans la barre basse, puis fil d'Ariane. --- */
+    /* --- Destination courante : surlignage dans le rail, puis fil d'Ariane. ---
+       Une seule destination est retenue : celle dont l'adresse est le plus long prefixe de la page
+       (/qualite/planifications ne surligne pas aussi /qualite). Un ecran sans entree dans le rail
+       (fiche, flux ou export d'une simulation) nomme la sienne par <main data-parent="...">. */
     function marquerDestination() {
         var chemin = location.pathname.replace(/\/$/, '');
         var courante = null;
-        document.querySelectorAll('.rail a.destination, .basse a').forEach(function (a) {
+        var longueur = -1;
+        document.querySelectorAll('.rail a.destination').forEach(function (a) {
             var cible = new URL(a.href, location.href).pathname.replace(/\/$/, '');
-            if (cible === chemin || (cible !== '' && chemin.indexOf(cible + '/') === 0)) {
-                a.setAttribute('aria-current', 'page');
-                if (a.closest('.rail')) {
-                    courante = a;
-                }
+            if ((cible === chemin || (cible !== '' && chemin.indexOf(cible + '/') === 0)) && cible.length > longueur) {
+                courante = a;
+                longueur = cible.length;
             }
         });
+        var contenu = document.querySelector('main[data-parent]');
+        if (contenu) {
+            courante = document.querySelector('.rail a.destination[data-cle="' + contenu.getAttribute('data-parent') + '"]')
+                || courante;
+        }
+        if (courante) {
+            courante.setAttribute('aria-current', 'page');
+        }
         var fil = document.querySelector('[data-fil]');
+        if (fil && !courante) {
+            // Ecran hors du rail (Mon compte) : le fil porte son titre.
+            var titre = document.querySelector('main h1');
+            var seul = document.createElement('b');
+            seul.textContent = titre ? titre.textContent.trim() : 'Echo';
+            fil.textContent = '';
+            fil.appendChild(seul);
+        }
         if (fil && courante) {
             var groupe = courante.closest('.rail').querySelectorAll('.groupe');
             var nom = courante.querySelector('.libelle');
@@ -121,6 +139,34 @@
         } catch (e) {
             return false;
         }
+    }
+
+    /* --- Telephone : le rail s'ouvre en menu par-dessus la page (bouton de l'en-tete, voile, Echap). --- */
+    function ouvrirMenu(ouvert) {
+        if (ouvert) {
+            document.documentElement.setAttribute('data-menu', 'ouvert');
+        } else {
+            document.documentElement.removeAttribute('data-menu');
+        }
+        document.querySelectorAll('[data-menu-mobile]').forEach(function (b) {
+            b.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+            b.setAttribute('aria-label', ouvert ? 'Fermer le menu' : 'Ouvrir le menu');
+        });
+    }
+    function brancherMenu() {
+        document.querySelectorAll('[data-menu-mobile]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                ouvrirMenu(document.documentElement.getAttribute('data-menu') !== 'ouvert');
+            });
+        });
+        document.querySelectorAll('[data-fermer-menu]').forEach(function (v) {
+            v.addEventListener('click', function () { ouvrirMenu(false); });
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                ouvrirMenu(false);
+            }
+        });
     }
 
     /* --- Recherche globale : palette de navigation au clavier (Ctrl+K). --- */
@@ -220,6 +266,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         marquerDestination();
         appliquerRail(railEtroit());
+        brancherMenu();
 
         document.querySelectorAll('[data-replier-rail]').forEach(function (b) {
             b.addEventListener('click', function () {

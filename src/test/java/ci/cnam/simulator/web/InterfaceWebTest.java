@@ -74,7 +74,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * CSRF, refus metier (422), liens sous le chemin /simulateur.
  */
 @WebMvcTest(controllers = {TableauDeBordController.class, LancementController.class, ChaosPanelController.class,
-        EvenementsController.class, HistoriqueController.class, EditeurScenarioController.class,
+        EvenementsController.class, SimulationsController.class, EditeurScenarioController.class,
         AdminUtilisateursController.class, LoginController.class, SseController.class},
         properties = "spring.main.allow-bean-definition-overriding=true")
 @Import({SecurityConfig.class, InterfaceWebTest.Support.class})
@@ -95,6 +95,14 @@ class InterfaceWebTest {
         Clock clock() {
             return Clock.fixed(Instant.parse("2026-11-05T10:00:00Z"), ZoneOffset.UTC);
         }
+
+        /** Le vrai assembleur de la fiche : la liste des simulations passe par lui. */
+        @Bean
+        SimulationWebService simulationWebService(RunManager runs, ChaosInjector chaos,
+                                                  ci.cnam.simulator.quality.QualityReportService qualite,
+                                                  ci.cnam.simulator.export.ExportService export, Clock horloge) {
+            return new SimulationWebService(runs, chaos, qualite, export, horloge);
+        }
     }
 
     @Autowired MockMvc mvc;
@@ -108,6 +116,8 @@ class InterfaceWebTest {
     @MockitoBean ComptesService comptes;
     @MockitoBean AuditService audit;
     @MockitoBean TableauDeBordService tableau;
+    @MockitoBean ci.cnam.simulator.quality.QualityReportService qualite;
+    @MockitoBean ci.cnam.simulator.export.ExportService export;
 
     private static RunInfo run(EtatRun etat) {
         return new RunInfo(RUN, "parcours-normal", 42L, etat, 12, 120, Instant.parse("2026-11-05T09:00:00Z"),
@@ -153,10 +163,12 @@ class InterfaceWebTest {
     @ValueSource(strings = {"ADMIN", "OPERATEUR", "OBSERVATEUR"})
     @DisplayName("Les trois roles lisent tous les ecrans de pilotage")
     void lectureOuverteAuxTroisRoles(String role) throws Exception {
-        for (String chemin : List.of("/dashboard", "/lancement", "/chaos", "/evenements", "/historique",
-                "/scenarios")) {
+        for (String chemin : List.of("/dashboard", "/lancement", "/chaos", "/evenements?run=" + RUN, "/simulations",
+                "/historique", "/scenarios")) {
             mvc.perform(get(chemin).with(user("u").roles(role))).andExpect(status().isOk());
         }
+        // Sans simulation choisie, le flux de donnees renvoie a la liste : c'est elle qui fait choisir.
+        mvc.perform(get("/evenements").with(user("u").roles(role))).andExpect(redirectedUrl("/simulations"));
     }
 
     @ParameterizedTest
@@ -359,7 +371,7 @@ class InterfaceWebTest {
 
         mvc.perform(get("/chaos/actions").with(user("obs").roles("OBSERVATEUR")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("SURCHARGE")))
+                .andExpect(content().string(containsString("Surcharge")))
                 .andExpect(content().string(containsString("en cours")))
                 .andExpect(content().string(not(containsString("Navigation principale"))));
     }
@@ -427,16 +439,16 @@ class InterfaceWebTest {
                 .andExpect(content().string(containsString("deja ecrit")));
     }
 
-    // ---- Historique -------------------------------------------------------------------------------------
+    // ---- Simulations (ancien historique, dont l'adresse reste servie) -------------------------------------
 
     @Test
-    @DisplayName("Historique : runs listes, lien vers leurs evenements, rejeu propose a l'OPERATEUR seulement")
+    @DisplayName("Liste des simulations sous l'ancienne adresse : lien vers la fiche, rejeu propose a l'OPERATEUR seulement")
     void historique() throws Exception {
         mvc.perform(get("/historique").with(user("op").roles("OPERATEUR")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("aaaaaaaa")))
                 .andExpect(content().string(containsString("parcours-normal")))
-                .andExpect(content().string(containsString("/evenements?run=" + RUN)))
+                .andExpect(content().string(containsString("/simulations/" + RUN)))
                 .andExpect(content().string(containsString("/lancement/" + RUN + "/rejouer")));
         mvc.perform(get("/historique").with(user("obs").roles("OBSERVATEUR")))
                 .andExpect(content().string(not(containsString("/rejouer"))));

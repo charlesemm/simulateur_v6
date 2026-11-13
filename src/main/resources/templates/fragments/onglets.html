@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<!--/* Les quatre ecrans d'une simulation. Usage :
+       <nav th:replace="~{fragments/onglets :: onglets(${run}, 'flux')}"></nav>
+       actif : synthese, flux, analyse ou export. */-->
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<nav th:fragment="onglets(run, actif)" class="onglets" aria-label="Écrans de cette simulation">
+    <a th:href="@{/simulations/{id}(id=${run})}" th:aria-current="${actif == 'synthese'} ? 'page'">
+        <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg>Synthèse</a>
+    <a th:href="@{/evenements(run=${run})}" th:aria-current="${actif == 'flux'} ? 'page'">
+        <svg class="ico" aria-hidden="true"><use href="#i-activity"/></svg>Flux de données</a>
+    <a th:href="@{/qualite(run=${run})}" th:aria-current="${actif == 'analyse'} ? 'page'">
+        <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Analyse</a>
+    <a th:href="@{/export(run=${run})}" th:aria-current="${actif == 'export'} ? 'page'">
+        <svg class="ico" aria-hidden="true"><use href="#i-download"/></svg>Export</a>
+</nav>
+</body>
+</html>

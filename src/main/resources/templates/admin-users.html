@@ -6,10 +6,18 @@
 <body>
 <main id="contenu" class="page">
     <div class="titre-ecran">
-        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-users"/></svg>Comptes et journal</h1>
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-users"/></svg>Comptes</h1>
+        <div class="actions">
+            <a class="bouton secondaire" th:href="@{/admin/journal}">
+                <svg class="ico" aria-hidden="true"><use href="#i-list"/></svg>Journal d'activité</a>
+        </div>
     </div>
-    <p class="sous-titre">Trois rôles : un observateur consulte, un opérateur lance les simulations et provoque les
-        pannes, un administrateur gère les comptes. Tout ce qui est lancé, arrêté ou cassé laisse une trace.</p>
+    <p class="sous-titre">Chaque compte porte un rôle, et tout ce qui est lancé, arrêté ou cassé laisse une trace
+        au journal.</p>
+    <ul class="discret">
+        <li th:each="r : ${roles}"><b th:text="${libelles.role(r)}">Opérateur</b> —
+            <span th:text="${libelles.roleEnClair(r)}">ce que le rôle permet</span></li>
+    </ul>
 
     <section id="zone" th:fragment="zone" aria-live="polite">
         <p class="alerte" th:if="${erreur}" role="alert">
@@ -35,7 +43,7 @@
                 <dt>Mot de passe temporaire</dt>
                 <dd><code class="secret" th:text="${identifiants.motDePasseTemporaire}">abcd-efgh-ijkl-mnop</code></dd>
                 <dt>Rôle</dt>
-                <dd th:text="${identifiants.compte.role}">OBSERVATEUR</dd>
+                <dd th:text="${libelles.role(identifiants.compte.role)}">Observateur</dd>
                 <dt>Adresse de messagerie</dt>
                 <dd th:text="${identifiants.compte.email} ?: 'non renseignée'">marie@cnam.ci</dd>
             </dl>
@@ -69,7 +77,7 @@
                     <input type="email" name="email" maxlength="255" autocomplete="off"
                            placeholder="prenom.nom@cnam.ci">
                     <span class="aide-champ">Facultative. Elle sert uniquement à préparer le message de remise des
-                        identifiants : Echo n.envoie jamais de courriel lui-même.</span>
+                        identifiants : Echo n'envoie jamais de courriel lui-même.</span>
                 </label>
                 <label>Mot de passe temporaire
                     <input type="text" name="motDePasse" minlength="12" maxlength="100" autocomplete="off"
@@ -80,7 +88,7 @@
                 </label>
                 <label>Rôle
                     <select name="role">
-                        <option th:each="r : ${roles}" th:value="${r}" th:text="${r}">OBSERVATEUR</option>
+                        <option th:each="r : ${roles}" th:value="${r}" th:text="${libelles.role(r)}">Observateur</option>
                     </select>
                 </label>
                 <div class="actions">
@@ -109,8 +117,8 @@
                                       hx-target="#zone" hx-swap="outerHTML"
                                       hx-confirm="Changer le rôle de cet utilisateur ?">
                                     <select name="role" th:aria-label="'Rôle de ' + ${u.nomUtilisateur}">
-                                        <option th:each="r : ${roles}" th:value="${r}" th:text="${r}"
-                                                th:selected="${r == u.role}">ADMIN</option>
+                                        <option th:each="r : ${roles}" th:value="${r}" th:text="${libelles.role(r)}"
+                                                th:selected="${r == u.role}">Administrateur</option>
                                     </select>
                                     <button type="submit" class="secondaire">Appliquer</button>
                                 </form>
@@ -156,40 +164,8 @@
                 </div>
             </section>
         </div>
-
-        <section class="carte">
-            <header>
-                <h2>Journal des actions</h2>
-                <span class="legende">Cent dernières lignes</span>
-            </header>
-
-            <div class="vide" th:if="${#lists.isEmpty(journal)}">
-                <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg>
-                <b>Rien à signaler</b>
-                <p>Les lancements, arrêts, pannes provoquées et changements de compte s'inscrivent ici.</p>
-            </div>
-
-            <div class="defilement" th:unless="${#lists.isEmpty(journal)}">
-                <table data-triable>
-                    <thead>
-                    <tr><th scope="col">Quand</th><th scope="col">Qui</th><th scope="col">Quoi</th>
-                        <th scope="col">Sur quoi</th><th scope="col" data-tri="non">Détails</th></tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="l : ${journal}">
-                        <td class="chiffre" th:text="${#temporals.format(l.date, 'dd/MM/yyyy à HH:mm:ss')}">date</td>
-                        <td th:text="${l.acteur}">admin</td>
-                        <td th:text="${l.action}">RUN_LANCE</td>
-                        <td><code th:text="${l.cible}">cible</code></td>
-                        <td class="payload" th:text="${l.details}">détails</td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
     </section>
 
-    <script th:src="@{/js/tri.js}" defer></script>
     <script th:src="@{/js/copier.js}" defer></script>
 </main>
 </body>

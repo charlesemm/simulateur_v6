@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<!--/* Gabarit commun. Chaque page : <html th:replace="~{layout :: page(~{::title}, ~{::main})}"> */-->
+<!--/* Gabarit commun. Chaque page : <html th:replace="~{layout :: page(~{::title}, ~{::main})}">
+       Un ecran sans entree dans le rail (fiche, flux, export d'une simulation) dit de quelle destination
+       il depend par <main data-parent="simulations"> : le rail la surligne et le fil la nomme. */-->
 <html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:fragment="page(titre, contenu)">
 <head>
@@ -21,10 +23,10 @@
 <a class="saut" href="#contenu">Aller au contenu</a>
 
 <div class="coquille">
-    <nav class="rail" aria-label="Navigation principale">
+    <nav class="rail" id="rail" aria-label="Navigation principale">
         <a class="marque" th:href="@{/dashboard}">
             <span class="sceau" aria-hidden="true"><svg class="ico"><use href="#i-activity"/></svg></span>
-            <b>Echo</b>
+            <span><b>Echo</b><small>Simulateur de flux</small></span>
         </a>
 
         <p class="groupe">Pilotage</p>
@@ -32,22 +34,29 @@
             <svg class="ico" aria-hidden="true"><use href="#i-dashboard"/></svg><span class="libelle">Tableau de bord</span></a>
         <a class="destination" th:href="@{/lancement}">
             <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg><span class="libelle">Lancement</span></a>
-        <a class="destination chaude" th:href="@{/chaos}">
+        <a class="destination" th:href="@{/chaos}">
             <svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg><span class="libelle">Crash tests</span></a>
 
         <p class="groupe">Données</p>
-        <a class="destination" th:href="@{/evenements}">
-            <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg><span class="libelle">Flux de données</span></a>
+        <a class="destination" data-cle="simulations" th:href="@{/simulations}">
+            <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg><span class="libelle">Simulations</span></a>
         <a class="destination" th:href="@{/qualite}">
             <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg><span class="libelle">Analyse</span></a>
-        <a class="destination" th:href="@{/historique}">
-            <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg><span class="libelle">Simulations passées</span></a>
+        <a class="destination" th:href="@{/qualite/planifications}">
+            <svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg><span class="libelle">Analyses programmées</span></a>
         <a class="destination" th:href="@{/scenarios}">
             <svg class="ico" aria-hidden="true"><use href="#i-file"/></svg><span class="libelle">Scénarios</span></a>
 
+        <!--/* Dans le corps du rail, pas en pied : le pied disparait sur telephone, ces ecrans non. */-->
+        <th:block sec:authorize="hasRole('ADMIN')">
+            <p class="groupe">Administration</p>
+            <a class="destination" th:href="@{/admin/utilisateurs}">
+                <svg class="ico" aria-hidden="true"><use href="#i-users"/></svg><span class="libelle">Comptes</span></a>
+            <a class="destination" th:href="@{/admin/journal}">
+                <svg class="ico" aria-hidden="true"><use href="#i-list"/></svg><span class="libelle">Journal d'activité</span></a>
+        </th:block>
+
         <div class="rail-bas">
-            <a class="destination" th:href="@{/admin/utilisateurs}" sec:authorize="hasRole('ADMIN')">
-                <svg class="ico" aria-hidden="true"><use href="#i-users"/></svg><span class="libelle">Administration</span></a>
             <button type="button" class="discrete replier" data-replier-rail aria-pressed="false">
                 <svg class="ico pivote" aria-hidden="true"><use href="#i-chevron-gauche"/></svg><span class="libelle">Replier le rail</span>
             </button>
@@ -56,12 +65,17 @@
 
     <div>
         <header class="entete">
+            <button type="button" class="secondaire icone-seule menu-mobile" data-menu-mobile
+                    aria-controls="rail" aria-expanded="false" aria-label="Ouvrir le menu">
+                <svg class="ico" aria-hidden="true"><use href="#i-list"/></svg>
+            </button>
+
             <!--/* Fil renseigné côté navigateur à partir de la destination courante du rail. */-->
             <span class="fil" data-fil></span>
 
             <button type="button" class="recherche" data-recherche aria-label="Rechercher (Ctrl+K)">
                 <svg class="ico" aria-hidden="true"><use href="#i-recherche"/></svg>
-                <span class="etiquette">Rechercher une simulation, un scénario…</span>
+                <span class="etiquette">Aller à un écran…</span>
                 <kbd>Ctrl</kbd><kbd>K</kbd>
             </button>
 
@@ -71,9 +85,13 @@
                     <svg class="ico t-light" aria-hidden="true"><use href="#i-sun"/></svg>
                     <svg class="ico t-dark" aria-hidden="true"><use href="#i-moon"/></svg>
                 </button>
-                <a th:href="@{/mot-de-passe}" class="jeton" title="Mon compte et mot de passe">
-                    <svg class="ico" aria-hidden="true"><use href="#i-user"/></svg>
-                    <span class="hors-ecran" sec:authentication="name">utilisateur</span>
+                <a th:href="@{/mot-de-passe}" class="identite" title="Mon compte">
+                    <span class="jeton" aria-hidden="true"><svg class="ico"><use href="#i-user"/></svg></span>
+                    <span>
+                        <b sec:authentication="name">utilisateur</b>
+                        <small th:if="${libelles != null and !#strings.isEmpty(roleCourant)}"
+                               th:text="${libelles.role(roleCourant)}">Rôle</small>
+                    </span>
                 </a>
                 <form th:action="@{/logout}" method="post">
                     <button type="submit" class="secondaire" title="Se déconnecter">
@@ -89,12 +107,7 @@
     </div>
 </div>
 
-<nav class="basse" aria-label="Navigation">
-    <a th:href="@{/dashboard}"><svg class="ico" aria-hidden="true"><use href="#i-dashboard"/></svg>Bord</a>
-    <a th:href="@{/lancement}"><svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Lancer</a>
-    <a th:href="@{/chaos}"><svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>Pannes</a>
-    <a th:href="@{/evenements}"><svg class="ico" aria-hidden="true"><use href="#i-activity"/></svg>Flux</a>
-    <a th:href="@{/qualite}"><svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Analyse</a>
-</nav>
+<!--/* Telephone : le rail s'ouvre par-dessus la page ; le voile le referme. */-->
+<div class="voile" data-fermer-menu></div>
 </body>
 </html>

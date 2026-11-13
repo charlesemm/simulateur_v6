@@ -49,15 +49,23 @@
     --n9: #0e1b2b;
 
     /* --- Couleurs de marque et d'action --- */
-    --bleu: #1565c0;
+    --bleu: #1a5fb4;
     --bleu-fort: #0d47a1;
     --bleu-doux: #e5effb;
     --vert: #15a05a;
     --vert-doux: #e3f6eb;
     --orange: #e2670b;
     --orange-doux: #fdeedd;
-    /* Signature Echo : reserve a la marque, a la destination courante et au panneau de connexion. */
-    --signature: linear-gradient(135deg, #1565c0 0%, #15a05a 100%);
+    /* Encre : la couleur du rail et de la marque. Jalon : le point vert du parcours, element signature. */
+    --encre: #0f2440;
+    --encre-2: #18335a;
+    --jalon: #2bbf78;
+    --rail-fond: var(--encre);
+    --rail-texte: #b4c2d6;
+    --rail-discret: #7f91ab;
+    --rail-survol: rgba(255, 255, 255, .07);
+    --rail-actif: rgba(255, 255, 255, .12);
+    --signature: var(--encre);
 
     /* --- Surfaces --- */
     --fond: var(--n1);
@@ -88,7 +96,7 @@
 
     /* --- Formes : le rayon marque le role, il n'est pas uniforme --- */
     --r-controle: 6px;
-    --r-panneau: 10px;
+    --r-panneau: 8px;
     --r-ronde: 999px;
 
     /* --- Elevation : deux niveaux, pas plus --- */
@@ -99,7 +107,7 @@
     --courbe: cubic-bezier(.4, 0, .2, 1);
     --transition: var(--duree) var(--courbe);
 
-    --rail-large: 240px;
+    --rail-large: 248px;
     --rail-etroit: 64px;
     --page-max: 1320px;
 
@@ -126,7 +134,8 @@
         --vert-doux: #0f3324;
         --orange: #ff9b48;
         --orange-doux: #39230f;
-        --signature: linear-gradient(135deg, #5aa5f7 0%, #3ddc97 100%);
+        --signature: #1b3256;
+        --rail-fond: #0a1322;
 
         --fond: var(--n1);
         --surface: var(--n0);
@@ -163,7 +172,8 @@
     --vert-doux: #0f3324;
     --orange: #ff9b48;
     --orange-doux: #39230f;
-    --signature: linear-gradient(135deg, #5aa5f7 0%, #3ddc97 100%);
+    --signature: #1b3256;
+    --rail-fond: #0a1322;
 
     --fond: var(--n1);
     --surface: var(--n0);
