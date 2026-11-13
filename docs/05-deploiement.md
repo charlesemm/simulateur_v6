@@ -403,6 +403,181 @@ faut alors restaurer le dump pris juste avant. D'où la première ligne.
 
 ---
 
+## 9 bis. Monter la base de V12 à V20 : d'abord sur une copie
+
+La base du serveur est à **V12** (v1.1.0) et contient des simulations. La version suivante lui fera jouer V13 à
+V20 d'un coup, au démarrage de l'application. Trois de ces scripts touchent des données : V16 (contraintes des
+anomalies), V17 (renommage de 23 tables en `TB_ECHO_*`) et V19 (villes et spécialités remplacées par des codes).
+
+**Ce qu'on sait déjà**, par `MonteeV12IntegrationTest` (une base V12 remplie, migrée jusqu'à V20) :
+
+- aucune ligne perdue, aucune clé étrangère orpheline, les anomalies des 11 types d'origine passent les
+  contraintes de V16 ;
+- V19 avait un défaut, **corrigé le 13/11/2026 avant tout passage sur le serveur** : sur une base remplie, il
+  rattachait **toutes** les villes à Abidjan ;
+- **une valeur inconnue des tables de valeurs ne bloque pas V19** : une ville est rattachée à Abidjan (`D109`),
+  une spécialité à Médecine générale (`MG`). Pour ne pas le subir en silence, **la procédure refuse de migrer**
+  tant que `scripts/db/controle-avant-montee.sql` renvoie une ligne. Les 15 villes et 10 spécialités que la
+  v1.1.0 a pu écrire sont toutes reconnues : sur la base du serveur, le contrôle doit revenir vide.
+
+**Flyway ne défait pas une migration.** D'où l'ordre, qui ne se discute pas : sauvegarder, restaurer sur une
+copie jetable, migrer la copie, contrôler, et **seulement ensuite** la vraie base.
+
+### Étape 0 — sur le poste : déposer les fichiers
+
+Depuis la version qu'on va déployer (`git switch --detach vX.Y.Z`) :
+
+```powershell
+# poste de developpement, PowerShell, a la racine du depot
+ssh adm-mnguessan@10.10.4.165 "mkdir -p /tmp/echo6-montee"
+scp scripts/db/controle-avant-montee.sql scripts/db/comptes-par-table.sql adm-mnguessan@10.10.4.165:/tmp/echo6-montee/
+scp -r src/main/resources/db/migration adm-mnguessan@10.10.4.165:/tmp/echo6-montee/
+```
+
+### Étape 1 — sur le serveur : sauvegarder
+
+```bash
+cd /opt/echo6
+sudo /opt/echo6/sauvegarde.sh                       # ecrit /var/sauvegardes/echo6/echo6_AAAAMMJJ_HHMM.sql.gz
+DUMP=$(ls -t /var/sauvegardes/echo6/echo6_*.sql.gz | head -1); echo "$DUMP"; ls -lh "$DUMP"   # non vide
+```
+
+### Étape 2 — restaurer sur une copie jetable
+
+Un PostgreSQL à part, sur un réseau à part, **sans aucun port publié**. Il ne voit ni la vraie base ni Toxiproxy.
+
+```bash
+sudo podman network create echo6-repetition
+sudo podman run -d --name echo6-copie --network echo6-repetition \
+  -e POSTGRES_DB=simulateur -e POSTGRES_USER=simulateur -e POSTGRES_PASSWORD=copie-jetable \
+  docker.io/library/postgres:16-alpine
+sleep 5   # le temps que PostgreSQL accepte les connexions (pg_isready pour s'en assurer)
+sudo podman cp "$DUMP" echo6-copie:/tmp/dump.sql.gz
+sudo podman exec echo6-copie sh -c "gunzip -c /tmp/dump.sql.gz | psql -q -v ON_ERROR_STOP=1 -U simulateur -d simulateur"
+```
+
+### Étape 3 — contrôler la copie AVANT de la migrer
+
+```bash
+COPIE="sudo podman exec -i echo6-copie psql -U simulateur -d simulateur -At"
+$COPIE -c "select version from flyway_schema_history where success order by installed_rank desc limit 1"   # 12
+$COPIE < /tmp/echo6-montee/controle-avant-montee.sql        # DOIT etre vide. Sinon : on s'arrete (voir plus bas)
+$COPIE < /tmp/echo6-montee/comptes-par-table.sql > /tmp/echo6-montee/comptes-avant.txt
+cat /tmp/echo6-montee/comptes-avant.txt                     # 24 tables
+```
+
+Si le contrôle renvoie une ligne : ne pas aller plus loin. Corriger la valeur **sur la vraie base, encore à V12**
+(par exemple `UPDATE centre_sante SET ville = 'Yamoussoukro' WHERE code = '...'`), refaire une sauvegarde, et
+reprendre à l'étape 1.
+
+### Étape 4 — migrer la copie
+
+Flyway seul, en conteneur, dans la **même version que celle embarquée dans l'application** (11.7.2 aujourd'hui :
+`unzip -l target/simulateur.jar | grep flyway-core` sur le poste pour vérifier). L'application n'est pas lancée
+sur la copie : elle remplirait le référentiel et fausserait les comptes.
+
+```bash
+sudo podman run --rm --network echo6-repetition \
+  -v /tmp/echo6-montee/migration:/flyway/sql:ro,Z \
+  docker.io/flyway/flyway:11.7.2 \
+  -url=jdbc:postgresql://echo6-copie:5432/simulateur -user=simulateur -password=copie-jetable migrate
+# attendu : « Successfully applied 8 migrations ... now at version v20 »
+```
+
+### Étape 5 — contrôler la copie APRÈS
+
+```bash
+$COPIE -c "select version from flyway_schema_history where success order by installed_rank desc limit 1"   # 20
+$COPIE -c "select count(*) from flyway_schema_history where not success"                                    # 0
+$COPIE < /tmp/echo6-montee/comptes-par-table.sql > /tmp/echo6-montee/comptes-apres.txt
+# chaque ligne d'avant doit se retrouver telle quelle apres ; la sortie doit etre VIDE
+grep -vxFf /tmp/echo6-montee/comptes-apres.txt /tmp/echo6-montee/comptes-avant.txt
+# les villes ne sont pas toutes a Abidjan : plusieurs departements doivent apparaitre
+$COPIE -c 'select departement_code, count(*) from "TB_ECHO_CENTRE_SANTE" group by 1 order by 2 desc'
+$COPIE -c 'select specialite_medicale_code, count(*) from "TB_ECHO_MEDECIN" group by 1 order by 2 desc'
+# aucune contrainte laissee non validee
+$COPIE -c "select count(*) from pg_constraint where not convalidated"                                        # 0
+```
+
+Puis effacer la copie :
+
+```bash
+sudo podman rm -f echo6-copie && sudo podman network rm echo6-repetition
+```
+
+Noter le résultat dans `docs/journal.md` (date, nombre de tables, nombre de lignes de `evenement` et
+`anomaly_injected`).
+
+### Étape 6 — la vraie base
+
+Seulement si les étapes 3 et 5 sont propres. Juste avant, **une sauvegarde de plus** (la base a pu bouger depuis
+l'étape 1) :
+
+```bash
+cd /opt/echo6
+sudo /opt/echo6/sauvegarde.sh
+sudo podman-compose -f compose.prod.yaml exec -T postgres psql -U simulateur -d simulateur -At \
+  < /tmp/echo6-montee/comptes-par-table.sql > /tmp/echo6-montee/comptes-prod-avant.txt
+sudo vi .env                                          # ECHO_IMAGE=...:X.Y.Z (la version qui porte V20)
+sudo podman-compose -f compose.prod.yaml pull
+sudo podman-compose -f compose.prod.yaml up -d
+sudo podman logs echo6_simulator_1 2>&1 | grep -i "flyway\|migrat"   # « now at version v20 »
+curl -sf http://127.0.0.1:8088/simulateur/actuator/health
+sudo podman-compose -f compose.prod.yaml exec -T postgres psql -U simulateur -d simulateur -At \
+  < /tmp/echo6-montee/comptes-par-table.sql > /tmp/echo6-montee/comptes-prod-apres.txt
+grep -vxFf /tmp/echo6-montee/comptes-prod-apres.txt /tmp/echo6-montee/comptes-prod-avant.txt   # vide
+```
+
+`assure`, `centre_sante`, etc. peuvent avoir **plus** de lignes après qu'avant si l'application a complété le
+référentiel au démarrage : la comparaison ne vérifie que l'absence de **perte**. Une ligne qui sort du `grep`
+dont le compte a baissé, c'est un retour arrière : remettre l'ancien `ECHO_IMAGE`, **restaurer le dump** pris
+juste avant (section 8, « Restauration »), `up -d`.
+
+### La même répétition sur le poste (PowerShell)
+
+Pour s'entraîner sans toucher au serveur, sur une sauvegarde rapatriée (données synthétiques, comme toutes
+celles d'Écho) :
+
+```powershell
+# a la racine du depot
+scp adm-mnguessan@10.10.4.165:/var/sauvegardes/echo6/echo6_AAAAMMJJ_HHMM.sql.gz .\dump.sql.gz
+podman network create echo6-repetition
+podman run -d --name echo6-copie --network echo6-repetition `
+  -e POSTGRES_DB=simulateur -e POSTGRES_USER=simulateur -e POSTGRES_PASSWORD=copie-jetable `
+  docker.io/library/postgres:16-alpine
+Start-Sleep -Seconds 5
+podman cp .\dump.sql.gz echo6-copie:/tmp/dump.sql.gz
+podman exec echo6-copie sh -c "gunzip -c /tmp/dump.sql.gz | psql -q -v ON_ERROR_STOP=1 -U simulateur -d simulateur"
+
+# controles avant (le controle DOIT etre vide)
+podman cp scripts/db/. echo6-copie:/tmp/
+podman exec echo6-copie psql -U simulateur -d simulateur -At -f /tmp/controle-avant-montee.sql
+podman exec echo6-copie psql -U simulateur -d simulateur -At -f /tmp/comptes-par-table.sql > comptes-avant.txt
+
+# migrer la copie (sans :Z si Podman sous Windows le refuse)
+podman run --rm --network echo6-repetition `
+  -v "${PWD}/src/main/resources/db/migration:/flyway/sql:ro" `
+  docker.io/flyway/flyway:11.7.2 `
+  -url=jdbc:postgresql://echo6-copie:5432/simulateur -user=simulateur -password=copie-jetable migrate
+
+# controles apres : la comparaison doit etre vide
+podman exec echo6-copie psql -U simulateur -d simulateur -At -f /tmp/comptes-par-table.sql > comptes-apres.txt
+Compare-Object (Get-Content comptes-avant.txt) (Get-Content comptes-apres.txt) | Where-Object SideIndicator -eq '<='
+podman exec echo6-copie psql -U simulateur -d simulateur -c 'select departement_code, count(*) from "TB_ECHO_CENTRE_SANTE" group by 1 order by 2 desc'
+
+# menage
+podman rm -f echo6-copie; podman network rm echo6-repetition
+Remove-Item .\dump.sql.gz, comptes-avant.txt, comptes-apres.txt
+```
+
+### Une base de développement déjà à V20
+
+V19 ayant été corrigé, sa somme de contrôle a changé : une base locale qui l'a déjà joué refuse de démarrer
+(« Validate failed: Migration checksum mismatch for migration version 19 »). Elle ne contient que des données
+jetables : `podman compose down -v` puis `podman compose up -d`. Le serveur, resté à V12, n'est pas concerné.
+
+---
+
 ## 10. Retirer la v5 (pas tout de suite)
 
 **Laisser tourner la v5 au moins une semaine** après la bascule. Elle ne coûte qu'un peu de mémoire, et elle est le

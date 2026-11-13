@@ -3,6 +3,14 @@
 -- desormais le code officiel de la table de valeurs correspondante, avec une vraie cle etrangere.
 -- Plus aucune liste de valeurs n'est repetee dans une contrainte CHECK : la table de valeurs
 -- est la seule autorite. Ajouter une valeur se fait par INSERT, plus par migration de contrainte.
+--
+-- CORRIGE LE 2026-11-13 (prompt 19), avant tout passage sur le serveur, qui est reste a V12.
+-- Dans les trois sous-requetes de rattachement, la colonne de la table mise a jour n'etait pas
+-- qualifiee : PostgreSQL la resolvait sur la table de valeurs (meme nom de colonne), la jointure
+-- ne trouvait jamais rien, et sur une base remplie TOUTES les villes tombaient sur Abidjan.
+-- Les colonnes sont desormais prefixees (c., p., m.). Sur une base vide, rien ne change ; une
+-- base de developpement deja a V20 doit etre recreee (somme de controle differente).
+-- Prouve par MonteeV12IntegrationTest.
 
 -- 1. Deux specialites manquaient au catalogue, pourtant presentes dans le referentiel simule.
 INSERT INTO "TB_REF_SPECIALITES_MEDICALES" (specialite_medicale_code, specialite_medicale_libelle) VALUES
@@ -26,9 +34,9 @@ UPDATE "TB_ECHO_CENTRE_SANTE" SET type_etablissement_code = CASE type_etablissem
 
 -- Les quinze villes du referentiel simule sont toutes des departements ; le repli sur Abidjan ne
 -- sert qu'a garantir que la cle etrangere posee ensuite ne puisse jamais echouer.
-UPDATE "TB_ECHO_CENTRE_SANTE" SET departement_code = COALESCE(
+UPDATE "TB_ECHO_CENTRE_SANTE" c SET departement_code = COALESCE(
     (SELECT d.departement_code FROM "TB_TV_LOCALISATION_DEPARTEMENTS" d
-     WHERE d.departement_libelle = departement_code), 'D109');
+     WHERE d.departement_libelle = c.departement_code), 'D109');
 
 ALTER TABLE "TB_ECHO_CENTRE_SANTE" ALTER COLUMN type_etablissement_code TYPE VARCHAR(10);
 ALTER TABLE "TB_ECHO_CENTRE_SANTE" ALTER COLUMN departement_code       TYPE VARCHAR(10);
@@ -40,9 +48,9 @@ ALTER TABLE "TB_ECHO_CENTRE_SANTE"
 
 -- 3. Pharmacies : meme traitement pour la ville.
 ALTER TABLE "TB_ECHO_PHARMACIE" RENAME COLUMN ville TO departement_code;
-UPDATE "TB_ECHO_PHARMACIE" SET departement_code = COALESCE(
+UPDATE "TB_ECHO_PHARMACIE" p SET departement_code = COALESCE(
     (SELECT d.departement_code FROM "TB_TV_LOCALISATION_DEPARTEMENTS" d
-     WHERE d.departement_libelle = departement_code), 'D109');
+     WHERE d.departement_libelle = p.departement_code), 'D109');
 ALTER TABLE "TB_ECHO_PHARMACIE" ALTER COLUMN departement_code TYPE VARCHAR(10);
 ALTER TABLE "TB_ECHO_PHARMACIE"
     ADD CONSTRAINT fk_pharmacie_departement FOREIGN KEY (departement_code)
@@ -54,7 +62,7 @@ ALTER TABLE "TB_ECHO_MEDECIN" RENAME COLUMN specialite TO specialite_medicale_co
 -- jointure sur le libelle ne suffit pas : le catalogue nomme "Radiologie et imagerie medicale"
 -- ce que le simulateur ecrivait "Radiologie". Tout libelle inattendu tombe sur MG, et la cle
 -- etrangere posee juste apres garantit qu'aucune valeur ne survit hors catalogue.
-UPDATE "TB_ECHO_MEDECIN" SET specialite_medicale_code = CASE specialite_medicale_code
+UPDATE "TB_ECHO_MEDECIN" m SET specialite_medicale_code = CASE specialite_medicale_code
     WHEN 'Medecine generale'        THEN 'MG'
     WHEN 'Pediatrie'                THEN 'PED'
     WHEN 'Gynecologie-obstetrique'  THEN 'GYN'
@@ -66,7 +74,7 @@ UPDATE "TB_ECHO_MEDECIN" SET specialite_medicale_code = CASE specialite_medicale
     WHEN 'Biologie medicale'        THEN 'BIO'
     WHEN 'Medecine interne'         THEN 'MIN'
     ELSE COALESCE((SELECT s.specialite_medicale_code FROM "TB_REF_SPECIALITES_MEDICALES" s
-                   WHERE s.specialite_medicale_libelle = specialite_medicale_code), 'MG') END;
+                   WHERE s.specialite_medicale_libelle = m.specialite_medicale_code), 'MG') END;
 ALTER TABLE "TB_ECHO_MEDECIN" ALTER COLUMN specialite_medicale_code TYPE VARCHAR(10);
 ALTER TABLE "TB_ECHO_MEDECIN"
     ADD CONSTRAINT fk_medecin_specialite FOREIGN KEY (specialite_medicale_code)
