@@ -50,15 +50,52 @@
     </div>
 
     <div class="raccourcis" id="raccourcis">
-        <a class="bouton signature" th:href="@{/lancement}">
+        <a class="bouton" th:href="@{/lancement}">
             <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Piloter la simulation</a>
-        <a class="bouton secondaire" th:href="@{/evenements}">
-            <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg>Explorer les flux</a>
+        <a class="bouton secondaire" th:href="@{/simulations}">
+            <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg>Voir les simulations</a>
         <a class="bouton secondaire" th:href="@{/qualite}">
             <svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg>Comparer avec l'outil qualité</a>
         <a class="bouton chaud" th:href="@{/chaos}">
             <svg class="ico" aria-hidden="true"><use href="#i-zap"/></svg>Provoquer une panne</a>
     </div>
+
+    <section class="carte" aria-labelledby="t-recentes">
+        <header>
+            <h2 id="t-recentes">Dernières simulations</h2>
+            <a class="bouton secondaire" th:href="@{/simulations}" th:unless="${#lists.isEmpty(recentes)}"
+               th:text="${total > 1} ? 'Les ' + ${total} + ' simulations' : 'Toutes les simulations'">Toutes les simulations</a>
+        </header>
+
+        <div class="vide" th:if="${#lists.isEmpty(recentes)}">
+            <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg>
+            <b>Aucune simulation n'a encore tourné</b>
+            <p>Lancez-en une : sa fiche apparaîtra ici, avec son flux de données, son analyse et son export.</p>
+            <a class="bouton" th:href="@{/lancement}">
+                <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg>Lancer une simulation</a>
+        </div>
+
+        <div class="defilement" th:unless="${#lists.isEmpty(recentes)}">
+            <table>
+                <thead>
+                <tr>
+                    <th scope="col">Simulation</th><th scope="col">Scénario</th><th scope="col">État</th>
+                    <th scope="col">Parcours</th><th scope="col">Démarrée le</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${recentes}">
+                    <td><a th:href="@{/simulations/{id}(id=${r.id})}" th:title="'Ouvrir la fiche de ' + ${r.id}">
+                        <code th:text="${#strings.substring(r.id.toString(), 0, 8)}">abcd1234</code></a></td>
+                    <td th:text="${r.scenario}">scénario</td>
+                    <td><span th:replace="~{fragments/etat :: badge(${r.etat})}"></span></td>
+                    <td class="chiffre" th:text="${#numbers.formatInteger(r.parcoursGeneres, 1, 'WHITESPACE')}">0</td>
+                    <td class="chiffre" th:text="${r.debut != null} ? ${#temporals.format(r.debut, 'dd/MM/yyyy à HH:mm')} : '—'">date</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 
     <div id="tableau" class="grille" th:data-flux="@{/flux}">
 

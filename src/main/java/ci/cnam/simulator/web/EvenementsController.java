@@ -35,6 +35,10 @@ public class EvenementsController {
     /** Un export ne depasse jamais ce nombre de lignes (un run en produit des millions). */
     static final int LIMITE_EXPORT = 100_000;
 
+    /** Etapes proposees dans le filtre : celles du parcours de prestations, seul domaine simule a ce jour. */
+    private static final List<String> ETAPES = java.util.Arrays.stream(
+            ci.cnam.simulator.domain.prestations.events.PrestationEventType.values()).map(Enum::name).toList();
+
     private final EventQueryService evenements;
     private final RunManager runs;
     private final RejeuEvenementService rejeu;
@@ -65,9 +69,8 @@ public class EvenementsController {
                        @RequestHeader(value = "HX-Request", required = false) String htmx, Model modele,
                        HttpServletResponse reponse) {
         if (run == null) {
-            modele.addAttribute("runs", runs.lister());
             reponse.setHeader(HttpHeaders.VARY, "HX-Request");
-            return "evenements-choix";
+            return "redirect:/simulations";
         }
         RunInfo courant = runs.lister().stream().filter(r -> r.id().equals(run)).findFirst().orElse(null);
         PageEvenements resultat = evenements.rechercher(run, evenement, domaine, type, statut, page, taille);
@@ -79,6 +82,7 @@ public class EvenementsController {
         modele.addAttribute("statut", statut);
         modele.addAttribute("resultat", resultat);
         modele.addAttribute("ecrit", RejeuEvenementService.ECRIT);
+        modele.addAttribute("etapes", ETAPES);
         reponse.setHeader(HttpHeaders.VARY, "HX-Request");
         return htmx != null ? "evenements :: tableau" : "evenements";
     }

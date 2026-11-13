@@ -179,8 +179,12 @@ class InterfaceIntegrationTest {
                 .andExpect(status().isOk());
         assertThat(runs.info(actif.id()).etat()).isEqualTo(EtatRun.ARRETE);
 
+        // L'ancienne adresse reste servie ; la liste mene a la fiche, rendue sur de vraies tables.
         mvc.perform(get("/historique").with(operateur)).andExpect(status().isOk())
-                .andExpect(content().string(containsString(actif.id().toString().substring(0, 8))));
+                .andExpect(content().string(containsString("/simulations/" + actif.id())));
+        mvc.perform(get("/simulations/{id}", actif.id()).with(operateur)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("Surcharge")))
+                .andExpect(content().string(containsString("Rétablie à la main")));
 
         // Rejouer avec la meme graine : nouveau run, meme graine.
         mvc.perform(post("/lancement/{id}/rejouer", actif.id()).with(csrf()).with(operateur))
@@ -221,7 +225,10 @@ class InterfaceIntegrationTest {
                 Boolean.class, nom)).isTrue();
         assertThat(jdbc.queryForObject("select mot_de_passe_hash from app_user where nom_utilisateur = ?",
                 String.class, nom)).startsWith("$2").doesNotContain("mot-de-passe-temporaire");
-        mvc.perform(get("/admin/utilisateurs").with(admin)).andExpect(content().string(containsString(nom)))
-                .andExpect(content().string(containsString("UTILISATEUR_CREE")));
+        mvc.perform(get("/admin/utilisateurs").with(admin)).andExpect(content().string(containsString(nom)));
+        // Le journal a son propre ecran, et dit l'action en clair.
+        mvc.perform(get("/admin/journal").with(admin)).andExpect(status().isOk())
+                .andExpect(content().string(containsString(nom)))
+                .andExpect(content().string(containsString("Compte créé")));
     }
 }

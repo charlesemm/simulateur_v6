@@ -5,11 +5,13 @@
     <title>Flux de données — Echo</title>
 </head>
 <body>
-<main id="contenu" class="page">
+<main id="contenu" class="page" data-parent="simulations">
+    <a class="retour" th:href="@{/simulations/{id}(id=${run})}">
+        <svg class="ico" aria-hidden="true"><use href="#i-chevron-gauche"/></svg>Fiche de la simulation</a>
+
     <div class="titre-ecran">
         <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-activity"/></svg>Flux de données</h1>
-        <a class="bouton secondaire" th:href="@{/evenements}">
-            <svg class="ico" aria-hidden="true"><use href="#i-chevron-gauche"/></svg>Toutes les simulations</a>
+        <th:block th:if="${courant}"><span th:replace="~{fragments/etat :: badge(${courant.etat})}"></span></th:block>
     </div>
     <p class="sous-titre">Événements de la simulation
         <code th:text="${#strings.substring(run.toString(), 0, 8)}" th:title="${run}">abcd1234</code><th:block
@@ -18,12 +20,23 @@
         Chaque ligne est une étape franchie par un dossier. En prestations : arrivée du patient,
         vérification des droits, consultation, examens, délivrance, clôture.</p>
 
+    <nav th:replace="~{fragments/onglets :: onglets(${run}, 'flux')}"></nav>
+
     <form class="carte filtres" th:action="@{/evenements}" method="get"
           th:hx-get="@{/evenements}" hx-target="#tableau" hx-swap="outerHTML" hx-push-url="true"
           hx-trigger="submit, change">
         <input type="hidden" name="run" th:value="${run}">
         <label>Domaine <input type="text" name="domaine" th:value="${domaine}" placeholder="prestations"></label>
-        <label>Étape <input type="text" name="type" th:value="${type}" placeholder="FACTURE_OUVERTE"></label>
+        <label>Étape
+            <select name="type">
+                <option value="">toutes</option>
+                <option th:each="t : ${etapes}" th:value="${t}" th:text="${libelles.etape(t)}"
+                        th:selected="${t == type}">Feuille de soins ouverte</option>
+                <!--/* Un type hors parcours de prestations (lien direct, autre domaine) reste selectionnable. */-->
+                <option th:if="${!#strings.isEmpty(type) and !#lists.contains(etapes, type)}" th:value="${type}"
+                        th:text="${libelles.etape(type)}" selected>autre</option>
+            </select>
+        </label>
         <label>Statut d'écriture <input type="text" name="statut" th:value="${statut}" placeholder="ECRIT"></label>
         <!--/* Filtre sur un seul événement : c'est par là que l'écran Qualité ouvre la ligne exacte. */-->
         <label>Événement <input type="text" name="evenement" th:value="${evenement}"
@@ -31,7 +44,7 @@
         <div class="actions">
             <button type="submit"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg>Filtrer</button>
             <a class="bouton secondaire" th:href="@{/evenements(run=${run})}"
-               th:if="${domaine != null or type != null or statut != null or evenement != null}">Retirer les filtres</a>
+               th:if="${!#strings.isEmpty(domaine) or !#strings.isEmpty(type) or !#strings.isEmpty(statut) or evenement != null}">Retirer les filtres</a>
         </div>
     </form>
 
@@ -59,8 +72,8 @@
         <div class="vide" th:if="${#lists.isEmpty(resultat.contenu)}">
             <svg class="ico" aria-hidden="true"><use href="#i-dossier"/></svg>
             <b>Aucun événement pour ces critères</b>
-            <p>Vérifiez la simulation choisie, ou retirez un filtre : l'étape et le statut s'écrivent en majuscules,
-                comme <code>CONSULTATION_REALISEE</code>.</p>
+            <p>Vérifiez la simulation choisie, ou retirez un filtre : le statut d'écriture s'écrit en majuscules,
+                comme <code>ECRIT</code>.</p>
             <a class="bouton secondaire" th:href="@{/evenements(run=${run})}">Retirer les filtres</a>
         </div>
 
@@ -76,7 +89,7 @@
                 </thead>
                 <tbody>
                 <tr th:each="e : ${resultat.contenu}">
-                    <td th:text="${e.type}">FACTURE_OUVERTE</td>
+                    <td th:text="${libelles.etape(e.type)}" th:title="${e.type}">Feuille de soins ouverte</td>
                     <td th:text="${e.domaine}">prestations</td>
                     <td><code th:if="${e.factureId}" th:text="${#strings.substring(e.factureId.toString(), 0, 8)}"
                               th:title="${e.factureId}">abcd1234</code></td>
@@ -101,8 +114,9 @@
         <th:block th:if="${evenement != null}">
             <section class="carte" th:each="e : ${resultat.contenu}">
                 <h2>Contenu de l'événement <code th:text="${e.eventId}">id</code></h2>
-                <dl class="paires">
-                    <dt>Étape</dt><dd th:text="${e.type}">FACTURE_OUVERTE</dd>
+                <dl>
+                    <dt>Étape</dt><dd><span th:text="${libelles.etape(e.type)}">Feuille de soins ouverte</span>
+                        <code th:text="${e.type}">FACTURE_OUVERTE</code></dd>
                     <dt>Dossier</dt>
                     <dd><code th:if="${e.factureId}" th:text="${e.factureId}">id</code><span
                             th:unless="${e.factureId}">—</span></dd>

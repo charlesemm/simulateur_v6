@@ -121,10 +121,16 @@ public class AdminUtilisateursController {
                 .path("/login").build().toUriString());
     }
 
+    /** Le journal d activite, sur son propre ecran : qui a fait quoi, et quand. */
+    @GetMapping("/admin/journal")
+    public String journal(Model modele) {
+        modele.addAttribute("journal", audit.derniers());
+        return "admin-journal";
+    }
+
     private void preparer(Model modele) {
         modele.addAttribute("utilisateurs", comptes.lister());
         modele.addAttribute("roles", Role.values());
-        modele.addAttribute("journal", audit.derniers());
         modele.addAttribute("maintenant", horloge.instant());
     }
 }

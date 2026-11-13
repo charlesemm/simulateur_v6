@@ -103,11 +103,6 @@ dd { margin: 0; font-weight: 550; overflow-wrap: anywhere; }
 
 img, svg { max-width: 100%; }
 
-/* Texte reserve aux lecteurs d'ecran. */
-.hors-ecran {
-    position: absolute; width: 1px; height: 1px; overflow: hidden;
-    clip-path: inset(50%); white-space: nowrap;
-}
 [hidden] { display: none !important; }
 
 @media (max-width: 560px) {

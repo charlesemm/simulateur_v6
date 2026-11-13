@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<!--/* « Mon compte » : changement de mot de passe VOLONTAIRE, dans l'application. Le changement impose
+       (mot de passe temporaire) reste sur l'ecran isole mot-de-passe.html. */-->
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout :: page(~{::title}, ~{::main})}">
+<head>
+    <title>Mon compte — Echo</title>
+</head>
+<body>
+<main id="contenu" class="page etroite">
+    <div class="titre-ecran">
+        <h1><svg class="ico ico-titre" aria-hidden="true"><use href="#i-user"/></svg>Mon compte</h1>
+    </div>
+
+    <p class="info" th:if="${param.modifie}" role="status">
+        <svg class="ico" aria-hidden="true"><use href="#i-cercle-check"/></svg>
+        Votre mot de passe a été modifié. Il vaut dès maintenant, cette session reste ouverte.
+    </p>
+
+    <section class="carte" aria-labelledby="t-identite">
+        <header><h2 id="t-identite">Qui je suis</h2></header>
+        <dl>
+            <dt>Nom d'utilisateur</dt><dd sec:authentication="name">utilisateur</dd>
+            <dt>Rôle</dt>
+            <dd><span th:text="${libelles.role(roleCourant)}">Opérateur</span>
+                <span class="aide-champ" th:text="${libelles.roleEnClair(roleCourant)}">Ce que le rôle permet.</span></dd>
+        </dl>
+    </section>
+
+    <section class="carte" aria-labelledby="t-mdp">
+        <header><h2 id="t-mdp"><svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>Changer le mot de passe</h2></header>
+
+        <p class="alerte" th:if="${erreur}" role="alert">
+            <svg class="ico" aria-hidden="true"><use href="#i-cercle-alerte"/></svg>
+            <span th:text="${erreur}"></span>
+        </p>
+
+        <form th:action="@{/mot-de-passe}" method="post">
+            <label class="champ">Mot de passe actuel
+                <svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>
+                <input type="password" name="ancien" autocomplete="current-password" required>
+            </label>
+            <label class="champ">Nouveau mot de passe
+                <svg class="ico" aria-hidden="true"><use href="#i-lock"/></svg>
+                <input type="password" name="nouveau" autocomplete="new-password" minlength="12" required>
+                <span class="aide-champ">12 caractères au minimum.</span>
+            </label>
+            <label class="champ">Confirmation
+                <svg class="ico" aria-hidden="true"><use href="#i-check"/></svg>
+                <input type="password" name="confirmation" autocomplete="new-password" minlength="12" required>
+            </label>
+            <div class="actions">
+                <button type="submit">Enregistrer le nouveau mot de passe</button>
+                <a class="bouton secondaire" th:href="@{/dashboard}">Revenir au tableau de bord</a>
+            </div>
+        </form>
+    </section>
+</main>
+</body>
+</html>
